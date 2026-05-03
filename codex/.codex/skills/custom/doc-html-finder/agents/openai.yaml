@@ -1,4 +1,4 @@
 ﻿interface:
   display_name: "Doc HTML Finder"
-  short_description: "文書HTMLとmetaから該当文書・ページ・根拠を特定する"
-  default_prompt: "文書HTML化データから、指定内容が記載された文書とPDFページ番号を根拠付きで探してください。"
+  short_description: "文書HTMLとmetaから該当文書・ページ・参照元を特定する"
+  default_prompt: "文書HTML化データから、指定内容が記載された文書とPDFページ番号を参照元を明示して探してください。"

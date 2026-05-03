@@ -1,6 +1,6 @@
 ---
 name: doc-html-finder
-description: Locate target passages in documents that have been converted to structured HTML, using raw/meta JSON summaries and tables of contents plus html/*/index.html page sections. Use when Codex needs to answer Japanese questions such as finding which document and PDF page contains a requested concept, requirement, rule, lesson, or passage, and return document names, page numbers, evidence excerpts, and reasons.
+description: Locate target passages in documents that have been converted to structured HTML, using raw/meta JSON summaries and tables of contents plus html/*/index.html page sections. Use when Codex needs to answer Japanese questions such as finding which document and PDF page contains a requested concept, requirement, rule, lesson, or passage, and return document names, page numbers, reference excerpts, and reasons.
 ---
 
 # Doc HTML Finder
@@ -60,7 +60,7 @@ uv run python .\.codex\skills\doc-html-finder\scripts\extract_html_pages.py ".\h
 
 - 目次に完全一致がなくても、`summary` と目次の意味が近ければ候補文書に残す。
 - 目次検索で得たページは開始ページとして扱う。節が複数ページに続く可能性があるため、本文確認では前後 1 ページ以上を見る。
-- HTML の表、図キャプション、箇条書きも根拠になり得る。必要なら HTML タグを残したまま確認する。
+- HTML の表、図キャプション、箇条書きも参照元になり得る。必要なら HTML タグを残したまま確認する。
 - 本文確認時に `<img src="...">` があり、図表・スクリーンショット・画像化された表が判断に必要な場合は、`index.html` からの相対パスとしてリンク先画像も確認する。
 - 抜粋は短くし、ユーザが該当箇所を追える程度にする。
 - ページ番号は HTML の `id="page-N"` と `.page-label` の `PDF p.N` を PDF ページ番号として扱う。
@@ -72,7 +72,7 @@ uv run python .\.codex\skills\doc-html-finder\scripts\extract_html_pages.py ".\h
 ```markdown
 - 文書: <文書名>
   ページ: PDF p.<ページ番号>
-  根拠: <本文からの短い抜粋>
+  参照元: <本文からの短い抜粋>
   理由: <ユーザ質問との対応関係>
 ```
 
@@ -82,4 +82,4 @@ uv run python .\.codex\skills\doc-html-finder\scripts\extract_html_pages.py ".\h
 
 - 「安全要求の合意形成に関する本文箇所を特定して」
 - 「コーディング規約の作成について記載されている文書とページを探して」
-- 「障害対策手法に関係する教訓が載っているページを根拠付きで教えて」
+- 「障害対策手法に関係する教訓が載っているページを参照元を明示して教えて」
