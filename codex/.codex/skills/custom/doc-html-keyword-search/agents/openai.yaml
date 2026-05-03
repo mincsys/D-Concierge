@@ -1,0 +1,4 @@
+interface:
+  display_name: "Doc HTML Keyword Search"
+  short_description: "文書HTMLをページ単位でキーワード検索しJSONで返す"
+  default_prompt: "文書HTMLから指定した検索ワードにヒットする文書名とPDFページ番号の一覧をJSONで返してください。"
