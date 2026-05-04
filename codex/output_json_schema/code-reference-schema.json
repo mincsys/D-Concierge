@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "description": "コード調査に基づく回答。回答文のかたまりごとに参照元となるコード行範囲を紐づける。",
+  "properties": {
+    "answers": {
+      "type": "array",
+      "description": "回答文と参照元の組。最低1件。",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "ユーザに提示する回答文のかたまり。"
+          },
+          "references": {
+            "type": "array",
+            "description": "この回答文の参照元。参照元がない場合は空配列。",
+            "items": {
+              "type": "object",
+              "properties": {
+                "source_type": {
+                  "const": "code"
+                },
+                "locator": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "description": "参照元となるコードファイルのパス。可能ならワークスペースからの相対パス。"
+                    },
+                    "start_line": {
+                      "type": "integer",
+                      "description": "参照元範囲の開始行番号。1始まり。",
+                      "minimum": 1
+                    },
+                    "end_line": {
+                      "type": "integer",
+                      "description": "参照元範囲の終了行番号。単一行の場合はstart_lineと同じ値。",
+                      "minimum": 1
+                    }
+                  },
+                  "required": ["path", "start_line", "end_line"],
+                  "additionalProperties": false
+                }
+              },
+              "required": ["source_type", "locator"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["text", "references"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["answers"],
+  "additionalProperties": false
+}

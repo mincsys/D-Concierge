@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "description": "PDF文書検索に基づく回答。回答文のかたまりごとに参照元となるPDFページ範囲を紐づける。",
+  "properties": {
+    "answers": {
+      "type": "array",
+      "description": "回答文と参照元の組。最低1件。",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "ユーザに提示する回答文のかたまり。"
+          },
+          "references": {
+            "type": "array",
+            "description": "この回答文の参照元。参照元がない場合は空配列。",
+            "items": {
+              "type": "object",
+              "properties": {
+                "source_type": {
+                  "const": "pdf"
+                },
+                "locator": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "description": "参照元となるPDFファイルのパス。可能ならワークスペースからの相対パス。"
+                    },
+                    "start_page": {
+                      "type": "integer",
+                      "description": "参照元範囲の開始PDFページ番号。1始まり。",
+                      "minimum": 1
+                    },
+                    "end_page": {
+                      "type": "integer",
+                      "description": "参照元範囲の終了PDFページ番号。単一ページの場合はstart_pageと同じ値。",
+                      "minimum": 1
+                    }
+                  },
+                  "required": ["path", "start_page", "end_page"],
+                  "additionalProperties": false
+                }
+              },
+              "required": ["source_type", "locator"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["text", "references"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["answers"],
+  "additionalProperties": false
+}
