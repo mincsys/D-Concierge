@@ -3,3 +3,8 @@
 __pycache__/
 /codex/work/html/
 /codex/work/raw/
+/mock/node_modules/
+/mock/dist/
+/mock/tsconfig.tsbuildinfo
+/.playwright-cli/
+/output/playwright/
