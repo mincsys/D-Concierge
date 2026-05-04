@@ -38,20 +38,20 @@ export const stubChatSession: ChatSession = {
         title: "目的・背景の共有と合意形成を徹底する。",
         description:
           "要件定義では目的や背景を共有し、関係する組織や役割を明確にすることが合意形成の第一歩です。",
-        referenceLabel: "SEC BOOKS 開発指針手引き p.10",
+        referenceLabel: "SEC BOOKS 開発指針手引き p.10-14",
       },
       {
         id: "user-perspective",
         title: "利用者視点で要求を具体化する。",
         description: "利用者の業務や課題を深く理解し、価値につながる要求として具体化します。",
-        referenceLabel: "SEC BOOKS 開発指針手引き p.10",
+        referenceLabel: "SEC BOOKS 開発指針手引き p.10-14",
       },
       {
         id: "prioritization",
         title: "要求の優先順位付けとスコープ調整を行う。",
         description:
           "すべての要求を実装するのではなく、ビジネス価値と実現性のバランスで優先順位を付けます。",
-        referenceLabel: "SEC BOOKS 開発指針手引き p.10",
+        referenceLabel: "SEC BOOKS 開発指針手引き p.10-14",
       },
     ],
     workflowTitle: "要件定義ワークフロー",
@@ -70,17 +70,17 @@ export const stubChatSession: ChatSession = {
           <tr>
             <td>目的共有</td>
             <td>関係者が同じゴールを見て判断できる状態を作る。</td>
-            <td>PDF p.10</td>
+            <td>PDF p.10-14</td>
           </tr>
           <tr>
             <td>要求の具体化</td>
             <td>利用者の業務課題を、検証可能な要求に落とし込む。</td>
-            <td>PDF p.10</td>
+            <td>PDF p.10-14</td>
           </tr>
           <tr>
             <td>継続的な見直し</td>
             <td>環境変化に合わせて、要求と合意内容を更新する。</td>
-            <td>PDF p.10</td>
+            <td>PDF p.10-14</td>
           </tr>
         </tbody>
       </table>

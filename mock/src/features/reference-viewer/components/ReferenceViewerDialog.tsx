@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { formatPdfPageRange } from "@/features/reference-viewer/lib/pageRange";
 import type { PdfReference } from "@/features/reference-viewer/model/types";
 import { PdfPageViewer } from "@/features/reference-viewer/viewers/PdfPageViewer";
 
@@ -22,6 +23,9 @@ export function ReferenceViewerDialog({
     return null;
   }
 
+  const pageRangeLabel = formatPdfPageRange(reference);
+  const dialogDescription = `${reference.title} PDF ${pageRangeLabel}`;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -34,9 +38,9 @@ export function ReferenceViewerDialog({
             <DialogTitle className="mt-[3px] mb-[5px] text-xl leading-[1.3] font-bold">
               {reference.title}
             </DialogTitle>
-            <DialogDescription className="sr-only">{reference.description}</DialogDescription>
+            <DialogDescription className="sr-only">{dialogDescription}</DialogDescription>
             <p id="pdf-viewer-status" className="m-0 text-sm font-[650] text-[#5c6b86]">
-              {status || `${reference.description}を読み込んでいます。`}
+              {status || "PDFを読み込んでいます。"}
             </p>
           </DialogHeader>
         </header>

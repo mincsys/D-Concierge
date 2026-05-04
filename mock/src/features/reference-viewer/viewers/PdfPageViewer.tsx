@@ -5,6 +5,11 @@ import type { PDFDocumentProxy, RenderTask } from "pdfjs-dist";
 
 import type { PdfReference } from "@/features/reference-viewer/model/types";
 
+type PageRange = {
+  startPage: number;
+  endPage: number;
+};
+
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
   import.meta.url,
@@ -25,12 +30,23 @@ export function PdfPageViewer({
   const [pdfDoc, setPdfDoc] = useState<PDFDocumentProxy | null>(null);
   const [containerWidth, setContainerWidth] = useState(760);
   const [pagesToRender, setPagesToRender] = useState<Set<number>>(() => new Set());
-  const targetPageNumber = useMemo(() => {
+  const referencePageRange = useMemo(() => {
     if (!pdfDoc) {
-      return reference.pageNumber;
+      return {
+        startPage: reference.startPage,
+        endPage: Math.max(reference.startPage, reference.endPage),
+      };
     }
-    return Math.min(Math.max(1, reference.pageNumber), pdfDoc.numPages);
-  }, [pdfDoc, reference.pageNumber]);
+    return normalizePdfPageRange(reference, pdfDoc.numPages);
+  }, [pdfDoc, reference.endPage, reference.startPage]);
+  const referencePages = useMemo(
+    () => createPages(referencePageRange),
+    [referencePageRange],
+  );
+  const referencePageSet = useMemo(
+    () => new Set(referencePages),
+    [referencePages],
+  );
 
   useEffect(() => {
     let destroyed = false;
@@ -50,8 +66,8 @@ export function PdfPageViewer({
           return;
         }
         setPdfDoc(loadedPdfDoc);
-        const normalizedTargetPage = Math.min(Math.max(1, reference.pageNumber), loadedPdfDoc.numPages);
-        setPagesToRender(createInitialPagesToRender(normalizedTargetPage, loadedPdfDoc.numPages));
+        const normalizedPageRange = normalizePdfPageRange(reference, loadedPdfDoc.numPages);
+        setPagesToRender(createInitialPagesToRender(normalizedPageRange, loadedPdfDoc.numPages));
         const nextContainerWidth = Math.min(
           850,
           Math.max(620, (containerRef.current?.clientWidth ?? 804) - 44),
@@ -73,20 +89,20 @@ export function PdfPageViewer({
     };
   }, [onStatusChange, reference]);
 
-  const handlePageRendered = useCallback((pageNumber: number) => {
-    if (renderedPagesRef.current.has(pageNumber)) {
+  const handlePageRendered = useCallback((page: number) => {
+    if (renderedPagesRef.current.has(page)) {
       return;
     }
 
-    renderedPagesRef.current = new Set(renderedPagesRef.current).add(pageNumber);
-    if (pageNumber === targetPageNumber) {
+    renderedPagesRef.current = new Set(renderedPagesRef.current).add(page);
+    if (page === referencePageRange.startPage) {
       didRenderTargetRef.current = true;
       onStatusChange("参照元ページを表示しました。");
     } else if (!didRenderTargetRef.current) {
       onStatusChange("PDFを表示しています。");
     }
 
-    if (pageNumber === targetPageNumber && !didScrollToTargetRef.current) {
+    if (page === referencePageRange.startPage && !didScrollToTargetRef.current) {
       didScrollToTargetRef.current = true;
       requestAnimationFrame(() => {
         const container = containerRef.current;
@@ -100,15 +116,15 @@ export function PdfPageViewer({
         });
       });
     }
-  }, [onStatusChange, targetPageNumber]);
+  }, [onStatusChange, referencePageRange.startPage]);
 
-  const handlePageVisible = useCallback((pageNumber: number) => {
+  const handlePageVisible = useCallback((page: number) => {
     setPagesToRender((current) => {
-      if (current.has(pageNumber)) {
+      if (current.has(page)) {
         return current;
       }
       const next = new Set(current);
-      next.add(pageNumber);
+      next.add(page);
       return next;
     });
   }, []);
@@ -117,20 +133,20 @@ export function PdfPageViewer({
     <div className="pdf-canvas-wrap" ref={containerRef}>
       {pdfDoc
         ? Array.from({ length: pdfDoc.numPages }, (_, index) => {
-            const pageNumber = index + 1;
-            const isTargetPage = pageNumber === targetPageNumber;
+            const page = index + 1;
+            const isReferencePage = referencePageSet.has(page);
             return (
               <div
-                className={isTargetPage ? "pdf-page-frame pdf-page-frame-target" : "pdf-page-frame"}
-                data-page-number={pageNumber}
-                key={pageNumber}
-                ref={isTargetPage ? targetPageRef : undefined}
+                className={isReferencePage ? "pdf-page-frame pdf-page-frame-target" : "pdf-page-frame"}
+                data-page-number={page}
+                key={page}
+                ref={page === referencePageRange.startPage ? targetPageRef : undefined}
               >
                 <PdfPageFrame
                   containerWidth={containerWidth}
-                  isTargetPage={isTargetPage}
-                  shouldRender={pagesToRender.has(pageNumber)}
-                  pageNumber={pageNumber}
+                  isReferencePage={isReferencePage}
+                  shouldRender={pagesToRender.has(page)}
+                  page={page}
                   pdfDoc={pdfDoc}
                   rootRef={containerRef}
                   onRendered={handlePageRendered}
@@ -144,31 +160,45 @@ export function PdfPageViewer({
   );
 }
 
-function createInitialPagesToRender(targetPageNumber: number, totalPages: number) {
-  const pageNumbers = [
-    targetPageNumber,
-    targetPageNumber - 1,
-    targetPageNumber + 1,
-  ].filter((pageNumber) => pageNumber >= 1 && pageNumber <= totalPages);
+function normalizePdfPageRange(reference: PdfReference, totalPages: number): PageRange {
+  const startPage = Math.min(Math.max(1, reference.startPage), totalPages);
+  const endPage = Math.min(Math.max(startPage, reference.endPage), totalPages);
 
-  return new Set(pageNumbers);
+  return { startPage, endPage };
+}
+
+function createPages(pageRange: PageRange) {
+  return Array.from(
+    { length: pageRange.endPage - pageRange.startPage + 1 },
+    (_, index) => pageRange.startPage + index,
+  );
+}
+
+function createInitialPagesToRender(pageRange: PageRange, totalPages: number) {
+  const pages = [
+    pageRange.startPage - 1,
+    ...createPages(pageRange),
+    pageRange.endPage + 1,
+  ].filter((page) => page >= 1 && page <= totalPages);
+
+  return new Set(pages);
 }
 
 function PdfPageFrame({
   containerWidth,
-  isTargetPage,
+  isReferencePage,
   onRendered,
   onVisible,
-  pageNumber,
+  page,
   pdfDoc,
   rootRef,
   shouldRender,
 }: {
   containerWidth: number;
-  isTargetPage: boolean;
-  onRendered: (pageNumber: number) => void;
-  onVisible: (pageNumber: number) => void;
-  pageNumber: number;
+  isReferencePage: boolean;
+  onRendered: (page: number) => void;
+  onVisible: (page: number) => void;
+  page: number;
   pdfDoc: PDFDocumentProxy;
   rootRef: RefObject<HTMLDivElement | null>;
   shouldRender: boolean;
@@ -185,7 +215,7 @@ function PdfPageFrame({
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries.some((entry) => entry.isIntersecting)) {
-          onVisible(pageNumber);
+          onVisible(page);
           observer.disconnect();
         }
       },
@@ -201,17 +231,17 @@ function PdfPageFrame({
     return () => {
       observer.disconnect();
     };
-  }, [onVisible, pageNumber, rootRef, shouldRender]);
+  }, [onVisible, page, rootRef, shouldRender]);
 
   return (
     <div ref={frameContentRef}>
       <div className="pdf-page-label">
-        {isTargetPage ? `参照元ページ p.${pageNumber}` : `p.${pageNumber}`}
+        {isReferencePage ? `参照元ページ p.${page}` : `p.${page}`}
       </div>
       {shouldRender ? (
         <PdfPageCanvas
           containerWidth={containerWidth}
-          pageNumber={pageNumber}
+          page={page}
           pdfDoc={pdfDoc}
           onRendered={onRendered}
         />
@@ -223,7 +253,7 @@ function PdfPageFrame({
             width: `${containerWidth}px`,
           }}
         >
-          <span>p.{pageNumber}</span>
+          <span>p.{page}</span>
         </div>
       )}
     </div>
@@ -232,14 +262,14 @@ function PdfPageFrame({
 
 function PdfPageCanvas({
   containerWidth,
-  pageNumber,
+  page,
   pdfDoc,
   onRendered,
 }: {
   containerWidth: number;
-  pageNumber: number;
+  page: number;
   pdfDoc: PDFDocumentProxy;
-  onRendered: (pageNumber: number) => void;
+  onRendered: (page: number) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const renderTaskRef = useRef<RenderTask | null>(null);
@@ -248,15 +278,15 @@ function PdfPageCanvas({
     let destroyed = false;
 
     async function renderPage() {
-      const page = await pdfDoc.getPage(pageNumber);
+      const pdfPage = await pdfDoc.getPage(page);
       const canvas = canvasRef.current;
       if (!canvas || destroyed) {
         return;
       }
 
-      const viewport = page.getViewport({ scale: 1 });
+      const viewport = pdfPage.getViewport({ scale: 1 });
       const scale = containerWidth / viewport.width;
-      const scaledViewport = page.getViewport({ scale });
+      const scaledViewport = pdfPage.getViewport({ scale });
       const pixelRatio = window.devicePixelRatio || 1;
       const context = canvas.getContext("2d");
       if (!context) {
@@ -269,10 +299,10 @@ function PdfPageCanvas({
       canvas.style.height = `${Math.floor(scaledViewport.height)}px`;
       context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
 
-      renderTaskRef.current = page.render({ canvas, canvasContext: context, viewport: scaledViewport });
+      renderTaskRef.current = pdfPage.render({ canvas, canvasContext: context, viewport: scaledViewport });
       await renderTaskRef.current.promise;
       if (!destroyed) {
-        onRendered(pageNumber);
+        onRendered(page);
       }
     }
 
@@ -282,7 +312,7 @@ function PdfPageCanvas({
       destroyed = true;
       renderTaskRef.current?.cancel();
     };
-  }, [containerWidth, onRendered, pageNumber, pdfDoc]);
+  }, [containerWidth, onRendered, page, pdfDoc]);
 
   return <canvas ref={canvasRef} data-testid="pdf-canvas" />;
 }
