@@ -1,8 +1,14 @@
 import { Button } from "@/components/ui/button";
-import { histories } from "@/features/chat/model/fixtures";
+import type { ChatHistoryItem } from "@/features/chat/model/types";
 import { cn } from "@/lib/utils";
 
-export function ChatHistoryList({ onOpenAnswer }: { onOpenAnswer: () => void }) {
+export function ChatHistoryList({
+  histories,
+  onOpenAnswer,
+}: {
+  histories: ChatHistoryItem[];
+  onOpenAnswer: () => void;
+}) {
   return (
     <nav className="flex flex-col gap-2 pr-0" aria-label="最近のチャット">
       {histories.map((item, index) => (
@@ -12,12 +18,12 @@ export function ChatHistoryList({ onOpenAnswer }: { onOpenAnswer: () => void }) 
             index === 0 &&
               "bg-linear-to-r from-[#eef6ff] to-[#e8f2fd] before:absolute before:top-0 before:bottom-0 before:left-0 before:w-1 before:rounded before:bg-[#0a64ff]",
           )}
-          key={item}
+          key={item.id}
           type="button"
           variant="ghost"
           onClick={onOpenAnswer}
         >
-          {item}
+          {item.title}
         </Button>
       ))}
     </nav>

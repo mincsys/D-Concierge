@@ -1,20 +1,26 @@
 import { useCallback, useState } from "react";
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { pdfReference } from "@/features/reference-viewer/model/types";
+import type { PdfReference } from "@/features/reference-viewer/model/types";
 import { PdfPageViewer } from "@/features/reference-viewer/viewers/PdfPageViewer";
 
 export function ReferenceViewerDialog({
   open,
+  reference,
   onOpenChange,
 }: {
   open: boolean;
+  reference: PdfReference | null;
   onOpenChange: (open: boolean) => void;
 }) {
-  const [status, setStatus] = useState(`${pdfReference.description}を読み込んでいます。`);
+  const [status, setStatus] = useState("");
   const handleStatusChange = useCallback((nextStatus: string) => {
     setStatus(nextStatus);
   }, []);
+
+  if (!reference) {
+    return null;
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -26,15 +32,15 @@ export function ReferenceViewerDialog({
           <DialogHeader>
             <span className="text-xs font-[820] text-[#0a64ff]">参照元PDF</span>
             <DialogTitle className="mt-[3px] mb-[5px] text-xl leading-[1.3] font-bold">
-              {pdfReference.title}
+              {reference.title}
             </DialogTitle>
-            <DialogDescription className="sr-only">{pdfReference.description}</DialogDescription>
+            <DialogDescription className="sr-only">{reference.description}</DialogDescription>
             <p id="pdf-viewer-status" className="m-0 text-sm font-[650] text-[#5c6b86]">
-              {status}
+              {status || `${reference.description}を読み込んでいます。`}
             </p>
           </DialogHeader>
         </header>
-        <PdfPageViewer reference={pdfReference} onStatusChange={handleStatusChange} />
+        <PdfPageViewer reference={reference} onStatusChange={handleStatusChange} />
       </DialogContent>
     </Dialog>
   );

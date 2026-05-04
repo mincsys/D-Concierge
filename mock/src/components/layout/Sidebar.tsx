@@ -6,8 +6,15 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { ChatHistoryList } from "@/features/chat/components/ChatHistoryList";
+import type { ChatHistoryItem } from "@/features/chat/model/types";
 
-export function Sidebar({ onOpenAnswer }: { onOpenAnswer: () => void }) {
+export function Sidebar({
+  histories,
+  onOpenAnswer,
+}: {
+  histories: ChatHistoryItem[];
+  onOpenAnswer: () => void;
+}) {
   return (
     <aside className="sticky top-0 flex h-screen min-h-0 flex-col overflow-hidden border-r border-[#dbe3f0] bg-linear-to-b from-[#fbfdff] via-[#f7fbff] to-[#f4f8fc] px-4 pt-7">
       <div className="mx-[3px] mb-6 flex h-12 items-center gap-[13px]">
@@ -47,7 +54,7 @@ export function Sidebar({ onOpenAnswer }: { onOpenAnswer: () => void }) {
 
       <div className="mx-1 mt-[29px] mb-3 text-[15px] font-bold text-[#65718a]">最近のチャット</div>
       <ScrollArea className="min-h-0 flex-1">
-        <ChatHistoryList onOpenAnswer={onOpenAnswer} />
+        <ChatHistoryList histories={histories} onOpenAnswer={onOpenAnswer} />
       </ScrollArea>
 
       <div className="mt-auto -mx-4 grid min-h-[82px] grid-cols-[38px_1fr_34px] items-center gap-3 border-t border-[#e0e7f1] bg-[#f4f8fc] px-4 py-3.5 text-base font-[750]">
