@@ -1,8 +1,8 @@
 .uv-cache/
 .venv/
 __pycache__/
-/codex/work/html/
-/codex/work/raw/
+/codex/readonly/
+/codex/sessions/
 /mock/node_modules/
 /mock/dist/
 /mock/tsconfig.tsbuildinfo
