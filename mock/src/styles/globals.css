@@ -118,53 +118,76 @@ button {
   margin: 0 auto;
 }
 
-.insight-image {
-  margin: 0;
+.answer-block + .answer-block {
+  margin-top: 28px;
 }
 
-.insight-image svg {
-  display: block;
-  width: 100%;
-  border: 1px solid #dbe6f6;
-  border-radius: 8px;
+.markdown-body > * + * {
+  margin-top: 14px;
 }
 
-.insight-image figcaption {
-  margin-top: 7px;
-  color: #617090;
-  font-size: 13px;
+.markdown-body h2 {
+  margin-top: 22px;
+  margin-bottom: 11px;
+  color: #16233a;
+  font-size: 16px;
+  font-weight: 830;
+}
+
+.markdown-body ol,
+.markdown-body ul {
+  padding-left: 22px;
+}
+
+.markdown-body li {
+  margin-bottom: 10px;
+  padding-left: 8px;
   font-weight: 620;
 }
 
-.table-wrap {
-  overflow-x: auto;
+.markdown-body img {
+  display: block;
+  max-width: 100%;
   border: 1px solid #dbe6f6;
   border-radius: 8px;
+  background: #fff;
 }
 
-.answer-table {
+.markdown-body table {
   width: 100%;
   border-collapse: collapse;
   background: #fff;
   font-size: 14px;
 }
 
-.answer-table th,
-.answer-table td {
+.markdown-body table {
+  overflow-x: auto;
+  border: 1px solid #dbe6f6;
+  border-radius: 8px;
+}
+
+.markdown-body th,
+.markdown-body td {
   padding: 10px 12px;
   border-bottom: 1px solid #e5edf7;
   text-align: left;
   vertical-align: top;
 }
 
-.answer-table th {
+.markdown-body th {
   color: #20304f;
   background: #f2f6fb;
   font-weight: 820;
 }
 
-.answer-table tr:last-child td {
+.markdown-body tr:last-child td {
   border-bottom: 0;
+}
+
+.reference-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
 }
 
 .pdf-canvas-wrap {

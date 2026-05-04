@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { AppShell } from "@/components/layout/AppShell";
-import { getActiveChatSession, getPdfReference, listChatHistories } from "@/features/chat/api/chatApi";
+import { getActiveChatSession, listChatHistories } from "@/features/chat/api/chatApi";
 import { ChatStartScreen } from "@/features/chat/components/ChatStartScreen";
 import { ChatThread } from "@/features/chat/components/ChatThread";
 import type { ChatHistoryItem, ChatSession, ViewMode } from "@/features/chat/model/types";
@@ -20,15 +20,13 @@ export function ChatPage() {
     let cancelled = false;
 
     async function loadStubData() {
-      const [nextHistories, nextSession, nextReference] = await Promise.all([
+      const [nextHistories, nextSession] = await Promise.all([
         listChatHistories(),
         getActiveChatSession(),
-        getPdfReference(),
       ]);
       if (!cancelled) {
         setHistories(nextHistories);
         setSession(nextSession);
-        setReference(nextReference);
       }
     }
 
@@ -43,6 +41,11 @@ export function ChatPage() {
     setMode("answer");
   }
 
+  function openPdf(referenceToOpen: PdfReference) {
+    setReference(referenceToOpen);
+    setPdfOpen(true);
+  }
+
   return (
     <>
       <AppShell histories={histories} onOpenAnswer={openAnswer}>
@@ -53,7 +56,7 @@ export function ChatPage() {
             session={session}
             thoughtOpen={thoughtOpen}
             onToggleThought={() => setThoughtOpen((current) => !current)}
-            onOpenPdf={() => setPdfOpen(true)}
+            onOpenPdf={openPdf}
           />
         ) : (
           <div className="p-8 text-sm text-[#65728c]">チャットを読み込んでいます。</div>

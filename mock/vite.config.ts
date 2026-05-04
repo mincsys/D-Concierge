@@ -7,8 +7,9 @@ import { defineConfig } from "vite";
 
 const pdfPath = path.resolve(
   __dirname,
-  "../codex/work/raw/pdf/SEC BOOKS：「つながる世界の開発指針」の実践に向けた手引き［IoT高信頼化機能編］.pdf",
+  "../codex/readonly/raw/pdf/SEC BOOKS：「つながる世界の開発指針」の実践に向けた手引き［IoT高信頼化機能編］.pdf",
 );
+const analysisFlowImagePath = path.resolve(__dirname, "./src/stub/artifacts/analysis-flow.svg");
 
 function serveReferencePdf(): Connect.NextHandleFunction {
   return (req, res, next) => {
@@ -30,16 +31,41 @@ function serveReferencePdf(): Connect.NextHandleFunction {
   };
 }
 
+function serveStubArtifact(): Connect.NextHandleFunction {
+  return (req, res, next) => {
+    const url = req.url?.split("?")[0];
+    if (url !== "/artifacts/analysis-flow.svg") {
+      next();
+      return;
+    }
+
+    if (!existsSync(analysisFlowImagePath)) {
+      res.statusCode = 404;
+      res.end("artifact not found");
+      return;
+    }
+
+    res.setHeader("Content-Type", "image/svg+xml");
+    res.setHeader("Cache-Control", "no-store");
+    createReadStream(analysisFlowImagePath).pipe(res);
+  };
+}
+
 export default defineConfig({
+  build: {
+    assetsInlineLimit: 0,
+  },
   plugins: [
     react(),
     tailwindcss(),
     {
       name: "serve-reference-pdf",
       configureServer(server) {
+        server.middlewares.use(serveStubArtifact());
         server.middlewares.use(serveReferencePdf());
       },
       configurePreviewServer(server) {
+        server.middlewares.use(serveStubArtifact());
         server.middlewares.use(serveReferencePdf());
       },
     },

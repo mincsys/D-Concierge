@@ -1,3 +1,5 @@
+import type { PdfReference } from "@/features/reference-viewer/model/types";
+
 export type ViewMode = "start" | "answer";
 
 export type ChatHistoryItem = {
@@ -16,21 +18,14 @@ export type ThoughtStep = {
   text: string;
 };
 
-export type AnswerPoint = {
+export type ChatAnswerBlock = {
   id: string;
-  title: string;
-  description: string;
-  referenceLabel: string;
+  markdown: string;
+  references: PdfReference[];
 };
 
 export type ChatAnswer = {
-  intro: string;
-  points: AnswerPoint[];
-  workflowTitle: string;
-  imageTitle: string;
-  htmlTitle: string;
-  html: string;
-  note: string;
+  blocks: ChatAnswerBlock[];
 };
 
 export type ChatSession = {

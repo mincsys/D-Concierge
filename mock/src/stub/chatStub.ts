@@ -3,7 +3,7 @@ import type { ChatHistoryItem, ChatSession } from "@/features/chat/model/types";
 export const stubChatHistories: ChatHistoryItem[] = [
   { id: "requirements-success", title: "要件定義を成功させるポイント" },
   { id: "ipa-publication-qa", title: "IPA刊行物QA" },
-  { id: "requirements-key-points", title: "要件定義の肝どころ" },
+  { id: "requirements-key-items", title: "要件定義の肝どころ" },
   { id: "sec-books-structure", title: "SEC BOOKS 構成検索" },
   { id: "pdf-reference-link", title: "PDF相関リンク設計" },
   { id: "codex-exec-json", title: "Codex exec JSON設計" },
@@ -11,7 +11,7 @@ export const stubChatHistories: ChatHistoryItem[] = [
   { id: "systemization-plan", title: "システム化計画の進め方" },
   { id: "non-functional-requirements", title: "非機能要件の整理方法" },
   { id: "development-process-guide", title: "開発プロセス選定ガイド" },
-  { id: "test-viewpoints", title: "テスト観点の洗い出し" },
+  { id: "test-view-items", title: "テスト観点の洗い出し" },
   { id: "rfp-checklist", title: "RFP作成のチェックリスト" },
 ];
 
@@ -31,61 +31,91 @@ export const stubChatSession: ChatSession = {
     { id: "summary", text: "要約・参照元の生成を行います。" },
   ],
   answer: {
-    intro: "IPA資料から、要件定義を成功させるためのポイントを以下の通り整理します。",
-    points: [
+    blocks: [
       {
-        id: "shared-purpose",
-        title: "目的・背景の共有と合意形成を徹底する。",
-        description:
-          "要件定義では目的や背景を共有し、関係する組織や役割を明確にすることが合意形成の第一歩です。",
-        referenceLabel: "SEC BOOKS 開発指針手引き p.10-14",
+        id: "requirements-items",
+        markdown: `IPA資料から、要件定義を成功させるためのポイントを以下の通り整理します。
+
+1. **目的・背景の共有と合意形成を徹底する。**  
+   要件定義では目的や背景を共有し、関係する組織や役割を明確にすることが合意形成の第一歩です。
+2. **利用者視点で要求を具体化する。**  
+   利用者の業務や課題を深く理解し、価値につながる要求として具体化します。
+3. **要求の優先順位付けとスコープ調整を行う。**  
+   すべての要求を実装するのではなく、ビジネス価値と実現性のバランスで優先順位を付けます。
+
+## 要件定義ワークフロー
+
+\`\`\`mermaid
+flowchart LR
+  A["質問"] --> B["検索"]
+  B --> C["分析"]
+  C --> D["参照元検証"]
+  D --> E["回答"]
+\`\`\`
+
+## 分析イメージ
+
+![資料検索と参照元確認の分析イメージ](/artifacts/analysis-flow.svg)`,
+        references: [
+          {
+            id: "sec-books-iot-guide-10-14",
+            title: "SEC BOOKS 開発指針手引き",
+            url: "/reference-pdf/iot-guide.pdf",
+            startPage: 10,
+            endPage: 14,
+          },
+          {
+            id: "sec-books-iot-guide-20-22",
+            title: "SEC BOOKS 開発指針手引き",
+            url: "/reference-pdf/iot-guide.pdf",
+            startPage: 20,
+            endPage: 22,
+          },
+        ],
       },
       {
-        id: "user-perspective",
-        title: "利用者視点で要求を具体化する。",
-        description: "利用者の業務や課題を深く理解し、価値につながる要求として具体化します。",
-        referenceLabel: "SEC BOOKS 開発指針手引き p.10-14",
-      },
-      {
-        id: "prioritization",
-        title: "要求の優先順位付けとスコープ調整を行う。",
-        description:
-          "すべての要求を実装するのではなく、ビジネス価値と実現性のバランスで優先順位を付けます。",
-        referenceLabel: "SEC BOOKS 開発指針手引き p.10-14",
+        id: "requirements-table",
+        markdown: `## HTML表の表示例
+
+<table>
+  <thead>
+    <tr>
+      <th>成功ポイント</th>
+      <th>要件定義での意味</th>
+      <th>参照元</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>目的共有</td>
+      <td>関係者が同じゴールを見て判断できる状態を作る。</td>
+      <td>PDF p.10-14</td>
+    </tr>
+    <tr>
+      <td>要求の具体化</td>
+      <td>利用者の業務課題を、検証可能な要求に落とし込む。</td>
+      <td>PDF p.10-14</td>
+    </tr>
+    <tr>
+      <td>継続的な見直し</td>
+      <td>環境変化に合わせて、要求と合意内容を更新する。</td>
+      <td>PDF p.20-22</td>
+    </tr>
+  </tbody>
+</table>
+
+※ 上記はIPA公開資料をもとに作成した要約です。詳細は参照元PDFをご確認ください。`,
+        references: [
+          {
+            id: "sec-books-iot-guide-table-10-14",
+            title: "SEC BOOKS 開発指針手引き",
+            url: "/reference-pdf/iot-guide.pdf",
+            startPage: 10,
+            endPage: 14,
+          },
+        ],
       },
     ],
-    workflowTitle: "要件定義ワークフロー",
-    imageTitle: "分析イメージ",
-    htmlTitle: "HTML表の表示例",
-    html: `
-      <table class="answer-table">
-        <thead>
-          <tr>
-            <th>成功ポイント</th>
-            <th>要件定義での意味</th>
-            <th>参照元</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>目的共有</td>
-            <td>関係者が同じゴールを見て判断できる状態を作る。</td>
-            <td>PDF p.10-14</td>
-          </tr>
-          <tr>
-            <td>要求の具体化</td>
-            <td>利用者の業務課題を、検証可能な要求に落とし込む。</td>
-            <td>PDF p.10-14</td>
-          </tr>
-          <tr>
-            <td>継続的な見直し</td>
-            <td>環境変化に合わせて、要求と合意内容を更新する。</td>
-            <td>PDF p.10-14</td>
-          </tr>
-        </tbody>
-      </table>
-    `,
-    note: "※ 上記はIPA公開資料をもとに作成した要約です。詳細は参照元PDFをご確認ください。",
   },
   composerPlaceholder: "質問を入力してください（例：資料の要点を教えて、比較表を作って、など）",
 };

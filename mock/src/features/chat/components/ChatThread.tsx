@@ -1,5 +1,6 @@
 import { AnswerContent } from "@/features/answer-rendering/components/AnswerContent";
 import type { ChatSession } from "@/features/chat/model/types";
+import type { PdfReference } from "@/features/reference-viewer/model/types";
 import { ChatComposer } from "./ChatComposer";
 import { ThoughtPanel } from "./ThoughtPanel";
 
@@ -12,7 +13,7 @@ export function ChatThread({
   session: ChatSession;
   thoughtOpen: boolean;
   onToggleThought: () => void;
-  onOpenPdf: () => void;
+  onOpenPdf: (reference: PdfReference) => void;
 }) {
   return (
     <section className="min-h-screen px-[34px] pt-[60px] pb-[110px]">

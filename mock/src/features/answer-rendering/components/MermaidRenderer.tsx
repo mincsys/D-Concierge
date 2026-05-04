@@ -14,19 +14,12 @@ mermaid.initialize({
   },
 });
 
-export function MermaidRenderer() {
+export function MermaidRenderer({ source }: { source: string }) {
   const [svg, setSvg] = useState("");
   const reactId = useId();
 
   useEffect(() => {
     let cancelled = false;
-    const source = `
-      flowchart LR
-        A["質問"] --> B["検索"]
-        B --> C["分析"]
-        C --> D["参照元検証"]
-        D --> E["回答"]
-    `;
 
     mermaid
       .render(`mock-flow-${reactId.replace(/[^a-zA-Z0-9_-]/g, "")}`, source)
@@ -44,7 +37,7 @@ export function MermaidRenderer() {
     return () => {
       cancelled = true;
     };
-  }, [reactId]);
+  }, [reactId, source]);
 
   return <div className="mermaid-box" dangerouslySetInnerHTML={{ __html: svg }} />;
 }
