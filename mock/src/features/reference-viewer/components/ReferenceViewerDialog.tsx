@@ -22,7 +22,7 @@ export function ReferenceViewerDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="flex max-h-[92vh] w-[min(980px,92vw)] max-w-none flex-col gap-0 overflow-hidden rounded-[14px] bg-white p-0 shadow-[0_26px_80px_rgba(0,0,0,0.26)]"
+        className="flex max-h-[98vh] w-[min(980px,98vw)] max-w-none flex-col gap-0 overflow-hidden rounded-[14px] bg-white p-0 shadow-[0_26px_80px_rgba(0,0,0,0.26)]"
         aria-label="参照元PDF"
       >
         <header className="grid grid-cols-[1fr_auto] items-start gap-[18px] border-b border-[#e2e8f2] px-5 pt-4 pb-3">
