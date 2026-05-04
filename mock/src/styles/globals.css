@@ -168,11 +168,58 @@ button {
 }
 
 .pdf-canvas-wrap {
+  position: relative;
   flex: 1;
   overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
   padding: 22px;
   background: #eef3f9;
   text-align: center;
+}
+
+.pdf-page-frame {
+  scroll-margin-top: 12px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 10px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+}
+
+.pdf-page-frame-target {
+  border-color: #4f8cff;
+  background: rgba(79, 140, 255, 0.1);
+  box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.14);
+}
+
+.pdf-page-label {
+  margin-bottom: 8px;
+  color: #43536f;
+  font-size: 13px;
+  font-weight: 780;
+  text-align: left;
+}
+
+.pdf-page-frame-target .pdf-page-label {
+  color: #0a64ff;
+}
+
+.pdf-page-placeholder {
+  max-width: 100%;
+  display: grid;
+  place-items: center;
+  border: 1px dashed #c4d0e3;
+  border-radius: 4px;
+  color: #64748b;
+  background:
+    linear-gradient(135deg, rgba(248, 251, 255, 0.9), rgba(241, 246, 252, 0.9)),
+    #fff;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.8);
+  font-size: 14px;
+  font-weight: 760;
 }
 
 .pdf-canvas-wrap canvas {
