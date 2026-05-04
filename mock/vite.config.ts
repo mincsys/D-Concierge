@@ -1,5 +1,6 @@
 import { createReadStream, existsSync } from "node:fs";
 import path from "node:path";
+import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import type { Connect } from "vite";
 import { defineConfig } from "vite";
@@ -32,6 +33,7 @@ function serveReferencePdf(): Connect.NextHandleFunction {
 export default defineConfig({
   plugins: [
     react(),
+    tailwindcss(),
     {
       name: "serve-reference-pdf",
       configureServer(server) {
@@ -49,5 +51,10 @@ export default defineConfig({
   preview: {
     port: 4173,
     strictPort: false,
+  },
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
   },
 });

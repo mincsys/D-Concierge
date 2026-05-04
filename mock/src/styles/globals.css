@@ -1,0 +1,188 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --radius: 0.5rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.18 0.02 257);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.02 257);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.02 257);
+  --primary: oklch(0.53 0.22 262);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.97 0.01 257);
+  --secondary-foreground: oklch(0.21 0.03 257);
+  --muted: oklch(0.97 0.01 257);
+  --muted-foreground: oklch(0.52 0.04 257);
+  --accent: oklch(0.96 0.02 257);
+  --accent-foreground: oklch(0.21 0.03 257);
+  --destructive: oklch(0.58 0.22 27);
+  --border: oklch(0.91 0.02 257);
+  --input: oklch(0.91 0.02 257);
+  --ring: oklch(0.66 0.16 260);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 1160px;
+  min-height: 100vh;
+  margin: 0;
+  background: #fff;
+  color: #172033;
+  font-family:
+    Inter, "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", "Yu Gothic",
+    system-ui, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.brand-mark {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #74c5ff 0%, #0d64ff 58%, #0d3fc2 100%);
+  box-shadow: 0 8px 20px rgba(21, 100, 255, 0.24);
+}
+
+.brand-mark::before {
+  position: absolute;
+  inset: 7px 4px 7px 11px;
+  content: "";
+  border-radius: 0 18px 18px 0;
+  background: #fff;
+}
+
+.brand-mark span {
+  position: absolute;
+  inset: 7px 11px 7px 4px;
+  border-radius: 9px 0 0 9px;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.mermaid-box {
+  overflow: hidden;
+  padding: 12px;
+  border: 1px solid #dde7f5;
+  border-radius: 8px;
+  background: #fbfdff;
+}
+
+.mermaid-box svg {
+  display: block;
+  width: 100%;
+  max-width: 680px;
+  height: auto;
+  margin: 0 auto;
+}
+
+.insight-image {
+  margin: 0;
+}
+
+.insight-image svg {
+  display: block;
+  width: 100%;
+  border: 1px solid #dbe6f6;
+  border-radius: 8px;
+}
+
+.insight-image figcaption {
+  margin-top: 7px;
+  color: #617090;
+  font-size: 13px;
+  font-weight: 620;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid #dbe6f6;
+  border-radius: 8px;
+}
+
+.answer-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  font-size: 14px;
+}
+
+.answer-table th,
+.answer-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #e5edf7;
+  text-align: left;
+  vertical-align: top;
+}
+
+.answer-table th {
+  color: #20304f;
+  background: #f2f6fb;
+  font-weight: 820;
+}
+
+.answer-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.pdf-canvas-wrap {
+  flex: 1;
+  overflow: auto;
+  padding: 22px;
+  background: #eef3f9;
+  text-align: center;
+}
+
+.pdf-canvas-wrap canvas {
+  max-width: 100%;
+  background: #fff;
+  box-shadow: 0 12px 40px rgba(20, 31, 52, 0.18);
+}
+
+@media (max-width: 1280px) {
+  body {
+    min-width: 1024px;
+  }
+}
