@@ -17,16 +17,14 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
 
 export function PdfPageViewer({
   reference,
-  onStatusChange,
 }: {
   reference: PdfReference;
-  onStatusChange: (status: string) => void;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const targetPageRef = useRef<HTMLDivElement | null>(null);
   const didScrollToTargetRef = useRef(false);
-  const didRenderTargetRef = useRef(false);
   const renderedPagesRef = useRef<Set<number>>(new Set());
+  const [errorMessage, setErrorMessage] = useState("");
   const [pdfDoc, setPdfDoc] = useState<PDFDocumentProxy | null>(null);
   const [containerWidth, setContainerWidth] = useState(760);
   const [pagesToRender, setPagesToRender] = useState<Set<number>>(() => new Set());
@@ -52,11 +50,10 @@ export function PdfPageViewer({
     let destroyed = false;
     let loadedPdfDoc: PDFDocumentProxy | null = null;
     didScrollToTargetRef.current = false;
-    didRenderTargetRef.current = false;
     renderedPagesRef.current = new Set();
+    setErrorMessage("");
     setPdfDoc(null);
     setPagesToRender(new Set());
-    onStatusChange("PDFを読み込んでいます。");
 
     async function loadPdf() {
       try {
@@ -73,10 +70,9 @@ export function PdfPageViewer({
           Math.max(620, (containerRef.current?.clientWidth ?? 804) - 44),
         );
         setContainerWidth(nextContainerWidth);
-        onStatusChange("PDFを表示しています。");
       } catch (error) {
         if (!destroyed) {
-          onStatusChange(error instanceof Error ? error.message : "PDFを表示できませんでした。");
+          setErrorMessage(error instanceof Error ? error.message : "PDFを表示できませんでした。");
         }
       }
     }
@@ -87,7 +83,7 @@ export function PdfPageViewer({
       destroyed = true;
       loadedPdfDoc?.destroy();
     };
-  }, [onStatusChange, reference]);
+  }, [reference]);
 
   const handlePageRendered = useCallback((page: number) => {
     if (renderedPagesRef.current.has(page)) {
@@ -95,12 +91,6 @@ export function PdfPageViewer({
     }
 
     renderedPagesRef.current = new Set(renderedPagesRef.current).add(page);
-    if (page === referencePageRange.startPage) {
-      didRenderTargetRef.current = true;
-      onStatusChange("参照元ページを表示しました。");
-    } else if (!didRenderTargetRef.current) {
-      onStatusChange("PDFを表示しています。");
-    }
 
     if (page === referencePageRange.startPage && !didScrollToTargetRef.current) {
       didScrollToTargetRef.current = true;
@@ -116,7 +106,7 @@ export function PdfPageViewer({
         });
       });
     }
-  }, [onStatusChange, referencePageRange.startPage]);
+  }, [referencePageRange.startPage]);
 
   const handlePageVisible = useCallback((page: number) => {
     setPagesToRender((current) => {
@@ -131,6 +121,7 @@ export function PdfPageViewer({
 
   return (
     <div className="pdf-canvas-wrap" ref={containerRef}>
+      {errorMessage ? <div className="pdf-error-message">{errorMessage}</div> : null}
       {pdfDoc
         ? Array.from({ length: pdfDoc.numPages }, (_, index) => {
             const page = index + 1;
