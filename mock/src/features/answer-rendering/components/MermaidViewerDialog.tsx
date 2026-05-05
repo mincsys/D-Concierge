@@ -18,10 +18,10 @@ export function MermaidViewerDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="mermaid-viewer-dialog gap-0 overflow-hidden p-0"
+        className="!h-[calc(100vh-24px)] !w-[calc(100vw-24px)] !max-w-none grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden bg-[#f7f9fc] p-0"
         aria-describedby="mermaid-viewer-description"
       >
-        <header className="mermaid-viewer-header">
+        <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-[18px] border-b border-[#dce6f3] bg-white pt-[18px] pr-[18px] pb-[14px] pl-6">
           <DialogHeader>
             <DialogTitle className="text-xl leading-[1.3] font-bold">Mermaid図</DialogTitle>
             <DialogDescription id="mermaid-viewer-description" className="sr-only">
@@ -85,13 +85,16 @@ function MermaidZoomSurface({ svg }: { svg: string }) {
   }, [fitToView, svg]);
 
   return (
-    <div className="mermaid-viewer-body">
-      <div className="mermaid-viewer-toolbar" aria-label="Mermaid図の表示操作">
+    <div className="relative flex min-h-0 flex-1 flex-col">
+      <div
+        className="absolute top-3.5 right-[18px] z-2 flex gap-2 rounded-[10px] border border-[#d7e1ee] bg-white/95 p-1.5 shadow-[0_16px_34px_rgba(25,42,70,0.14)]"
+        aria-label="Mermaid図の表示操作"
+      >
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
               aria-label="Mermaid図を拡大"
-              className="mermaid-viewer-tool-button"
+              className="size-[34px] rounded-lg bg-[#eef4fb] text-[#33445f]"
               onClick={() => zoomIn(0.1)}
               size="icon"
               type="button"
@@ -106,7 +109,7 @@ function MermaidZoomSurface({ svg }: { svg: string }) {
           <TooltipTrigger asChild>
             <Button
               aria-label="Mermaid図を縮小"
-              className="mermaid-viewer-tool-button"
+              className="size-[34px] rounded-lg bg-[#eef4fb] text-[#33445f]"
               onClick={() => zoomOut(0.1)}
               size="icon"
               type="button"
@@ -120,7 +123,7 @@ function MermaidZoomSurface({ svg }: { svg: string }) {
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
-              className="mermaid-viewer-fit-button"
+              className="h-[34px] rounded-lg bg-[#eef4fb] px-[13px] text-[13px] font-[760] text-[#33445f]"
               onClick={() => fitToView()}
               type="button"
               variant="secondary"
@@ -131,13 +134,16 @@ function MermaidZoomSurface({ svg }: { svg: string }) {
           <TooltipContent>図全体を表示</TooltipContent>
         </Tooltip>
       </div>
-      <div className="mermaid-viewer-surface" ref={surfaceRef}>
+      <div
+        className="h-full min-h-0 flex-1 overflow-hidden bg-[linear-gradient(90deg,rgba(148,163,184,0.12)_1px,transparent_1px),linear-gradient(180deg,rgba(148,163,184,0.12)_1px,transparent_1px),#eef3f9] bg-[length:28px_28px]"
+        ref={surfaceRef}
+      >
         <TransformComponent
-          wrapperClass="mermaid-transform-wrapper"
-          contentClass="mermaid-transform-content"
+          wrapperClass="!h-full !w-full cursor-grab active:cursor-grabbing"
+          contentClass="inline-flex items-start justify-start"
         >
           <div
-            className="mermaid-viewer-svg"
+            className="mermaid-viewer-svg inline-block rounded-xl bg-white p-7 shadow-[0_18px_46px_rgba(25,42,70,0.18)]"
             ref={svgHostRef}
             dangerouslySetInnerHTML={{ __html: svg }}
           />

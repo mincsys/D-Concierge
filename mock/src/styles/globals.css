@@ -102,19 +102,6 @@ button {
   background: rgba(255, 255, 255, 0.45);
 }
 
-.mermaid-box {
-  position: relative;
-  overflow: hidden;
-  padding: 12px;
-  border: 1px solid #dde7f5;
-  border-radius: 8px;
-  background: #fbfdff;
-}
-
-.mermaid-preview {
-  min-height: 120px;
-}
-
 .mermaid-preview svg {
   display: block;
   width: 100%;
@@ -123,138 +110,11 @@ button {
   margin: 0 auto;
 }
 
-.mermaid-expand-button {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 1;
-  width: 34px;
-  height: 34px;
-  border: 1px solid #d8e3f2;
-  border-radius: 8px;
-  color: #42516c;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 8px 20px rgba(25, 42, 70, 0.12);
-}
-
-.mermaid-expand-button:hover {
-  color: #0a64ff;
-  background: #fff;
-}
-
-.mermaid-fallback {
-  margin: 0;
-  color: #9f1d1d;
-  font-size: 14px;
-  font-weight: 720;
-  white-space: pre-wrap;
-}
-
-.mermaid-viewer-dialog {
-  width: calc(100vw - 24px);
-  height: calc(100vh - 24px);
-  max-width: none;
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr);
-  background: #f7f9fc;
-}
-
-.mermaid-viewer-header {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 18px;
-  padding: 18px 18px 14px 24px;
-  border-bottom: 1px solid #dce6f3;
-  background: #fff;
-}
-
-.mermaid-viewer-body {
-  position: relative;
-  min-height: 0;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.mermaid-viewer-toolbar {
-  position: absolute;
-  top: 14px;
-  right: 18px;
-  z-index: 2;
-  display: flex;
-  gap: 8px;
-  padding: 6px;
-  border: 1px solid #d7e1ee;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 16px 34px rgba(25, 42, 70, 0.14);
-}
-
-.mermaid-viewer-tool-button {
-  width: 34px;
-  height: 34px;
-  border-radius: 8px;
-  color: #33445f;
-  background: #eef4fb;
-}
-
-.mermaid-viewer-fit-button {
-  height: 34px;
-  padding: 0 13px;
-  border-radius: 8px;
-  color: #33445f;
-  background: #eef4fb;
-  font-size: 13px;
-  font-weight: 760;
-}
-
-.mermaid-viewer-surface {
-  flex: 1;
-  min-height: 0;
-  height: 100%;
-  margin: 0;
-  overflow: hidden;
-  background:
-    linear-gradient(90deg, rgba(148, 163, 184, 0.12) 1px, transparent 1px),
-    linear-gradient(180deg, rgba(148, 163, 184, 0.12) 1px, transparent 1px),
-    #eef3f9;
-  background-size: 28px 28px;
-}
-
-.mermaid-transform-wrapper {
-  width: 100% !important;
-  height: 100% !important;
-  cursor: grab;
-}
-
-.mermaid-transform-wrapper:active {
-  cursor: grabbing;
-}
-
-.mermaid-transform-content {
-  display: inline-flex;
-  align-items: flex-start;
-  justify-content: flex-start;
-}
-
-.mermaid-viewer-svg {
-  display: inline-block;
-  padding: 28px;
-  border-radius: 12px;
-  background: #fff;
-  box-shadow: 0 18px 46px rgba(25, 42, 70, 0.18);
-}
-
 .mermaid-viewer-svg svg {
   display: block;
   width: auto;
   max-width: none;
   height: auto;
-}
-
-.answer-block + .answer-block {
-  margin-top: 28px;
 }
 
 .markdown-body > * + * {
@@ -317,80 +177,6 @@ button {
 
 .markdown-body tr:last-child td {
   border-bottom: 0;
-}
-
-.reference-list {
-  display: grid;
-  gap: 6px;
-  margin-top: 12px;
-}
-
-.pdf-canvas-wrap {
-  position: relative;
-  flex: 1;
-  overflow: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 22px;
-  padding: 22px;
-  background: #eef3f9;
-  text-align: center;
-}
-
-.pdf-page-frame {
-  scroll-margin-top: 12px;
-  width: fit-content;
-  max-width: 100%;
-  margin: 0 auto;
-  padding: 10px;
-  border: 1px solid transparent;
-  border-radius: 12px;
-}
-
-.pdf-page-frame-target {
-  border-color: #4f8cff;
-  background: rgba(79, 140, 255, 0.1);
-  box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.14);
-}
-
-.pdf-page-label {
-  margin-bottom: 8px;
-  color: #43536f;
-  font-size: 13px;
-  font-weight: 780;
-  text-align: left;
-}
-
-.pdf-page-frame-target .pdf-page-label {
-  color: #0a64ff;
-}
-
-.pdf-error-message {
-  width: min(760px, 100%);
-  margin: auto;
-  padding: 18px 20px;
-  border: 1px solid #f2b8b8;
-  border-radius: 8px;
-  color: #9f1d1d;
-  background: #fff6f6;
-  font-size: 14px;
-  font-weight: 720;
-  text-align: left;
-}
-
-.pdf-page-placeholder {
-  max-width: 100%;
-  display: grid;
-  place-items: center;
-  border: 1px dashed #c4d0e3;
-  border-radius: 4px;
-  color: #64748b;
-  background:
-    linear-gradient(135deg, rgba(248, 251, 255, 0.9), rgba(241, 246, 252, 0.9)),
-    #fff;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.8);
-  font-size: 14px;
-  font-weight: 760;
 }
 
 .pdf-canvas-wrap canvas {

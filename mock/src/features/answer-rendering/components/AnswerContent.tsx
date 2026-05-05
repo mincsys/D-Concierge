@@ -14,10 +14,10 @@ export function AnswerContent({
   return (
     <div className="ml-20 text-[15.5px] leading-[1.72] text-[#172033]">
       {answer.blocks.map((block) => (
-        <section className="answer-block" key={block.id}>
+        <section className="mt-7 first:mt-0" key={block.id}>
           <MarkdownRenderer markdown={block.markdown} />
           {block.references.length > 0 ? (
-            <div className="reference-list" aria-label="参照元">
+            <div className="mt-3 grid gap-1.5" aria-label="参照元">
               {block.references.map((reference) => (
                 <ReferenceLink
                   key={reference.id}

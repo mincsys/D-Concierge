@@ -14,9 +14,9 @@ export function AppShell({
   onOpenAnswer: () => void;
 }) {
   return (
-    <div className="grid min-h-screen grid-cols-[350px_1fr] text-[#111827] max-[1280px]:grid-cols-[320px_1fr]">
+    <div className="grid min-h-screen grid-cols-[350px_minmax(0,1fr)] text-[#111827] max-[1280px]:grid-cols-[320px_minmax(0,1fr)]">
       <Sidebar histories={histories} onOpenAnswer={onOpenAnswer} />
-      <main className="relative min-h-screen bg-white">
+      <main className="relative min-h-screen min-w-0 overflow-hidden bg-white">
         <TopMenu />
         {children}
       </main>

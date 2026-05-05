@@ -12,13 +12,13 @@ const suggestions = [
 
 export function ChatStartScreen({ onStart }: { onStart: () => void }) {
   return (
-    <section className="grid min-h-screen place-items-center px-12">
-      <div className="w-full translate-y-[-12px]">
+    <section className="grid min-h-screen min-w-0 place-items-center overflow-hidden px-12">
+      <div className="w-full max-w-[1492px] translate-y-[-12px]">
         <h1 className="mb-8 text-center text-[25px] font-[780] tracking-normal">
           今日は何をお手伝いできますか？
         </h1>
         <ChatComposer
-          className="mx-auto w-[calc(100vw-420px)] max-[1280px]:w-[calc(100vw-390px)]"
+          className="mx-auto w-full"
           placeholder="質問を入力してください"
           onFocus={onStart}
           onSubmit={() => onStart()}

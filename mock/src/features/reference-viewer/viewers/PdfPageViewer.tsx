@@ -4,6 +4,7 @@ import type { RefObject } from "react";
 import type { PDFDocumentProxy, RenderTask } from "pdfjs-dist";
 
 import type { PdfReference } from "@/features/reference-viewer/model/types";
+import { cn } from "@/lib/utils";
 
 type PageRange = {
   startPage: number;
@@ -120,15 +121,26 @@ export function PdfPageViewer({
   }, []);
 
   return (
-    <div className="pdf-canvas-wrap" ref={containerRef}>
-      {errorMessage ? <div className="pdf-error-message">{errorMessage}</div> : null}
+    <div
+      className="pdf-canvas-wrap relative flex flex-1 flex-col gap-[22px] overflow-auto bg-[#eef3f9] p-[22px] text-center"
+      ref={containerRef}
+    >
+      {errorMessage ? (
+        <div className="m-auto w-[min(760px,100%)] rounded-lg border border-[#f2b8b8] bg-[#fff6f6] px-5 py-[18px] text-left text-sm font-[720] text-[#9f1d1d]">
+          {errorMessage}
+        </div>
+      ) : null}
       {pdfDoc
         ? Array.from({ length: pdfDoc.numPages }, (_, index) => {
             const page = index + 1;
             const isReferencePage = referencePageSet.has(page);
             return (
               <div
-                className={isReferencePage ? "pdf-page-frame pdf-page-frame-target" : "pdf-page-frame"}
+                className={cn(
+                  "pdf-page-frame mx-auto w-fit max-w-full scroll-mt-3 rounded-xl border border-transparent p-2.5",
+                  isReferencePage &&
+                    "pdf-page-frame-target border-[#4f8cff] bg-[rgba(79,140,255,0.1)] shadow-[0_0_0_3px_rgba(79,140,255,0.14)]",
+                )}
                 data-page-number={page}
                 key={page}
                 ref={page === referencePageRange.startPage ? targetPageRef : undefined}
@@ -226,7 +238,7 @@ function PdfPageFrame({
 
   return (
     <div ref={frameContentRef}>
-      <div className="pdf-page-label">
+      <div className={cn("mb-2 text-left text-[13px] font-[780] text-[#43536f]", isReferencePage && "text-[#0a64ff]")}>
         {isReferencePage ? `参照元ページ p.${page}` : `p.${page}`}
       </div>
       {shouldRender ? (
@@ -238,7 +250,7 @@ function PdfPageFrame({
         />
       ) : (
         <div
-          className="pdf-page-placeholder"
+          className="grid max-w-full place-items-center rounded border border-dashed border-[#c4d0e3] bg-[linear-gradient(135deg,rgba(248,251,255,0.9),rgba(241,246,252,0.9)),#fff] text-sm font-[760] text-[#64748b] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.8)]"
           style={{
             height: `${Math.round(containerWidth * 1.42)}px`,
             width: `${containerWidth}px`,

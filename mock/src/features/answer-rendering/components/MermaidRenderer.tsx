@@ -41,7 +41,7 @@ export function MermaidRenderer({ source }: { source: string }) {
       })
       .catch(() => {
         if (!cancelled) {
-          setSvg('<pre class="mermaid-fallback">Mermaid図を表示できませんでした。</pre>');
+          setSvg("");
           setRenderFailed(true);
         }
       });
@@ -52,13 +52,13 @@ export function MermaidRenderer({ source }: { source: string }) {
   }, [reactId, source]);
 
   return (
-    <div className="mermaid-box">
+    <div className="group relative overflow-hidden rounded-lg border border-[#dde7f5] bg-[#fbfdff] p-3">
       {svg && !renderFailed ? (
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
               aria-label="Mermaid図を拡大表示"
-              className="mermaid-expand-button"
+              className="pointer-events-none absolute top-2.5 right-2.5 z-1 size-[34px] rounded-lg border border-[#d8e3f2] bg-white/90 text-[#42516c] opacity-0 shadow-[0_8px_20px_rgba(25,42,70,0.12)] transition-opacity duration-150 hover:bg-white hover:text-[#0a64ff] group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"
               onClick={() => setViewerOpen(true)}
               size="icon"
               type="button"
@@ -70,7 +70,11 @@ export function MermaidRenderer({ source }: { source: string }) {
           <TooltipContent>拡大表示</TooltipContent>
         </Tooltip>
       ) : null}
-      <div className="mermaid-preview" dangerouslySetInnerHTML={{ __html: svg }} />
+      {renderFailed ? (
+        <pre className="m-0 whitespace-pre-wrap text-sm font-[720] text-[#9f1d1d]">Mermaid図を表示できませんでした。</pre>
+      ) : (
+        <div className="mermaid-preview min-h-[120px]" dangerouslySetInnerHTML={{ __html: svg }} />
+      )}
       <MermaidViewerDialog open={viewerOpen} onOpenChange={setViewerOpen} svg={svg} />
     </div>
   );
