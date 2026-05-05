@@ -39,6 +39,7 @@
   --dc-sidebar-via: #f5f9ff;
   --dc-sidebar-to: #eff6ff;
   --dc-panel: #f6f9fd;
+  --dc-app-bg: #f7f9fc;
   --dc-surface: #ffffff;
   --dc-border: #d4deec;
   --dc-border-soft: #e3ebf6;
@@ -77,7 +78,7 @@ body {
   min-width: 1160px;
   min-height: 100vh;
   margin: 0;
-  background: var(--dc-surface);
+  background: var(--dc-app-bg);
   color: var(--dc-text);
   font-family:
     Inter, "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", "Yu Gothic",

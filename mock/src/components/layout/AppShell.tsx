@@ -73,7 +73,7 @@ export function AppShell({
         onOpenAnswer={onOpenAnswer}
         onToggleCollapsed={handleToggleCollapsed}
       />
-      <main className="relative min-h-screen min-w-0 overflow-hidden bg-white">
+      <main className="relative min-h-screen min-w-0 overflow-hidden bg-[var(--dc-app-bg)]">
         <TopMenu />
         {typeof children === "function" ? children({ sidebarCollapsed }) : children}
       </main>
