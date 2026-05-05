@@ -28,16 +28,17 @@ function DialogOverlay({ className, ...props }: React.ComponentProps<typeof Dial
 function DialogContent({
   className,
   children,
-  showCloseButton = true,
+  onOpenAutoFocus,
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Content> & {
-  showCloseButton?: boolean;
-}) {
+}: React.ComponentProps<typeof DialogPrimitive.Content>) {
+  const handleOpenAutoFocus = onOpenAutoFocus ?? ((event: Event) => event.preventDefault());
+
   return (
     <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
+        onOpenAutoFocus={handleOpenAutoFocus}
         className={cn(
           "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-lg bg-background shadow-lg duration-200 data-[state=closed]:animate-out data-[state=open]:animate-in data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
           className,
@@ -45,14 +46,27 @@ function DialogContent({
         {...props}
       >
         {children}
-        {showCloseButton ? (
-          <DialogPrimitive.Close className="absolute top-[18px] right-5 grid size-[38px] place-items-center rounded-[9px] bg-[#f4f7fb] text-[#42516c] opacity-100 outline-none transition-opacity hover:opacity-80 focus:ring-[3px] focus:ring-ring/50">
-            <XIcon size={24} />
-            <span className="sr-only">閉じる</span>
-          </DialogPrimitive.Close>
-        ) : null}
       </DialogPrimitive.Content>
     </DialogPortal>
+  );
+}
+
+function DialogClose({ className, children, ...props }: React.ComponentProps<typeof DialogPrimitive.Close>) {
+  return (
+    <DialogPrimitive.Close
+      className={cn(
+        "grid size-[38px] place-items-center rounded-[9px] bg-[#f4f7fb] text-[#42516c] opacity-100 outline-none transition-opacity hover:opacity-80 focus:ring-[3px] focus:ring-ring/50",
+        className,
+      )}
+      {...props}
+    >
+      {children ?? (
+        <>
+          <XIcon size={24} />
+          <span className="sr-only">閉じる</span>
+        </>
+      )}
+    </DialogPrimitive.Close>
   );
 }
 
@@ -83,4 +97,4 @@ function DialogDescription({
   );
 }
 
-export { Dialog, DialogContent, DialogDescription, DialogHeader, DialogOverlay, DialogTitle };
+export { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogOverlay, DialogTitle };

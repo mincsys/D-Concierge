@@ -160,7 +160,11 @@ button {
 }
 
 .mermaid-viewer-header {
-  padding: 18px 72px 14px 24px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 18px 18px 14px 24px;
   border-bottom: 1px solid #dce6f3;
   background: #fff;
 }

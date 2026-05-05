@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { TransformComponent, TransformWrapper, useControls } from "react-zoom-pan-pinch";
 
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export function MermaidViewerDialog({
@@ -17,13 +17,19 @@ export function MermaidViewerDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="mermaid-viewer-dialog gap-0 overflow-hidden p-0" aria-describedby="mermaid-viewer-description">
-        <DialogHeader className="mermaid-viewer-header">
-          <DialogTitle className="text-xl leading-[1.3] font-bold">Mermaid図</DialogTitle>
-          <DialogDescription id="mermaid-viewer-description" className="sr-only">
-            Mermaid図を拡大し、マウスホイールとドラッグで表示範囲を操作できます。
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent
+        className="mermaid-viewer-dialog gap-0 overflow-hidden p-0"
+        aria-describedby="mermaid-viewer-description"
+      >
+        <header className="mermaid-viewer-header">
+          <DialogHeader>
+            <DialogTitle className="text-xl leading-[1.3] font-bold">Mermaid図</DialogTitle>
+            <DialogDescription id="mermaid-viewer-description" className="sr-only">
+              Mermaid図を拡大し、マウスホイールとドラッグで表示範囲を操作できます。
+            </DialogDescription>
+          </DialogHeader>
+          <DialogClose />
+        </header>
         <TransformWrapper
           centerOnInit
           doubleClick={{ disabled: true }}
