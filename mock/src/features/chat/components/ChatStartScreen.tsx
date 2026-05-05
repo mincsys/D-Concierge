@@ -11,7 +11,7 @@ const suggestions = [
   { label: "PDFの参照元を明示して比較して", icon: Split },
 ];
 
-export function ChatStartScreen({ onStart }: { onStart: () => void }) {
+export function ChatStartScreen({ onStart }: { onStart: (message: string) => void }) {
   const [message, setMessage] = useState("");
   const [focusSignal, setFocusSignal] = useState(0);
 
@@ -33,7 +33,7 @@ export function ChatStartScreen({ onStart }: { onStart: () => void }) {
           placeholder="質問を入力してください"
           value={message}
           onValueChange={setMessage}
-          onSubmit={() => onStart()}
+          onSubmit={onStart}
         />
         <div className="mt-[34px] flex flex-wrap justify-center gap-4">
           {suggestions.map(({ label, icon: Icon }) => (

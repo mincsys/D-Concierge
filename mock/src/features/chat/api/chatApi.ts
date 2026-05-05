@@ -8,3 +8,13 @@ export async function listChatHistories(): Promise<ChatHistoryItem[]> {
 export async function getActiveChatSession(): Promise<ChatSession> {
   return stubChatSession;
 }
+
+export async function submitChatMessage(message: string): Promise<ChatSession> {
+  return {
+    ...stubChatSession,
+    userMessage: {
+      ...stubChatSession.userMessage,
+      text: message,
+    },
+  };
+}
