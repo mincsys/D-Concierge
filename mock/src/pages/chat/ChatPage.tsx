@@ -169,7 +169,7 @@ export function ChatPage() {
               onOpenPdf={openPdf}
             />
           ) : (
-            <div className="p-8 text-sm text-[#65728c]">チャットを読み込んでいます。</div>
+            <div className="p-8 text-sm text-[var(--dc-muted)]">チャットを読み込んでいます。</div>
           )
         }
       </AppShell>

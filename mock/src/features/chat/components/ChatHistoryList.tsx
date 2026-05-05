@@ -10,13 +10,13 @@ export function ChatHistoryList({
   onOpenAnswer: () => void;
 }) {
   return (
-    <nav className="flex flex-col gap-2 pr-0" aria-label="最近のチャット">
+    <nav className="flex flex-col pr-0" aria-label="最近のチャット">
       {histories.map((item, index) => (
         <Button
           className={cn(
-            "relative min-h-9 w-full justify-start overflow-hidden rounded-[7px] bg-transparent px-[13px] text-left text-[15.5px] font-[620] text-ellipsis whitespace-nowrap text-[#111827] shadow-none hover:bg-[#eef6ff]",
+            "relative min-h-[46px] w-full justify-start overflow-hidden rounded-none bg-transparent px-8 text-left text-[15.5px] font-[620] text-ellipsis whitespace-nowrap text-[var(--dc-text-strong)] shadow-none hover:bg-[var(--dc-primary-hover)]",
             index === 0 &&
-              "bg-linear-to-r from-[#eef6ff] to-[#e8f2fd] before:absolute before:top-0 before:bottom-0 before:left-0 before:w-1 before:rounded before:bg-[#0a64ff]",
+              "min-h-[56px] border-y border-l-[5px] border-y-[var(--dc-border-soft)] border-l-[var(--dc-primary)] bg-transparent pl-[27px] text-[var(--dc-primary)] hover:bg-transparent",
           )}
           key={item.id}
           type="button"

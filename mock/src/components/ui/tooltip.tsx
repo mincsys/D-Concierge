@@ -27,13 +27,13 @@ function TooltipContent({
         data-slot="tooltip-content"
         sideOffset={sideOffset}
         className={cn(
-          "z-50 w-fit rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground animate-in fade-in-0 zoom-in-95",
+          "z-50 w-fit rounded-md bg-[var(--dc-primary)] px-3 py-1.5 text-xs text-white animate-in fade-in-0 zoom-in-95",
           className,
         )}
         {...props}
       >
         {children}
-        <TooltipPrimitive.Arrow className="z-50 size-2.5 translate-y-[calc(-50%_-_2px)] rotate-45 rounded-[2px] bg-primary fill-primary" />
+        <TooltipPrimitive.Arrow className="z-50 size-2.5 translate-y-[calc(-50%_-_2px)] rotate-45 rounded-[2px] bg-[var(--dc-primary)] fill-[var(--dc-primary)]" />
       </TooltipPrimitive.Content>
     </TooltipPrimitive.Portal>
   );

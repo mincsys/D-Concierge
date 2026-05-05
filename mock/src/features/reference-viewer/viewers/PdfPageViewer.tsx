@@ -122,7 +122,7 @@ export function PdfPageViewer({
 
   return (
     <div
-      className="pdf-canvas-wrap relative flex flex-1 flex-col gap-[22px] overflow-auto bg-[#eef3f9] p-[22px] text-center"
+      className="pdf-canvas-wrap relative flex flex-1 flex-col gap-[22px] overflow-auto bg-[var(--dc-panel)] p-[22px] text-center"
       ref={containerRef}
     >
       {errorMessage ? (
@@ -139,7 +139,7 @@ export function PdfPageViewer({
                 className={cn(
                   "pdf-page-frame mx-auto w-fit max-w-full scroll-mt-3 rounded-xl border border-transparent p-2.5",
                   isReferencePage &&
-                    "pdf-page-frame-target border-[#4f8cff] bg-[rgba(79,140,255,0.1)] shadow-[0_0_0_3px_rgba(79,140,255,0.14)]",
+                    "pdf-page-frame-target border-[var(--dc-primary)] bg-[rgba(15,85,173,0.1)] shadow-[0_0_0_3px_rgba(15,85,173,0.14)]",
                 )}
                 data-page-number={page}
                 key={page}
@@ -238,7 +238,7 @@ function PdfPageFrame({
 
   return (
     <div ref={frameContentRef}>
-      <div className={cn("mb-2 text-left text-[13px] font-[780] text-[#43536f]", isReferencePage && "text-[#0a64ff]")}>
+      <div className={cn("mb-2 text-left text-[13px] font-[780] text-[var(--dc-muted-strong)]", isReferencePage && "text-[var(--dc-primary)]")}>
         {isReferencePage ? `参照元ページ p.${page}` : `p.${page}`}
       </div>
       {shouldRender ? (
@@ -250,7 +250,7 @@ function PdfPageFrame({
         />
       ) : (
         <div
-          className="grid max-w-full place-items-center rounded border border-dashed border-[#c4d0e3] bg-[linear-gradient(135deg,rgba(248,251,255,0.9),rgba(241,246,252,0.9)),#fff] text-sm font-[760] text-[#64748b] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.8)]"
+          className="grid max-w-full place-items-center rounded border border-dashed border-[var(--dc-border)] bg-[linear-gradient(135deg,rgba(248,251,255,0.9),rgba(241,246,252,0.9)),#fff] text-sm font-[760] text-[var(--dc-muted)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.8)]"
           style={{
             height: `${Math.round(containerWidth * 1.42)}px`,
             width: `${containerWidth}px`,

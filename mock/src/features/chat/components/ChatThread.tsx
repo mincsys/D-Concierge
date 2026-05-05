@@ -26,7 +26,7 @@ export function ChatThread({
           sidebarCollapsed ? "max-w-[1260px]" : "max-w-none max-[1100px]:max-w-[640px]",
         )}
       >
-        <div className="ml-auto mr-3 w-fit max-w-[470px] whitespace-pre-wrap rounded-2xl bg-[#dceaff] px-[26px] py-5 text-[15.5px] font-[760] text-[#132036]">
+        <div className="ml-auto mr-3 w-fit max-w-[470px] whitespace-pre-wrap rounded-2xl bg-[var(--dc-user-bubble)] px-[26px] py-5 text-[15.5px] font-normal text-[var(--dc-text)]">
           {session.userMessage.text}
         </div>
         <article

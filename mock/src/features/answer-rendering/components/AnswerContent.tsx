@@ -12,7 +12,7 @@ export function AnswerContent({
   onOpenPdf: (reference: PdfReference) => void;
 }) {
   return (
-    <div className="ml-20 text-[15.5px] leading-[1.72] text-[#172033] max-[1100px]:ml-0">
+    <div className="ml-20 text-[15.5px] leading-[1.72] text-[var(--dc-text)] max-[1100px]:ml-0">
       {answer.blocks.map((block) => (
         <section className="mt-7 first:mt-0" key={block.id}>
           <MarkdownRenderer markdown={block.markdown} />

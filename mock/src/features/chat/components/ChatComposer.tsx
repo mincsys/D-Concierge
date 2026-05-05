@@ -90,7 +90,7 @@ export function ChatComposer({
   return (
     <form
       className={cn(
-        "grid min-h-[66px] grid-cols-[auto_minmax(0,1fr)_auto_auto] items-end gap-[17px] rounded-[11px] border border-[#dce4f0] bg-white/95 py-[10px] pr-[15px] pl-[17px] text-[#60708d] shadow-[0_10px_30px_rgba(23,36,61,0.05)] backdrop-blur-[10px]",
+        "grid min-h-[66px] grid-cols-[auto_minmax(0,1fr)_auto_auto] items-end gap-[17px] rounded-[11px] border border-[var(--dc-border)] bg-white/95 py-[10px] pr-[15px] pl-[17px] text-[var(--dc-muted)] shadow-[0_10px_30px_var(--dc-shadow-soft)] backdrop-blur-[10px]",
         className,
       )}
       onSubmit={handleSubmit}
@@ -98,7 +98,7 @@ export function ChatComposer({
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
-            className="mb-[6px] grid size-[30px] place-items-center rounded-full bg-transparent p-0 text-[#60708d] shadow-none hover:bg-[#eef4ff] hover:text-[#31517f]"
+            className="mb-[6px] grid size-[30px] place-items-center rounded-full bg-transparent p-0 text-[var(--dc-primary)] shadow-none hover:bg-[var(--dc-primary-hover)] hover:text-[var(--dc-primary-strong)]"
             type="button"
             variant="ghost"
             aria-label="ファイルを添付"
@@ -111,7 +111,7 @@ export function ChatComposer({
       <textarea
         ref={textareaRef}
         autoFocus={autoFocus}
-        className="min-h-[42px] w-full resize-none overflow-hidden border-0 bg-transparent px-0 py-[9px] text-base leading-6 font-[560] whitespace-pre-wrap text-[#1f2a44] shadow-none break-words placeholder:text-[#9aa6ba] focus-visible:ring-0 focus-visible:outline-none"
+        className="min-h-[42px] w-full resize-none overflow-hidden border-0 bg-transparent px-0 py-[9px] text-base leading-6 font-[560] whitespace-pre-wrap text-[var(--dc-text)] shadow-none break-words placeholder:text-[var(--dc-muted)] focus-visible:ring-0 focus-visible:outline-none"
         placeholder={COMPOSER_PLACEHOLDER}
         rows={1}
         value={message}
@@ -123,7 +123,7 @@ export function ChatComposer({
         <TooltipTrigger asChild>
           <Button
             className={cn(
-              "grid size-[42px] rounded-full bg-transparent p-0 text-[#52627f] shadow-none hover:bg-transparent hover:text-[#52627f]",
+              "grid size-[42px] rounded-full bg-transparent p-0 text-[var(--dc-primary)] shadow-none hover:bg-transparent hover:text-[var(--dc-primary-strong)]",
             )}
             type="button"
             variant="ghost"
@@ -138,7 +138,7 @@ export function ChatComposer({
         <TooltipTrigger asChild>
           <Button
             className={cn(
-              "grid size-11 rounded-xl bg-[#075bff] p-0 text-white shadow-[0_10px_20px_rgba(7,91,255,0.22)] hover:bg-[#075bff] disabled:bg-[#bfc8d8] disabled:text-white disabled:opacity-100 disabled:shadow-none disabled:hover:bg-[#bfc8d8]",
+              "grid size-11 rounded-xl bg-[var(--dc-primary)] p-0 text-white shadow-[0_10px_20px_var(--dc-shadow-primary)] hover:bg-[var(--dc-primary)] disabled:bg-[var(--dc-muted)] disabled:text-white disabled:opacity-100 disabled:shadow-none disabled:hover:bg-[var(--dc-muted)]",
             )}
             type="submit"
             aria-label="送信"

@@ -16,16 +16,16 @@ export function ThoughtPanel({
   return (
     <div>
       <Button
-        className="inline-flex h-[45px] items-center gap-[11px] bg-transparent p-0 text-[21px] font-[760] text-[#111827] shadow-none hover:bg-transparent hover:text-[#111827]"
+        className="inline-flex h-[45px] items-center gap-[11px] bg-transparent p-0 text-[21px] font-[760] text-[#4f5f78] shadow-none hover:bg-transparent hover:text-[#4f5f78]"
         type="button"
         variant="ghost"
         onClick={onToggle}
       >
-        <span className="grid size-10 place-items-center rounded-full bg-[#f1f6ff] text-[#0d64ff] shadow-[inset_0_0_0_1px_#dfebff]">
-          <Sparkles size={22} fill="#0d64ff" />
+        <span className="grid size-10 place-items-center rounded-full bg-[var(--dc-primary)] text-white shadow-[0_8px_18px_var(--dc-shadow-primary)]">
+          <Sparkles size={22} fill="currentColor" />
         </span>
         <ChevronDown
-          className={cn("text-[#65728c] transition-transform duration-150", open ? "rotate-0" : "-rotate-90")}
+          className={cn("text-[var(--dc-muted)] transition-transform duration-150", open ? "rotate-0" : "-rotate-90")}
           size={19}
         />
         <span>作業プロセス</span>

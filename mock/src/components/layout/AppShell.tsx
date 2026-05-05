@@ -60,7 +60,7 @@ export function AppShell({
   return (
     <div
       className={cn(
-        "grid min-h-screen text-[#111827] transition-[grid-template-columns] duration-200 ease-out",
+        "grid min-h-screen text-[var(--dc-text-strong)] transition-[grid-template-columns] duration-200 ease-out",
         sidebarCollapsed
           ? "grid-cols-[64px_minmax(0,1fr)]"
           : "grid-cols-[320px_minmax(0,1fr)]",

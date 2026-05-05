@@ -30,6 +30,25 @@
 
 :root {
   --radius: 0.5rem;
+  --dc-primary: #0f55ad;
+  --dc-primary-strong: #073f8f;
+  --dc-primary-soft: #e8f0ff;
+  --dc-primary-softer: #f3f7ff;
+  --dc-primary-hover: #edf4ff;
+  --dc-sidebar-from: #fafdff;
+  --dc-sidebar-via: #f5f9ff;
+  --dc-sidebar-to: #eff6ff;
+  --dc-panel: #f6f9fd;
+  --dc-surface: #ffffff;
+  --dc-border: #d4deec;
+  --dc-border-soft: #e3ebf6;
+  --dc-text: #132238;
+  --dc-text-strong: #0f1f35;
+  --dc-muted: #667694;
+  --dc-muted-strong: #4f607c;
+  --dc-user-bubble: #e7f0ff;
+  --dc-shadow-primary: rgba(15, 85, 173, 0.24);
+  --dc-shadow-soft: rgba(25, 42, 70, 0.1);
   --background: oklch(1 0 0);
   --foreground: oklch(0.18 0.02 257);
   --card: oklch(1 0 0);
@@ -58,8 +77,8 @@ body {
   min-width: 1160px;
   min-height: 100vh;
   margin: 0;
-  background: #fff;
-  color: #172033;
+  background: var(--dc-surface);
+  color: var(--dc-text);
   font-family:
     Inter, "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", "Yu Gothic",
     system-ui, sans-serif;
@@ -83,8 +102,8 @@ button {
   flex: 0 0 auto;
   overflow: hidden;
   border-radius: 11px;
-  background: linear-gradient(135deg, #74c5ff 0%, #0d64ff 58%, #0d3fc2 100%);
-  box-shadow: 0 8px 20px rgba(21, 100, 255, 0.24);
+  background: linear-gradient(135deg, #2b78db 0%, var(--dc-primary) 55%, var(--dc-primary-strong) 100%);
+  box-shadow: 0 8px 20px var(--dc-shadow-primary);
 }
 
 .brand-mark::before {
@@ -124,7 +143,7 @@ button {
 .markdown-body h2 {
   margin-top: 22px;
   margin-bottom: 11px;
-  color: #16233a;
+  color: #05306f;
   font-size: 16px;
   font-weight: 830;
 }
@@ -152,7 +171,7 @@ button {
 .markdown-body img {
   display: block;
   max-width: 100%;
-  border: 1px solid #dbe6f6;
+  border: 1px solid var(--dc-border);
   border-radius: 8px;
   background: #fff;
 }
@@ -166,27 +185,27 @@ button {
 
 .markdown-body table {
   overflow-x: auto;
-  border: 1px solid #dbe6f6;
+  border: 1px solid var(--dc-border);
   border-radius: 8px;
 }
 
 .markdown-body th,
 .markdown-body td {
   padding: 10px 12px;
-  border-right: 1px solid #e5edf7;
-  border-bottom: 1px solid #e5edf7;
+  border-right: 1px solid var(--dc-border-soft);
+  border-bottom: 1px solid var(--dc-border-soft);
   text-align: left;
   vertical-align: top;
 }
 
 .markdown-body th:first-child,
 .markdown-body td:first-child {
-  border-left: 1px solid #e5edf7;
+  border-left: 1px solid var(--dc-border-soft);
 }
 
 .markdown-body th {
-  color: #20304f;
-  background: #f2f6fb;
+  color: var(--dc-text-strong);
+  background: var(--dc-panel);
   font-weight: 820;
 }
 
@@ -197,7 +216,7 @@ button {
 .pdf-canvas-wrap canvas {
   max-width: 100%;
   background: #fff;
-  box-shadow: 0 12px 40px rgba(20, 31, 52, 0.18);
+  box-shadow: 0 12px 40px rgba(19, 34, 56, 0.18);
 }
 
 @media (max-width: 1280px) {

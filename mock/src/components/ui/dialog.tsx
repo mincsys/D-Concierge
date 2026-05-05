@@ -55,7 +55,7 @@ function DialogClose({ className, children, ...props }: React.ComponentProps<typ
   return (
     <DialogPrimitive.Close
       className={cn(
-        "grid size-[38px] place-items-center rounded-[9px] bg-[#f4f7fb] text-[#42516c] opacity-100 outline-none transition-opacity hover:opacity-80 focus:ring-[3px] focus:ring-ring/50",
+        "grid size-[38px] place-items-center rounded-[9px] bg-[var(--dc-panel)] text-[var(--dc-muted-strong)] opacity-100 outline-none transition-opacity hover:opacity-80 focus:ring-[3px] focus:ring-ring/50",
         className,
       )}
       {...props}

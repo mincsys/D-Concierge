@@ -25,9 +25,9 @@ export function ReferenceViewerDialog({
         className="flex max-h-[98vh] w-[min(980px,98vw)] max-w-none flex-col gap-0 overflow-hidden rounded-[14px] bg-white p-0 shadow-[0_26px_80px_rgba(0,0,0,0.26)]"
         aria-label="参照元PDF"
       >
-        <header className="grid grid-cols-[1fr_auto] items-center gap-[18px] border-b border-[#e2e8f2] px-5 pt-4 pb-3">
+        <header className="grid grid-cols-[1fr_auto] items-center gap-[18px] border-b border-[var(--dc-border-soft)] px-5 pt-4 pb-3">
           <DialogHeader>
-            <span className="text-xs font-[820] text-[#0a64ff]">参照元PDF</span>
+            <span className="text-xs font-[820] text-[var(--dc-primary)]">参照元PDF</span>
             <DialogTitle className="mt-[3px] text-xl leading-[1.3] font-bold">
               {reference.title}
             </DialogTitle>

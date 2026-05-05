@@ -12,9 +12,9 @@ mermaid.initialize({
   securityLevel: "strict",
   theme: "base",
   themeVariables: {
-    primaryColor: "#eaf2ff",
-    primaryBorderColor: "#4f8cff",
-    primaryTextColor: "#172033",
+    primaryColor: "#e8f0ff",
+    primaryBorderColor: "#0f55ad",
+    primaryTextColor: "#132238",
     lineColor: "#7d8aa8",
     fontFamily: "Inter, system-ui, sans-serif",
   },
@@ -52,13 +52,13 @@ export function MermaidRenderer({ source }: { source: string }) {
   }, [reactId, source]);
 
   return (
-    <div className="group relative overflow-hidden rounded-lg border border-[#dde7f5] bg-[#fbfdff] p-3">
+    <div className="group relative overflow-hidden rounded-lg border border-[var(--dc-border)] bg-[var(--dc-sidebar-from)] p-3">
       {svg && !renderFailed ? (
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
               aria-label="Mermaid図を拡大表示"
-              className="pointer-events-none absolute top-2.5 right-2.5 z-1 size-[34px] rounded-lg border border-[#d8e3f2] bg-white/90 text-[#42516c] opacity-0 shadow-[0_8px_20px_rgba(25,42,70,0.12)] transition-opacity duration-150 hover:bg-white hover:text-[#0a64ff] group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"
+              className="pointer-events-none absolute top-2.5 right-2.5 z-1 size-[34px] rounded-lg border border-[var(--dc-border)] bg-white/90 text-[var(--dc-muted-strong)] opacity-0 shadow-[0_8px_20px_rgba(25,42,70,0.12)] transition-opacity duration-150 hover:bg-white hover:text-[var(--dc-primary)] group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"
               onClick={() => setViewerOpen(true)}
               size="icon"
               type="button"
