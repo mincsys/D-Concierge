@@ -93,31 +93,67 @@ sequenceDiagram
         ],
       },
       {
-        id: "requirements-table",
+        id: "markdown-list-and-table",
+        markdown: `## 箇条書きとMarkdown表の表示例
+
+次の観点を確認すると、要件定義の抜け漏れを見つけやすくなります。
+
+- 関係者、利用者、運用者の役割が明確になっている。
+- 業務課題、期待効果、制約条件が同じ文脈で整理されている。
+- 参照元ページと回答内容の対応を後から確認できる。
+
+| 確認観点 | 確認する内容 | 状態 |
+| --- | --- | --- |
+| 目的共有 | 関係者が同じゴールを見て判断できる。 | 対応済み |
+| 要求具体化 | 利用者の業務課題を検証可能な要求へ落とし込む。 | 対応済み |
+| 参照元確認 | 回答ブロックごとに参照元リンクを確認できる。 | 対応済み |`,
+        references: [
+          {
+            id: "sec-books-iot-guide-markdown-table-10-14",
+            title: "SEC BOOKS 開発指針手引き",
+            url: "/reference-pdf/iot-guide.pdf",
+            startPage: 10,
+            endPage: 14,
+          },
+        ],
+      },
+      {
+        id: "requirements-html-table",
         markdown: `## HTML表の表示例
 
 <table>
   <thead>
     <tr>
-      <th>成功ポイント</th>
+      <th rowspan="2">成功ポイント</th>
+      <th colspan="2">確認内容</th>
+      <th colspan="2">参照元</th>
+    </tr>
+    <tr>
       <th>要件定義での意味</th>
-      <th>参照元</th>
+      <th>確認観点</th>
+      <th>資料</th>
+      <th>ページ</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td>目的共有</td>
+      <th scope="row">目的共有</th>
       <td>関係者が同じゴールを見て判断できる状態を作る。</td>
+      <td>背景、目的、対象範囲が同じ言葉で説明されているか。</td>
+      <td rowspan="2">SEC BOOKS 開発指針手引き</td>
       <td>PDF p.10-14</td>
     </tr>
     <tr>
-      <td>要求の具体化</td>
+      <th scope="row">要求の具体化</th>
       <td>利用者の業務課題を、検証可能な要求に落とし込む。</td>
+      <td>利用者の行動、入力、期待結果が具体化されているか。</td>
       <td>PDF p.10-14</td>
     </tr>
     <tr>
-      <td>継続的な見直し</td>
+      <th scope="row">継続的な見直し</th>
       <td>環境変化に合わせて、要求と合意内容を更新する。</td>
+      <td>変更時の確認手順と関係者への共有方法が決まっているか。</td>
+      <td>SEC BOOKS 開発指針手引き</td>
       <td>PDF p.20-22</td>
     </tr>
   </tbody>
