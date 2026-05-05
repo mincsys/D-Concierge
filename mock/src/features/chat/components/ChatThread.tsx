@@ -42,7 +42,7 @@ export function ChatThread({
       <div
         className={cn(
           "fixed right-[35px] bottom-4 transition-[right,left] duration-200 ease-out max-[1100px]:right-14",
-          sidebarCollapsed ? "left-[107px]" : "left-[355px]",
+          sidebarCollapsed ? "left-[99px]" : "left-[355px]",
         )}
       >
         <ChatComposer placeholder={session.composerPlaceholder} onSubmit={() => undefined} />
