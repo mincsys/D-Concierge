@@ -190,3 +190,9 @@ button {
     min-width: 1024px;
   }
 }
+
+@media (max-width: 1024px) {
+  body {
+    min-width: 0;
+  }
+}

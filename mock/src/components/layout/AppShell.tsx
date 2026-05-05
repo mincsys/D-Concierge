@@ -27,7 +27,7 @@ export function AppShell({
         "grid min-h-screen text-[#111827] transition-[grid-template-columns] duration-200 ease-out",
         sidebarCollapsed
           ? "grid-cols-[72px_minmax(0,1fr)]"
-          : "grid-cols-[350px_minmax(0,1fr)] max-[1280px]:grid-cols-[320px_minmax(0,1fr)]",
+          : "grid-cols-[320px_minmax(0,1fr)]",
       )}
     >
       <Sidebar

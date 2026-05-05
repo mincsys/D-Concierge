@@ -31,7 +31,7 @@ export function ThoughtPanel({
         <span>Thought for 16s</span>
       </Button>
       {open ? (
-        <div className="mt-[11px] mb-[25px] ml-20 border-l-2 border-[#aab5c8] pl-[22px] text-base leading-[1.9] font-[690] text-[#16233a]">
+        <div className="mt-[11px] mb-[25px] ml-20 border-l-2 border-[#aab5c8] pl-[22px] text-base leading-[1.9] font-[690] text-[#16233a] max-[1100px]:ml-10">
           {steps.map((step) => (
             <div key={step.id}>{step.text}</div>
           ))}
