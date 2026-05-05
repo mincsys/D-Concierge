@@ -1,4 +1,4 @@
-import { Search, Settings, Split } from "lucide-react";
+import { PanelLeft, Search, Settings } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,7 @@ export function Sidebar({
           variant="ghost"
           aria-label="サイドバー切替"
         >
-          <Split size={21} />
+          <PanelLeft size={21} />
         </Button>
       </div>
 
