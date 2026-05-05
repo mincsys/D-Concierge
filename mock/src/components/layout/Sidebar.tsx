@@ -12,11 +12,13 @@ import { cn } from "@/lib/utils";
 export function Sidebar({
   collapsed,
   histories,
+  onStartNewChat,
   onOpenAnswer,
   onToggleCollapsed,
 }: {
   collapsed: boolean;
   histories: ChatHistoryItem[];
+  onStartNewChat: () => void;
   onOpenAnswer: () => void;
   onToggleCollapsed: () => void;
 }) {
@@ -40,6 +42,7 @@ export function Sidebar({
           className="mx-auto mt-[35px] grid size-[38px] place-items-center rounded-lg bg-linear-to-b from-[#0a64ff] to-[#0046ed] p-0 text-white shadow-[0_10px_18px_rgba(20,90,240,0.22)] hover:from-[#0a64ff] hover:to-[#0046ed]"
           type="button"
           aria-label="新しいチャット"
+          onClick={onStartNewChat}
         >
           <Plus size={24} />
         </Button>
@@ -95,6 +98,7 @@ export function Sidebar({
       <Button
         className="h-[45px] w-full gap-[11px] rounded-lg bg-linear-to-b from-[#0a64ff] to-[#0046ed] text-base font-bold text-white shadow-[0_10px_18px_rgba(20,90,240,0.22)] hover:from-[#0a64ff] hover:to-[#0046ed]"
         type="button"
+        onClick={onStartNewChat}
       >
         <span className="text-[28px] leading-none font-[360]">+</span>
         新しいチャット

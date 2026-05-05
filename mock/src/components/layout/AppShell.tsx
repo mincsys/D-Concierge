@@ -15,10 +15,12 @@ const AUTO_COLLAPSE_WIDTH = 1100;
 export function AppShell({
   children,
   histories,
+  onStartNewChat,
   onOpenAnswer,
 }: {
   children: ReactNode | ((state: AppShellRenderState) => ReactNode);
   histories: ChatHistoryItem[];
+  onStartNewChat: () => void;
   onOpenAnswer: () => void;
 }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -67,6 +69,7 @@ export function AppShell({
       <Sidebar
         collapsed={sidebarCollapsed}
         histories={histories}
+        onStartNewChat={onStartNewChat}
         onOpenAnswer={onOpenAnswer}
         onToggleCollapsed={handleToggleCollapsed}
       />

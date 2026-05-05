@@ -45,7 +45,7 @@ export function ChatThread({
           sidebarCollapsed ? "left-[99px]" : "left-[355px]",
         )}
       >
-        <ChatComposer placeholder={session.composerPlaceholder} onSubmit={() => undefined} />
+        <ChatComposer autoFocus placeholder={session.composerPlaceholder} onSubmit={() => undefined} />
       </div>
     </section>
   );

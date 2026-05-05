@@ -41,6 +41,13 @@ export function ChatPage() {
     setMode("answer");
   }
 
+  function startNewChat() {
+    setMode("start");
+    setPdfOpen(false);
+    setReference(null);
+    setThoughtOpen(true);
+  }
+
   function openPdf(referenceToOpen: PdfReference) {
     setReference(referenceToOpen);
     setPdfOpen(true);
@@ -48,7 +55,7 @@ export function ChatPage() {
 
   return (
     <>
-      <AppShell histories={histories} onOpenAnswer={openAnswer}>
+      <AppShell histories={histories} onStartNewChat={startNewChat} onOpenAnswer={openAnswer}>
         {({ sidebarCollapsed }) =>
           mode === "start" ? (
             <ChatStartScreen onStart={openAnswer} />

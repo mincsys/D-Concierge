@@ -1,4 +1,5 @@
 import { FileText, ListChecks, Search, Split } from "lucide-react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ChatComposer } from "./ChatComposer";
@@ -11,6 +12,14 @@ const suggestions = [
 ];
 
 export function ChatStartScreen({ onStart }: { onStart: () => void }) {
+  const [message, setMessage] = useState("");
+  const [focusSignal, setFocusSignal] = useState(0);
+
+  function handleSuggestionClick(label: string) {
+    setMessage(label);
+    setFocusSignal((current) => current + 1);
+  }
+
   return (
     <section className="grid min-h-screen min-w-0 place-items-center overflow-hidden px-12">
       <div className="w-full max-w-[1492px] translate-y-[-12px]">
@@ -18,9 +27,12 @@ export function ChatStartScreen({ onStart }: { onStart: () => void }) {
           今日は何をお手伝いできますか？
         </h1>
         <ChatComposer
+          autoFocus
           className="mx-auto w-full"
+          focusSignal={focusSignal}
           placeholder="質問を入力してください"
-          onFocus={onStart}
+          value={message}
+          onValueChange={setMessage}
           onSubmit={() => onStart()}
         />
         <div className="mt-[34px] flex flex-wrap justify-center gap-4">
@@ -30,7 +42,7 @@ export function ChatStartScreen({ onStart }: { onStart: () => void }) {
               key={label}
               type="button"
               variant="outline"
-              onClick={onStart}
+              onClick={() => handleSuggestionClick(label)}
             >
               <Icon size={22} />
               {label}
