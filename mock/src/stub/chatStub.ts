@@ -46,11 +46,30 @@ export const stubChatSession: ChatSession = {
 ## 要件定義ワークフロー
 
 \`\`\`mermaid
-flowchart LR
-  A["質問"] --> B["検索"]
-  B --> C["分析"]
-  C --> D["参照元検証"]
-  D --> E["回答"]
+sequenceDiagram
+  actor User as 利用者
+  participant UI as D-Concierge UI
+  participant Codex as Codex exec
+  participant Skills as Skills
+  participant Docs as 構造化Markdown/PDF
+
+  User->>UI: 質問を送信
+  UI->>Codex: AGENTS.mdと出力スキーマを指定して実行
+  Note over UI,Codex: 中間メッセージを逐次表示
+  loop 参照元候補の探索
+    Codex->>Skills: 検索・grep・構造化Markdown検索
+    Skills->>Docs: キーワード、章節、ページ範囲を照合
+    Docs-->>Skills: 候補本文と位置情報を返却
+    Skills-->>Codex: 参照元候補を返却
+  end
+  Codex->>Codex: 回答Markdownと参照元JSONを生成
+  alt 参照元検証に成功
+    Codex-->>UI: 回答ブロックと参照元リンクを返却
+    UI-->>User: Markdown、Mermaid、HTML表、PDFリンクを表示
+  else 参照元検証に失敗
+    Codex-->>UI: 検証エラーを返却
+    UI-->>User: 再実行またはエラーを表示
+  end
 \`\`\`
 
 ## 分析イメージ
