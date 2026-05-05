@@ -1,4 +1,4 @@
-import { PanelLeft, Search, Settings } from "lucide-react";
+import { History, PanelLeft, Plus, Search, Settings } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -7,14 +7,73 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { ChatHistoryList } from "@/features/chat/components/ChatHistoryList";
 import type { ChatHistoryItem } from "@/features/chat/model/types";
+import { cn } from "@/lib/utils";
 
 export function Sidebar({
+  collapsed,
   histories,
   onOpenAnswer,
+  onToggleCollapsed,
 }: {
+  collapsed: boolean;
   histories: ChatHistoryItem[];
   onOpenAnswer: () => void;
+  onToggleCollapsed: () => void;
 }) {
+  if (collapsed) {
+    return (
+      <aside
+        className="sticky top-0 flex h-screen min-h-0 flex-col overflow-hidden border-r border-[#dbe3f0] bg-linear-to-b from-[#fbfdff] via-[#f7fbff] to-[#f4f8fc]"
+        aria-label="折りたたみサイドバー"
+      >
+        <Button
+          className="mx-auto mt-[35px] grid size-[34px] place-items-center rounded-lg bg-transparent p-0 text-[#667694] hover:bg-transparent hover:text-[#667694]"
+          type="button"
+          variant="ghost"
+          aria-label="サイドバーを展開"
+          onClick={onToggleCollapsed}
+        >
+          <PanelLeft size={28} />
+        </Button>
+
+        <Button
+          className="mx-auto mt-[35px] grid size-[38px] place-items-center rounded-lg bg-linear-to-b from-[#0a64ff] to-[#0046ed] p-0 text-white shadow-[0_10px_18px_rgba(20,90,240,0.22)] hover:from-[#0a64ff] hover:to-[#0046ed]"
+          type="button"
+          aria-label="新しいチャット"
+        >
+          <Plus size={24} />
+        </Button>
+
+        <Button
+          className="mx-auto mt-[19px] grid size-[42px] place-items-center rounded-lg bg-transparent p-0 text-[#667694] hover:bg-transparent hover:text-[#667694]"
+          type="button"
+          variant="ghost"
+          aria-label="チャットを検索"
+        >
+          <Search size={26} />
+        </Button>
+
+        <Button
+          className="mx-auto mt-[21px] grid size-[42px] place-items-center rounded-lg bg-transparent p-0 text-[#667694] hover:bg-transparent hover:text-[#667694]"
+          type="button"
+          variant="ghost"
+          aria-label="最近のチャット"
+        >
+          <History size={27} />
+        </Button>
+
+        <Button
+          className="mx-auto mt-auto mb-5 grid size-[42px] place-items-center rounded-lg bg-transparent p-0 text-[#667694] hover:bg-transparent hover:text-[#667694]"
+          type="button"
+          variant="ghost"
+          aria-label="設定"
+        >
+          <Settings size={27} />
+        </Button>
+      </aside>
+    );
+  }
+
   return (
     <aside className="sticky top-0 flex h-screen min-h-0 flex-col overflow-hidden border-r border-[#dbe3f0] bg-linear-to-b from-[#fbfdff] via-[#f7fbff] to-[#f4f8fc] px-4 pt-7">
       <div className="mx-[3px] mb-6 flex h-12 items-center gap-[13px]">
@@ -27,8 +86,9 @@ export function Sidebar({
           type="button"
           variant="ghost"
           aria-label="サイドバー切替"
+          onClick={onToggleCollapsed}
         >
-          <PanelLeft size={21} />
+          <PanelLeft size={28} />
         </Button>
       </div>
 
@@ -52,7 +112,15 @@ export function Sidebar({
         </kbd>
       </label>
 
-      <div className="mx-1 mt-[29px] mb-3 text-[15px] font-bold text-[#65718a]">最近のチャット</div>
+      <div
+        className={cn(
+          "mx-1 mt-[29px] mb-3 flex h-6 items-center gap-2 text-[15px] font-bold text-[#65718a]",
+          "[&_svg]:text-[#667694]",
+        )}
+      >
+        <History size={20} />
+        最近のチャット
+      </div>
       <ScrollArea className="min-h-0 flex-1">
         <ChatHistoryList histories={histories} onOpenAnswer={onOpenAnswer} />
       </ScrollArea>

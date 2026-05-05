@@ -49,18 +49,21 @@ export function ChatPage() {
   return (
     <>
       <AppShell histories={histories} onOpenAnswer={openAnswer}>
-        {mode === "start" ? (
-          <ChatStartScreen onStart={openAnswer} />
-        ) : session ? (
-          <ChatThread
-            session={session}
-            thoughtOpen={thoughtOpen}
-            onToggleThought={() => setThoughtOpen((current) => !current)}
-            onOpenPdf={openPdf}
-          />
-        ) : (
-          <div className="p-8 text-sm text-[#65728c]">チャットを読み込んでいます。</div>
-        )}
+        {({ sidebarCollapsed }) =>
+          mode === "start" ? (
+            <ChatStartScreen onStart={openAnswer} />
+          ) : session ? (
+            <ChatThread
+              session={session}
+              sidebarCollapsed={sidebarCollapsed}
+              thoughtOpen={thoughtOpen}
+              onToggleThought={() => setThoughtOpen((current) => !current)}
+              onOpenPdf={openPdf}
+            />
+          ) : (
+            <div className="p-8 text-sm text-[#65728c]">チャットを読み込んでいます。</div>
+          )
+        }
       </AppShell>
       <ReferenceViewerDialog open={pdfOpen} reference={reference} onOpenChange={setPdfOpen} />
     </>
