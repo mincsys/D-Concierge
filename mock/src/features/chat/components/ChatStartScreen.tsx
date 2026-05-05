@@ -22,9 +22,9 @@ export function ChatStartScreen({ onStart }: { onStart: (message: string) => voi
 
   return (
     <section className="grid min-h-screen min-w-0 place-items-center overflow-hidden px-12">
-      <div className="w-full max-w-[1492px] translate-y-[-12px]">
+      <div className="w-full max-w-[1040px] translate-y-[-12px]">
         <h1 className="mb-8 text-center text-[25px] font-[780] tracking-normal">
-          今日は何をお手伝いできますか？
+          何なりとお申し付けください
         </h1>
         <ChatComposer
           autoFocus

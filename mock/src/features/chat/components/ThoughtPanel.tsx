@@ -28,10 +28,10 @@ export function ThoughtPanel({
           className={cn("text-[#65728c] transition-transform duration-150", open ? "rotate-0" : "-rotate-90")}
           size={19}
         />
-        <span>Thought for 16s</span>
+        <span>作業プロセス</span>
       </Button>
       {open ? (
-        <div className="mt-[11px] mb-[25px] ml-20 border-l-2 border-[#aab5c8] pl-[22px] text-base leading-[1.9] font-normal text-[#4f5f78] max-[1100px]:ml-10">
+        <div className="mt-[11px] mb-[25px] ml-[60px] border-l-2 border-[#aab5c8] pl-[22px] text-base leading-[1.9] font-normal text-[#4f5f78] max-[1100px]:ml-[60px]">
           {steps.map((step) => (
             <div key={step.id}>{step.text}</div>
           ))}

@@ -1,4 +1,4 @@
-import { Minus, Plus } from "lucide-react";
+import { Minus, Plus, Scan } from "lucide-react";
 import { useCallback, useEffect, useRef } from "react";
 import { TransformComponent, TransformWrapper, useControls } from "react-zoom-pan-pinch";
 
@@ -123,12 +123,14 @@ function MermaidZoomSurface({ svg }: { svg: string }) {
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
-              className="h-[34px] rounded-lg bg-[#eef4fb] px-[13px] text-[13px] font-[760] text-[#33445f]"
+              aria-label="Mermaid図全体を表示"
+              className="size-[34px] rounded-lg bg-[#eef4fb] text-[#33445f]"
               onClick={() => fitToView()}
+              size="icon"
               type="button"
               variant="secondary"
             >
-              フィット
+              <Scan size={18} />
             </Button>
           </TooltipTrigger>
           <TooltipContent>図全体を表示</TooltipContent>

@@ -41,11 +41,11 @@ export function ChatThread({
       </div>
       <div
         className={cn(
-          "fixed right-[35px] bottom-4 transition-[right,left] duration-200 ease-out max-[1100px]:right-14",
+          "fixed right-[35px] bottom-4 flex justify-center transition-[right,left] duration-200 ease-out max-[1100px]:right-14",
           sidebarCollapsed ? "left-[99px]" : "left-[355px]",
         )}
       >
-        <ChatComposer autoFocus onSubmit={() => undefined} />
+        <ChatComposer autoFocus className="w-full max-w-[1040px]" onSubmit={() => undefined} />
       </div>
     </section>
   );
