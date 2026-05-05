@@ -172,5 +172,4 @@ sequenceDiagram
       },
     ],
   },
-  composerPlaceholder: "質問を入力してください（例：資料の要点を教えて、比較表を作って、など）",
 };

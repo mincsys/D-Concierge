@@ -30,7 +30,6 @@ export function ChatStartScreen({ onStart }: { onStart: (message: string) => voi
           autoFocus
           className="mx-auto w-full"
           focusSignal={focusSignal}
-          placeholder="質問を入力してください"
           value={message}
           onValueChange={setMessage}
           onSubmit={onStart}

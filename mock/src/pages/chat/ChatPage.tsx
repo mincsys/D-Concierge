@@ -9,8 +9,6 @@ import type { ChatAnswerBlock, ChatHistoryItem, ChatSession, ThoughtStep, ViewMo
 import { ReferenceViewerDialog } from "@/features/reference-viewer/components/ReferenceViewerDialog";
 import type { PdfReference } from "@/features/reference-viewer/model/types";
 
-const DEFAULT_COMPOSER_PLACEHOLDER = "質問を入力してください（例：資料の要点を教えて、比較表を作って、など）";
-
 export function ChatPage() {
   const [mode, setMode] = useState<ViewMode>("start");
   const [histories, setHistories] = useState<ChatHistoryItem[]>([]);
@@ -110,7 +108,7 @@ export function ChatPage() {
     setPdfOpen(false);
     setReference(null);
     setThoughtOpen(true);
-    setSession(createPendingSession(message, completedSession));
+    setSession(createPendingSession(message));
     setMode("answer");
 
     const nextCompletedSession = await submitChatMessage(message);
@@ -180,7 +178,7 @@ export function ChatPage() {
   );
 }
 
-function createPendingSession(message: string, baseSession: ChatSession | null): ChatSession {
+function createPendingSession(message: string): ChatSession {
   return {
     id: `submitted-${Date.now()}`,
     userMessage: {
@@ -192,6 +190,5 @@ function createPendingSession(message: string, baseSession: ChatSession | null):
     answer: {
       blocks: [],
     },
-    composerPlaceholder: baseSession?.composerPlaceholder ?? DEFAULT_COMPOSER_PLACEHOLDER,
   };
 }

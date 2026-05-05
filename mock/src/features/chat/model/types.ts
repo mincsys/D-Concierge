@@ -33,5 +33,4 @@ export type ChatSession = {
   userMessage: ChatMessage;
   thoughtSteps: ThoughtStep[];
   answer: ChatAnswer;
-  composerPlaceholder: string;
 };

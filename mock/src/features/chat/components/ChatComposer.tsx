@@ -1,13 +1,15 @@
 import { Paperclip, Send, SlidersHorizontal } from "lucide-react";
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, KeyboardEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
+const MIN_TEXTAREA_HEIGHT = 42;
+const MAX_TEXTAREA_HEIGHT = 480;
+const COMPOSER_PLACEHOLDER = "指示を入力してください";
+
 type ChatComposerProps = {
-  placeholder: string;
   autoFocus?: boolean;
   className?: string;
   focusSignal?: number;
@@ -18,7 +20,6 @@ type ChatComposerProps = {
 };
 
 export function ChatComposer({
-  placeholder,
   autoFocus = false,
   className,
   focusSignal,
@@ -27,17 +28,33 @@ export function ChatComposer({
   onFocus,
   value,
 }: ChatComposerProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [internalMessage, setInternalMessage] = useState("");
   const message = value ?? internalMessage;
   const canSubmit = message.trim().length > 0;
+
+  useLayoutEffect(() => {
+    resizeTextarea();
+  }, [message]);
 
   useEffect(() => {
     if (focusSignal === undefined) {
       return;
     }
-    inputRef.current?.focus();
+    textareaRef.current?.focus();
   }, [focusSignal]);
+
+  function resizeTextarea() {
+    const textarea = textareaRef.current;
+    if (!textarea) {
+      return;
+    }
+
+    textarea.style.height = `${MIN_TEXTAREA_HEIGHT}px`;
+    const nextHeight = Math.min(Math.max(textarea.scrollHeight, MIN_TEXTAREA_HEIGHT), MAX_TEXTAREA_HEIGHT);
+    textarea.style.height = `${nextHeight}px`;
+    textarea.style.overflowY = textarea.scrollHeight > MAX_TEXTAREA_HEIGHT ? "auto" : "hidden";
+  }
 
   function updateMessage(nextMessage: string) {
     if (onValueChange) {
@@ -47,8 +64,7 @@ export function ChatComposer({
     setInternalMessage(nextMessage);
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function submitMessage() {
     const trimmed = message.trim();
     if (!trimmed) {
       return;
@@ -57,10 +73,24 @@ export function ChatComposer({
     updateMessage("");
   }
 
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    submitMessage();
+  }
+
+  function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key !== "Enter" || (!event.ctrlKey && !event.metaKey)) {
+      return;
+    }
+
+    event.preventDefault();
+    submitMessage();
+  }
+
   return (
     <form
       className={cn(
-        "grid h-[66px] grid-cols-[auto_1fr_auto_auto] items-center gap-[17px] rounded-[11px] border border-[#dce4f0] bg-white/95 pr-[15px] pl-[17px] text-[#60708d] shadow-[0_10px_30px_rgba(23,36,61,0.05)] backdrop-blur-[10px]",
+        "grid min-h-[66px] grid-cols-[auto_minmax(0,1fr)_auto_auto] items-end gap-[17px] rounded-[11px] border border-[#dce4f0] bg-white/95 py-[10px] pr-[15px] pl-[17px] text-[#60708d] shadow-[0_10px_30px_rgba(23,36,61,0.05)] backdrop-blur-[10px]",
         className,
       )}
       onSubmit={handleSubmit}
@@ -68,7 +98,7 @@ export function ChatComposer({
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
-            className="grid size-[30px] place-items-center rounded-full bg-transparent p-0 text-[#60708d] shadow-none hover:bg-[#eef4ff] hover:text-[#31517f]"
+            className="mb-[6px] grid size-[30px] place-items-center rounded-full bg-transparent p-0 text-[#60708d] shadow-none hover:bg-[#eef4ff] hover:text-[#31517f]"
             type="button"
             variant="ghost"
             aria-label="ファイルを添付"
@@ -78,14 +108,16 @@ export function ChatComposer({
         </TooltipTrigger>
         <TooltipContent>ファイルを添付</TooltipContent>
       </Tooltip>
-      <Input
-        ref={inputRef}
+      <textarea
+        ref={textareaRef}
         autoFocus={autoFocus}
-        className="h-auto border-0 bg-transparent p-0 text-base font-[560] text-[#1f2a44] shadow-none placeholder:text-[#9aa6ba] focus-visible:ring-0"
-        placeholder={placeholder}
+        className="min-h-[42px] w-full resize-none overflow-hidden border-0 bg-transparent px-0 py-[9px] text-base leading-6 font-[560] whitespace-pre-wrap text-[#1f2a44] shadow-none break-words placeholder:text-[#9aa6ba] focus-visible:ring-0 focus-visible:outline-none"
+        placeholder={COMPOSER_PLACEHOLDER}
+        rows={1}
         value={message}
         onChange={(event) => updateMessage(event.target.value)}
         onFocus={onFocus}
+        onKeyDown={handleKeyDown}
       />
       <Tooltip>
         <TooltipTrigger asChild>
@@ -115,7 +147,7 @@ export function ChatComposer({
             <Send size={22} fill="currentColor" />
           </Button>
         </TooltipTrigger>
-        <TooltipContent>送信</TooltipContent>
+        <TooltipContent>送信（Ctrl+Enter）</TooltipContent>
       </Tooltip>
     </form>
   );
