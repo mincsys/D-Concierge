@@ -1,10 +1,13 @@
-.uv-cache/
-.venv/
 __pycache__/
+/.playwright-cli/
+/.uv-cache/
+/.venv/
+/codex/.codex/*
+!/codex/.codex/skills/custom/
+!/codex/.codex/AGENTS.md
 /codex/readonly/
 /codex/sessions/
-/mock/node_modules/
 /mock/dist/
+/mock/node_modules/
 /mock/tsconfig.tsbuildinfo
-/.playwright-cli/
 /output/playwright/
