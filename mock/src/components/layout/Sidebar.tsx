@@ -9,6 +9,8 @@ import { ChatHistoryList } from "@/features/chat/components/ChatHistoryList";
 import type { ChatHistoryItem } from "@/features/chat/model/types";
 import { cn } from "@/lib/utils";
 
+const brandLogoUrl = new URL("../../assets/d-concierge-logo.png", import.meta.url).href;
+
 export function Sidebar({
   collapsed,
   histories,
@@ -80,8 +82,8 @@ export function Sidebar({
   return (
     <aside className="sticky top-0 flex h-screen min-h-0 flex-col overflow-hidden border-r border-[var(--dc-border)] bg-linear-to-b from-[var(--dc-sidebar-from)] via-[var(--dc-sidebar-via)] to-[var(--dc-sidebar-to)] pt-7">
       <div className="mx-4 mb-6 flex h-12 items-center gap-[13px]">
-        <div className="brand-mark" aria-hidden="true">
-          <span />
+        <div className="grid size-10 shrink-0 place-items-center overflow-hidden" aria-hidden="true">
+          <img className="h-9 w-auto object-contain" src={brandLogoUrl} alt="" />
         </div>
         <div className="whitespace-nowrap text-[26px] font-[780] tracking-normal text-[var(--dc-primary-strong)]">
           D-Concierge

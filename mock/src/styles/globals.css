@@ -95,32 +95,6 @@ button {
   cursor: pointer;
 }
 
-.brand-mark {
-  position: relative;
-  width: 36px;
-  height: 36px;
-  flex: 0 0 auto;
-  overflow: hidden;
-  border-radius: 11px;
-  background: linear-gradient(135deg, #2b78db 0%, var(--dc-primary) 55%, var(--dc-primary-strong) 100%);
-  box-shadow: 0 8px 20px var(--dc-shadow-primary);
-}
-
-.brand-mark::before {
-  position: absolute;
-  inset: 7px 4px 7px 11px;
-  content: "";
-  border-radius: 0 18px 18px 0;
-  background: #fff;
-}
-
-.brand-mark span {
-  position: absolute;
-  inset: 7px 11px 7px 4px;
-  border-radius: 9px 0 0 9px;
-  background: rgba(255, 255, 255, 0.45);
-}
-
 .mermaid-preview svg {
   display: block;
   width: 100%;
