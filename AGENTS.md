@@ -3,6 +3,8 @@
 - Mermaid 図で改行を表現する場合は `\n` ではなく `<br>` を使うこと。
 - 作業の途中で仕様書と実装に乖離がある箇所を発見した場合は、.issue/フォルダにファイルを作成しメモを残すこと。issueを解決した場合はそのissueファイルは削除すること。
 - `mock/` のバックエンド未実装時にフロントエンドを動かすための固定データやAPI代替データは、将来削除する一時実装として `mock/src/stub/` に隔離すること。`mock/` のUIコンポーネントから `mock/src/stub/` を直接参照せず、`mock/src/features/*/api/` のAPI境界を経由して受け渡すこと。バックエンド実装後は `mock/src/stub/` を削除し、API境界の内部実装だけを本物のHTTP/SSE接続へ差し替える方針とすること。
+- `mock/src/styles/globals.css` には、Tailwind/shadcnテーマ、body等のグローバル初期設定、疑似要素、Markdown/Mermaid/PDF.jsなど外部ライブラリやレンダラが生成するDOMに対するスタイルだけを残すこと。Reactコンポーネントに直接付けられる通常のレイアウト・余白・色・枠線・影・状態表示は、原則としてコンポーネント側のTailwind classNameへ記述し、`globals.css` にコンポーネント専用クラスを追加しないこと。
+- `mock/` の画面確認やスクリーンショット取得でPlaywrightを使う場合は、実利用に近い確認にするためChromeブラウザを指定すること。
 - TDD を原則とする。必ずRed、Green、Refactorの順に実装を行うこと。
 - Python の構造化データを `dict[str, object]`、`list[dict[str, object]]`、広すぎる `Any`、安易な`object`や `cast(...)` で表現しないこと。意味のある payload 型が必要な場合は `TypedDict` や dataclass を定義して使うこと。
 - コミットは日本語で行うこと。
