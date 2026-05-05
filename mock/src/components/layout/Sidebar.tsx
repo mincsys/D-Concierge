@@ -85,7 +85,7 @@ export function Sidebar({
         <div className="grid size-10 shrink-0 place-items-center overflow-hidden" aria-hidden="true">
           <img className="h-9 w-auto object-contain" src={brandLogoUrl} alt="" />
         </div>
-        <div className="whitespace-nowrap text-[26px] font-[780] tracking-normal text-[var(--dc-primary-strong)]">
+        <div className="translate-y-[-2px] whitespace-nowrap text-[26px] leading-none font-extrabold tracking-normal text-[var(--dc-primary-strong)]">
           D-Concierge
         </div>
         <Button
