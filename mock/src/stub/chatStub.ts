@@ -170,6 +170,50 @@ sequenceDiagram
           },
         ],
       },
+      {
+        id: "markdown-code-blocks",
+        markdown: `## コードブロックの表示例
+
+回答Markdownには、実行コマンドやJSON例を含めることがあります。本文中のインラインコードは \`output-schema.json\` や \`references\` のように表示します。
+
+\`\`\`json
+{
+  "answers": [
+    {
+      "text": "参照元を確認しながら回答します。",
+      "references": [
+        {
+          "source_type": "pdf",
+          "title": "SEC BOOKS 開発指針手引き",
+          "locator": {
+            "start_page": 10,
+            "end_page": 14
+          }
+        }
+      ]
+    }
+  ]
+}
+\`\`\`
+
+\`\`\`bash
+UV_CACHE_DIR=/tmp/uv-cache uv run python -m json.tool output-schema.json
+rg -n "references" docs output-schema.json codex/.codex
+\`\`\`
+
+\`\`\`
+this-is-a-very-long-line-for-horizontal-scroll-check: https://example.internal.local/d-concierge/reference-viewer/pdf/sec-books/iot-guide?page=10&range=10-14&session=requirements-success&block=markdown-code-blocks
+\`\`\``,
+        references: [
+          {
+            id: "sec-books-iot-guide-code-example-20-22",
+            title: "SEC BOOKS 開発指針手引き",
+            url: "/reference-pdf/iot-guide.pdf",
+            startPage: 20,
+            endPage: 22,
+          },
+        ],
+      },
     ],
   },
 };
