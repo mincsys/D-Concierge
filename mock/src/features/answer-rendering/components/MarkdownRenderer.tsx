@@ -108,13 +108,13 @@ function MarkdownCodeBlock({ language, source }: { language?: string; source: st
   }
 
   return (
-    <figure className="my-5 overflow-hidden rounded-xl border border-[var(--dc-border)] bg-[#edf1f6] shadow-[0_10px_28px_rgba(25,42,70,0.07)]">
-      <figcaption className="flex min-h-10 items-center justify-between gap-3 border-b border-[var(--dc-border-soft)] bg-[#e3e9f1] px-4 py-2">
-        <span className="font-mono text-xs font-[760] tracking-normal text-[var(--dc-muted-strong)]">
+    <figure className="my-5 overflow-hidden rounded-xl border border-[#404b59] bg-[#323c49] shadow-[0_12px_32px_rgba(25,42,70,0.18)]">
+      <figcaption className="flex min-h-10 items-center justify-between gap-3 border-b border-[#3a4552] bg-[#3f4a58] px-4 py-2">
+        <span className="font-mono text-xs font-[760] tracking-normal text-[#edf2f8]">
           {languageLabel}
         </span>
         <button
-          className="grid size-7 place-items-center rounded-md bg-transparent text-[var(--dc-muted-strong)] transition-colors hover:bg-[#f7f9fc] hover:text-[var(--dc-muted-strong)]"
+          className="grid size-7 place-items-center rounded-md bg-transparent text-[#d8dee6] transition-colors hover:bg-[#4a5563] hover:text-[#f8fbff]"
           type="button"
           aria-label={copied ? "コピーしました" : "コードをコピー"}
           onClick={handleCopy}
@@ -122,7 +122,7 @@ function MarkdownCodeBlock({ language, source }: { language?: string; source: st
           {copied ? <Check size={17} /> : <Copy size={17} />}
         </button>
       </figcaption>
-      <pre className="m-0 overflow-x-auto bg-[#edf1f6] px-4 py-3.5 text-[13.5px] leading-6 text-[var(--dc-text)]">
+      <pre className="m-0 overflow-x-auto bg-[#323c49] px-4 py-3.5 text-[13.5px] leading-6 text-[#d6dce4] [scrollbar-color:#b9bec5_#323c49] [&::-webkit-scrollbar]:h-3 [&::-webkit-scrollbar-track]:bg-[#323c49] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border-2 [&::-webkit-scrollbar-thumb]:border-[#323c49] [&::-webkit-scrollbar-thumb]:bg-[#b9bec5]">
         <code className="font-mono whitespace-pre">{source}</code>
       </pre>
     </figure>
