@@ -1,0 +1,4 @@
+interface:
+  display_name: "内部設計書の作成"
+  short_description: "外部設計を読み、対話して内部設計書群を組み立てるスキル"
+  default_prompt: "$write-internal-design-docs を使って、外部設計を読み、まずアーキテクチャ設計とディレクトリ構成の論点を整理してユーザと合意した後に docs/03_内部設計 配下の内部設計書群を作成してください。"

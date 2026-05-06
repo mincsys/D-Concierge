@@ -1,0 +1,4 @@
+interface:
+  display_name: "静的テスト設計書の作成"
+  short_description: "ツール解析に限定した静的テスト方針書を作成するスキル"
+  default_prompt: "$write-static-test-design-docs を使って、docs と既存設定を読み、ユーザと未確定項目を合意したうえで docs/04_テスト/01_静的テスト/静的テスト方針.md を作成してください。"

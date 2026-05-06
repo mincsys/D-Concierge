@@ -1,0 +1,4 @@
+interface:
+  display_name: "外部設計書作成"
+  short_description: "要件を読み、論点合意後に外部設計書群を組み立てる"
+  default_prompt: "$write-external-design-docs を使って、要件定義書を読み、未確定論点を提案付きで整理して合意した後に docs/02_外部設計 配下の外部設計書群を作成してください。"

@@ -1,0 +1,4 @@
+interface:
+  display_name: "コーディング規約の作成"
+  short_description: "docs を読み実装者向けコーディング規約を作成するスキル"
+  default_prompt: "$write-coding-standards-docs を使って、docs と関連設定を精読し、不明点のみユーザと合意したうえで docs/05_開発標準/02_コーディング規約/コーディング規約.md を作成してください。"

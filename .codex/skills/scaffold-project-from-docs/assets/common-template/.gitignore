@@ -1,0 +1,16 @@
+# Common local artifacts
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Temporary workspace files
+tmp/
+temp/

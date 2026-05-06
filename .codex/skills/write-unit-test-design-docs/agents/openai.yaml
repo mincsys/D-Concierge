@@ -1,0 +1,4 @@
+interface:
+  display_name: "単体テスト設計書の作成"
+  short_description: "対話しながら単体テスト方針書を作成するスキル"
+  default_prompt: "$write-unit-test-design-docs を使って、docs と既存設計を読み、ユーザと未確定項目を合意したうえで docs/04_テスト/02_単体テスト/単体テスト方針.md を作成してください。"

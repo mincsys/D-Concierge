@@ -1,0 +1,4 @@
+interface:
+  display_name: "要件定義書作成"
+  short_description: "要望整理から日本語のウォーターフォール向け要件定義書を作成"
+  default_prompt: "$write-requirements-docs を使って、要求や既存資料を整理し、docs/ 配下にウォーターフォール向けの要件定義書を作成してください。"

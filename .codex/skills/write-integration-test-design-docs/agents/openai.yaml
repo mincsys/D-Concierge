@@ -1,0 +1,4 @@
+interface:
+  display_name: "結合テスト設計書の作成"
+  short_description: "対話しながら結合テスト方針書を作成する専用スキル"
+  default_prompt: "$write-integration-test-design-docs を使って、docs と既存設計を読み、ユーザと未確定項目を1問ずつ合意したうえで docs/04_テスト/03_結合テスト/結合テスト方針.md を作成してください。"

@@ -1,0 +1,4 @@
+interface:
+  display_name: "総合テスト設計書の作成"
+  short_description: "対話して総合テスト方針書とテスト仕様・結果を作成するスキル"
+  default_prompt: "$write-system-test-design-docs を使って、docs と既存設計を読み、ユーザと未確定項目を合意したうえで docs/04_テスト/04_総合テスト/総合テスト方針.md と必要な テスト仕様・結果/〇〇テスト.md を作成してください。"

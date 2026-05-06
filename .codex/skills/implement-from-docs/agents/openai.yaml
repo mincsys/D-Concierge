@@ -1,0 +1,4 @@
+interface:
+  display_name: "Implement From Docs"
+  short_description: "docs準拠で対象確認、契約網羅、TDD実装、品質検証を一貫実行する"
+  default_prompt: "Use $implement-from-docs to confirm the implementation scope, build a contract matrix, and implement from docs with TDD and required tests."

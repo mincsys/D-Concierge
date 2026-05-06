@@ -1,0 +1,4 @@
+interface:
+  display_name: "設計書起点スキャフォールド"
+  short_description: "設計書を読み必要な初期スキャフォールドだけを組み立てるスキル"
+  default_prompt: "$scaffold-project-from-docs を使って、まず docs の主要 6 文書を読み、必要なインストール一覧を提示して許可を待ってから、案件に必要な初期スキャフォールドだけを作成してください。"

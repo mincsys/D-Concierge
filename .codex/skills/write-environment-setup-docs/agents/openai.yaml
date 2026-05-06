@@ -1,0 +1,4 @@
+interface:
+  display_name: "環境構築書の作成"
+  short_description: "既存設計を読み開発環境構築書と本番環境構築書を作成するスキル"
+  default_prompt: "$write-environment-setup-docs を使って、docs、README、設定ファイルを読み、不明点のみユーザと合意したうえで docs/05_開発標準/01_環境構築/開発環境構築.md と docs/05_開発標準/01_環境構築/本番環境構築.md を作成してください。"
