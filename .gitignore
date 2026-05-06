@@ -5,8 +5,12 @@ __pycache__/
 /codex/.codex/*
 !/codex/.codex/skills/custom/
 !/codex/.codex/AGENTS.md
+/codex/.codex_validator/*
+!/codex/.codex_validator/skills/custom/
+!/codex/.codex_validator/AGENTS.md
 /codex/readonly/
 /codex/sessions/
+/codex/sessions_validator/
 /mock/dist/
 /mock/node_modules/
 /mock/tsconfig.tsbuildinfo
