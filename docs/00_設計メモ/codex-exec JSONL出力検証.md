@@ -58,7 +58,7 @@ resume時の最小例:
 {"type":"item.completed","item":{"type":"agent_message","text":"{\"answers\":[{\"text\":\"はい。resumeでも中間JSONLの継続と最終回答の受け取りを検証できます。\",\"references\":[]}]}"}}
 ```
 
-設計上は、D-ConciergeのチャットセッションIDとは別に、生成用Codex側の会話継続IDを保存する。新規チャットの初回実行では通常の `codex exec` を使い、2ターン目以降の継続指示では同じ作業ディレクトリを指定して `codex exec resume <codex-thread-id>` を使う。
+設計上は、チャットに保存したD-ConciergeのセッションIDとは別に、生成用Codex側の会話継続IDを保存する。新規チャットの初回実行では通常の `codex exec` を使い、2ターン目以降の継続指示では同じ作業ディレクトリを指定して `codex exec resume <codex-thread-id>` を使う。
 
 ## 検証用codex execのresume設計判断
 

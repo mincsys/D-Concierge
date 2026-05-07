@@ -74,11 +74,11 @@
 
 - 共有データソース配置先は `datasource.dir` から決まる。
 - 生成用 `CODEX_HOME` は `codex.home` から決まる。
-- 生成用作業ディレクトリは `codex.workdir/<user-id>/<session-id>` から決まる。
+- 生成用作業ディレクトリは、DBに保存された利用者IDとセッションIDを使い、`codex.workdir/<user-id>/<session-id>` から決まる。
 - 生成用出力スキーマは `codex.output_schema` から決まる。
 - 保存済みCodex成果物領域は `codex.saved_artifacts_dir` から決まる。
 - 検証用 `CODEX_HOME` は `validator.codex.home` から決まる。
-- 検証用作業ディレクトリは `validator.codex.workdir/<user-id>/<session-id>` から決まる。
+- 検証用作業ディレクトリは、DBに保存された利用者IDとセッションIDを使い、`validator.codex.workdir/<user-id>/<session-id>` から決まる。
 - 検証用出力スキーマは `validator.codex.output_schema` から決まる。
 - Windows/Linuxのパス区切り、ドライブ文字、大文字小文字差異はバックエンド内部で正規化する。
 
