@@ -9,6 +9,7 @@ __pycache__/
 !/codex/.codex_validator/skills/custom/
 !/codex/.codex_validator/AGENTS.md
 /codex/readonly/
+/codex/saved_artifacts
 /codex/sessions/
 /codex/sessions_validator/
 /mock/dist/
