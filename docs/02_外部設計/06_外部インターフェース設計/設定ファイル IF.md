@@ -46,7 +46,6 @@
 | `validator.codex.workdir` | 必須 | 検証用セッションベースディレクトリ。 | codex exec IF |
 | `validator.codex.output_schema` | 必須 | 検証用codex execの検証結果出力契約。 | 回答検証 |
 | `database.url` | 必須 | データベース接続先。 | 永続化 |
-| `server.api_base_path` | 必須 | REST APIのベースパス。 | 画面バックエンドAPI |
 | `server.timeout_seconds` | 必須 | 回答生成から検証完了までのタイムアウト値。 | 実行制約 |
 | `trace_log.dir` | 必須 | JSONL形式のトレースログファイルの保存先。 | ログ設計 |
 
