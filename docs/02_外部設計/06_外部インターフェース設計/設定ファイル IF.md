@@ -37,12 +37,12 @@
 | `ui.welcome_message` | 任意 | 開始画面の入力欄上に表示する文言。 | `GET /api/app-config` |
 | `ui.input_suggestions` | 任意 | 開始画面の入力候補チップ文字列配列。 | `GET /api/app-config` |
 | `datasource.dir` | 必須 | 共有データソースのベースディレクトリ。 | 参照元表示、回答生成、回答検証 |
-| `codex.home` | 必須 | 生成用codex execのホームディレクトリ。 | codex exec IF |
+| `codex.home` | 必須 | 生成指示を記載した `AGENTS.md` と生成用Skillsを含む、生成用codex execのホームディレクトリ。 | codex exec IF |
 | `codex.workdir` | 必須 | 生成用セッションベースディレクトリ。 | codex exec IF |
 | `codex.output_schema` | 必須 | 生成用codex execの出力契約。 | 回答生成、形式検証 |
 | `codex.saved_artifacts_dir` | 必須 | 検証済み回答が参照するCodex成果物本体の保存領域。 | Codex成果物配信 |
 | `validator.max_retries` | 必須 | 検証失敗後の再生成上限。 | 回答検証 |
-| `validator.codex.home` | 必須 | 検証用codex execのホームディレクトリ。 | codex exec IF |
+| `validator.codex.home` | 必須 | 検証指示を記載した `AGENTS.md` と検証用Skillsを含む、検証用codex execのホームディレクトリ。 | codex exec IF |
 | `validator.codex.workdir` | 必須 | 検証用セッションベースディレクトリ。 | codex exec IF |
 | `validator.codex.output_schema` | 必須 | 検証用codex execの検証結果出力契約。 | 回答検証 |
 | `database.url` | 必須 | データベース接続先。 | 永続化 |
@@ -73,10 +73,12 @@
 
 - 共有データソース配置先は `datasource.dir` から決まる。
 - 生成用 `CODEX_HOME` は `codex.home` から決まる。
+- 生成指示と生成用Skillsは、`codex.home` 配下の `AGENTS.md` とSkillsから決まる。
 - 生成用作業ディレクトリは、DBに保存された利用者IDとセッションIDを使い、`codex.workdir/<user-id>/<session-id>` から決まる。
 - 生成用出力スキーマは `codex.output_schema` から決まる。
 - 保存済みCodex成果物領域は `codex.saved_artifacts_dir` から決まる。
 - 検証用 `CODEX_HOME` は `validator.codex.home` から決まる。
+- 検証指示と検証用Skillsは、`validator.codex.home` 配下の `AGENTS.md` とSkillsから決まる。
 - 検証用作業ディレクトリは、DBに保存された利用者IDとセッションIDを使い、`validator.codex.workdir/<user-id>/<session-id>` から決まる。
 - 検証用出力スキーマは `validator.codex.output_schema` から決まる。
 - Windows/Linuxのパス区切り、ドライブ文字、大文字小文字差異はバックエンド内部で正規化する。
