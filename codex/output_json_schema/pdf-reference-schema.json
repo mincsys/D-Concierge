@@ -21,6 +21,7 @@
               "type": "object",
               "properties": {
                 "source_type": {
+                  "type": "string",
                   "const": "pdf"
                 },
                 "locator": {
