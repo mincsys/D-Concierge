@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "description": "検証結果。合格可否と、不合格時の詳細な指摘内容を返す。",
+  "properties": {
+    "valid": {
+      "type": "boolean",
+      "description": "検証に合格した場合はtrue、不合格の場合はfalse。"
+    },
+    "comment": {
+      "type": "string",
+      "description": "validがtrue(合格)の場合は空文字。false(不合格)の場合は、修正指示としてそのまま利用できる詳細な指摘内容。"
+    }
+  },
+  "required": ["valid", "comment"],
+  "additionalProperties": false
+}
