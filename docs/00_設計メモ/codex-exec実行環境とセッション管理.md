@@ -91,9 +91,13 @@ codex exec --json --output-schema codex/output_json_schema/validator_schema.json
 
 `artifacts/` 内のファイルは、セッション継続時にcodex execが後から書き換える可能性がある。そのため、画面表示や履歴表示では `artifacts/` 内のファイルを直接参照しない。
 
-バックエンドは回答受領時に、回答Markdownや回答JSONから参照される `artifacts/` 内のファイルを検証し、保存済みCodex成果物領域へコピーする。
+バックエンドは検証成功後に、採用された回答Markdownや回答JSONから参照される `artifacts/` 内のファイルを検証し、保存済みCodex成果物領域へコピーする。
+
+保存先は `codex.saved_artifacts_dir/<run_id>/<artifact_id>.<拡張子>` とする。`<run_id>` は採用元のチャット実行処理ID、`<artifact_id>` はCodex成果物ID、拡張子はMIMEタイプに対応するものを使用する。
 
 回答Markdown内に含まれるセッション内 `artifacts/` への内部パスは、保存済みCodex成果物へコピーした後に `/api/artifacts/{artifact_id}` へ置換する。DBには置換後のMarkdownを回答本文として保存する。
+
+検証失敗、再生成で不採用になった回答候補、キャンセル、エラー、タイムアウトの成果物候補は保存済みCodex成果物領域へコピーしない。
 
 この扱いにより、codex execがセッションディレクトリ内のファイルを更新しても、過去のチャット履歴表示は保存時点の内容を維持できる。
 
@@ -118,6 +122,5 @@ codex exec --json --output-schema codex/output_json_schema/validator_schema.json
 - `<user-id>/<session-id>/` 全体のサイズ上限
 - セッションディレクトリの保存期間
 - 古いセッションディレクトリのクリーンアップ方針
-- 保存済みCodex成果物のファイル命名規則
 - Codex成果物のMIMEタイプと拡張子の許可リスト
 - 保存済みCodex成果物領域の容量上限とクリーンアップ方針

@@ -40,7 +40,7 @@
 | `codex.home` | 必須 | 生成用codex execのホームディレクトリ。 | codex exec IF |
 | `codex.workdir` | 必須 | 生成用セッションベースディレクトリ。 | codex exec IF |
 | `codex.output_schema` | 必須 | 生成用codex execの出力契約。 | 回答生成、形式検証 |
-| `codex.saved_artifacts_dir` | 必須 | 生成用codex execのセッション内 `artifacts/` からコピーした保存済みCodex成果物本体の保存領域。 | Codex成果物配信 |
+| `codex.saved_artifacts_dir` | 必須 | 検証済み回答が参照するCodex成果物本体の保存領域。 | Codex成果物配信 |
 | `validator.max_retries` | 必須 | 検証失敗後の再生成上限。 | 回答検証 |
 | `validator.codex.home` | 必須 | 検証用codex execのホームディレクトリ。 | codex exec IF |
 | `validator.codex.workdir` | 必須 | 検証用セッションベースディレクトリ。 | codex exec IF |
