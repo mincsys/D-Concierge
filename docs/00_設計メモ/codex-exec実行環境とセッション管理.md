@@ -67,11 +67,26 @@ PDF検索アプリを構成する場合の設定例:
 
 ```bash
 CODEX_HOME=codex/.codex \
-codex exec --json \
-  --output-schema codex/output_json_schema/pdf-reference-schema.json \
+codex exec --json --output-schema codex/output_json_schema/pdf-reference-schema.json \
+  --output-last-message codex/sessions/<user-id>/<session-id>/tmp/last-message.json \
   -C codex/sessions/<user-id>/<session-id> \
   "<利用者の質問>"
 ```
+
+継続質問では、初回実行時のJSONLに含まれる `thread.started` の `thread_id` を保存しておき、同じ生成用作業ディレクトリを指定して `resume` する。
+
+PDF検索アプリを構成する場合の継続質問の設定例:
+
+```bash
+CODEX_HOME=codex/.codex \
+codex exec --json --output-schema codex/output_json_schema/pdf-reference-schema.json \
+  --output-last-message codex/sessions/<user-id>/<session-id>/tmp/last-message.json \
+  -C codex/sessions/<user-id>/<session-id> \
+  resume <codex-thread-id> \
+  "<利用者の継続質問>"
+```
+
+`resume` と `--output-schema` を併用する場合、`--json`、`--output-schema`、`--output-last-message`、`-C` は `resume` より前の `codex exec` オプションとして指定する。`resume` の後ろには、Codex側の継続対象IDと継続質問を渡す。
 
 検証用Codex execでは、`CODEX_HOME` に `validator.codex.home`、`-C` に `validator.codex.workdir/<user-id>/<session-id>` を指定する。
 
@@ -79,7 +94,7 @@ PDF検索アプリを構成する場合の設定例:
 
 ```bash
 CODEX_HOME=codex/.codex_validator \
-codex exec --json \
+codex exec --json --output-schema <検証結果スキーマ> \
   -C codex/sessions_validator/<user-id>/<session-id> \
   "<参照元検証依頼>"
 ```
@@ -87,6 +102,8 @@ codex exec --json \
 `CODEX_HOME` は、Codex execが読み込む `AGENTS.md`、Skills、Codex設定を含む `.codex` ディレクトリを指す。PDF検索アプリを構成する場合の設定例では、生成用に `CODEX_HOME=codex/.codex`、検証用に `CODEX_HOME=codex/.codex_validator` を使う。
 
 `-C` は、Codex execの作業ディレクトリを指す。D-Conciergeでは、DB上の利用者IDとセッションIDを組み合わせたディレクトリを指定する。
+
+`resume <codex-thread-id>` に渡すIDは、Codex execが返すCodex側の会話継続IDである。D-ConciergeのチャットセッションIDとは別の値として管理し、チャット履歴に紐づけて保存する。
 
 生成用Codex execからは、セッションディレクトリ直下に次のパスが見える。
 
@@ -109,11 +126,29 @@ codex exec --json \
 
 `artifacts/` は生成用Codex execが生成した画像、HTML、CSV、その他の出力ファイルを置く領域である。回答Markdownから参照される生成物は、まずこの領域に出力される。
 
+## JSONLと最終回答の受信
+
+生成用Codex execは、`--json` と `--output-schema` を併用して起動する。`--output-schema` を指定しないパターンは、D-Conciergeの回答生成経路では使わない。
+
+`--json` は、標準出力へJSONLイベントを逐次出すために使う。バックエンドはこの標準出力を行単位で読み取り、実行開始、ツール実行、エラー、完了などのイベントを処理する。
+
+`--output-schema` は、最終回答を設定された回答JSON Schemaへ寄せるために使う。技術検証では、最終回答JSONは `item.completed` の `agent_message.text` に文字列として出力された。
+
+`--output-last-message` は、最後のエージェントメッセージをファイルとして残すために併用できる。標準出力JSONLの読み取りを主経路としつつ、最終回答の取りこぼし確認やプロセス終了後の再読込に使う。
+
+採用する使い分けは次の通りである。
+
+- 標準出力JSONL: 実行状態、エラー、ツール実行、最後の `agent_message` を逐次受け取る。
+- `--output-last-message`: 正常完了時の最後のメッセージをファイルから確認する。
+- 回答JSONの固定検証: JSONLまたは `--output-last-message` から得た最終回答候補に対して必ず実施する。
+
+`--output-schema` に渡すJSON Schemaは、Codex CLIが内部で利用する応答形式として受理される必要がある。技術検証では、`const` を使うプロパティにも `type` が必要だった。アプリケーション設定で指定するスキーマは、事前にCodex exec起動時の受理条件を満たすことを確認する。
+
 ## セッションの扱い
 
 新規チャットでは、DB上の利用者ID配下に新しい `<session-id>/` を作成する。他利用者、他セッションの `tmp/` や `artifacts/` は参照しない。
 
-過去チャットを継続する場合は、既存の `codex.workdir/<user-id>/<session-id>/` をそのまま利用する。同じ作業ディレクトリを使うことで、Codex execは前回までの `tmp/` や `artifacts/` を参照できる。
+過去チャットを継続する場合は、既存の `codex.workdir/<user-id>/<session-id>/` をそのまま利用し、初回実行時に保存したCodex側の会話継続IDを使って `codex exec resume` で起動する。同じ作業ディレクトリを使うことで、Codex execは前回までの `tmp/` や `artifacts/` を参照できる。
 
 検証用セッションは、生成用セッションと同じ `<user-id>` と `<session-id>` を使って `validator.codex.workdir/<user-id>/<session-id>/` に作成する。
 
