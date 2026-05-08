@@ -7,8 +7,8 @@ import type { PdfReference } from "@/features/reference-viewer/model/types";
 import { cn } from "@/lib/utils";
 
 type PageRange = {
-  startPage: number;
-  endPage: number;
+  pageStart: number;
+  pageEnd: number;
 };
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -29,15 +29,10 @@ export function PdfPageViewer({
   const [pdfDoc, setPdfDoc] = useState<PDFDocumentProxy | null>(null);
   const [containerWidth, setContainerWidth] = useState(760);
   const [pagesToRender, setPagesToRender] = useState<Set<number>>(() => new Set());
-  const referencePageRange = useMemo(() => {
-    if (!pdfDoc) {
-      return {
-        startPage: reference.startPage,
-        endPage: Math.max(reference.startPage, reference.endPage),
-      };
-    }
-    return normalizePdfPageRange(reference, pdfDoc.numPages);
-  }, [pdfDoc, reference.endPage, reference.startPage]);
+  const referencePageRange = useMemo(
+    () => (pdfDoc ? getValidPdfPageRange(reference, pdfDoc.numPages) : null),
+    [pdfDoc, reference.locator.page_end, reference.locator.page_start],
+  );
   const referencePages = useMemo(
     () => createPages(referencePageRange),
     [referencePageRange],
@@ -64,8 +59,8 @@ export function PdfPageViewer({
           return;
         }
         setPdfDoc(loadedPdfDoc);
-        const normalizedPageRange = normalizePdfPageRange(reference, loadedPdfDoc.numPages);
-        setPagesToRender(createInitialPagesToRender(normalizedPageRange, loadedPdfDoc.numPages));
+        const validPageRange = getValidPdfPageRange(reference, loadedPdfDoc.numPages);
+        setPagesToRender(createInitialPagesToRender(validPageRange, loadedPdfDoc.numPages));
         const nextContainerWidth = Math.min(
           850,
           Math.max(620, (containerRef.current?.clientWidth ?? 804) - 44),
@@ -93,7 +88,7 @@ export function PdfPageViewer({
 
     renderedPagesRef.current = new Set(renderedPagesRef.current).add(page);
 
-    if (page === referencePageRange.startPage && !didScrollToTargetRef.current) {
+    if (page === referencePageRange?.pageStart && !didScrollToTargetRef.current) {
       didScrollToTargetRef.current = true;
       requestAnimationFrame(() => {
         const container = containerRef.current;
@@ -107,7 +102,7 @@ export function PdfPageViewer({
         });
       });
     }
-  }, [referencePageRange.startPage]);
+  }, [referencePageRange?.pageStart]);
 
   const handlePageVisible = useCallback((page: number) => {
     setPagesToRender((current) => {
@@ -143,7 +138,7 @@ export function PdfPageViewer({
                 )}
                 data-page-number={page}
                 key={page}
-                ref={page === referencePageRange.startPage ? targetPageRef : undefined}
+                ref={page === referencePageRange?.pageStart ? targetPageRef : undefined}
               >
                 <PdfPageFrame
                   containerWidth={containerWidth}
@@ -163,26 +158,35 @@ export function PdfPageViewer({
   );
 }
 
-function normalizePdfPageRange(reference: PdfReference, totalPages: number): PageRange {
-  const startPage = Math.min(Math.max(1, reference.startPage), totalPages);
-  const endPage = Math.min(Math.max(startPage, reference.endPage), totalPages);
+function getValidPdfPageRange(reference: PdfReference, totalPages: number): PageRange | null {
+  const pageStart = reference.locator.page_start;
+  const pageEnd = reference.locator.page_end;
+  if (pageStart < 1 || pageEnd < pageStart || pageEnd > totalPages) {
+    return null;
+  }
 
-  return { startPage, endPage };
+  return { pageStart, pageEnd };
 }
 
-function createPages(pageRange: PageRange) {
+function createPages(pageRange: PageRange | null) {
+  if (!pageRange) {
+    return [];
+  }
+
   return Array.from(
-    { length: pageRange.endPage - pageRange.startPage + 1 },
-    (_, index) => pageRange.startPage + index,
+    { length: pageRange.pageEnd - pageRange.pageStart + 1 },
+    (_, index) => pageRange.pageStart + index,
   );
 }
 
-function createInitialPagesToRender(pageRange: PageRange, totalPages: number) {
-  const pages = [
-    pageRange.startPage - 1,
-    ...createPages(pageRange),
-    pageRange.endPage + 1,
-  ].filter((page) => page >= 1 && page <= totalPages);
+function createInitialPagesToRender(pageRange: PageRange | null, totalPages: number) {
+  const pages = pageRange
+    ? [
+        pageRange.pageStart - 1,
+        ...createPages(pageRange),
+        pageRange.pageEnd + 1,
+      ].filter((page) => page >= 1 && page <= totalPages)
+    : [1].filter((page) => page <= totalPages);
 
   return new Set(pages);
 }

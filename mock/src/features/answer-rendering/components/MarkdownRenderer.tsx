@@ -132,7 +132,7 @@ function MarkdownCodeBlock({ language, source }: { language?: string; source: st
 function isAllowedArtifactImageSrc(src: string) {
   try {
     const url = new URL(src, window.location.origin);
-    return url.origin === window.location.origin && url.pathname.startsWith("/artifacts/");
+    return url.origin === window.location.origin && url.pathname.startsWith("/api/artifacts/");
   } catch {
     return false;
   }

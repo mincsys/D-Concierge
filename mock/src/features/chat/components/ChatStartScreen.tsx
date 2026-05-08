@@ -4,14 +4,17 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ChatComposer } from "./ChatComposer";
 
-const suggestions = [
-  { label: "IPA資料の要点を教えて", icon: FileText },
-  { label: "要件定義の型どころを整理して", icon: ListChecks },
-  { label: "SEC BOOKSを検索して", icon: Search },
-  { label: "PDFの参照元を明示して比較して", icon: Split },
-];
+const suggestionIcons = [FileText, ListChecks, Search, Split];
 
-export function ChatStartScreen({ onStart }: { onStart: (message: string) => void }) {
+export function ChatStartScreen({
+  inputSuggestions,
+  onStart,
+  welcomeMessage,
+}: {
+  inputSuggestions: string[];
+  onStart: (message: string) => void;
+  welcomeMessage?: string;
+}) {
   const [message, setMessage] = useState("");
   const [focusSignal, setFocusSignal] = useState(0);
 
@@ -23,9 +26,11 @@ export function ChatStartScreen({ onStart }: { onStart: (message: string) => voi
   return (
     <section className="grid min-h-screen min-w-0 place-items-center overflow-hidden px-12">
       <div className="w-full max-w-[1040px] translate-y-[-12px]">
-        <h1 className="mb-8 text-center text-[25px] font-[780] tracking-normal text-[var(--dc-primary-strong)]">
-          何なりとお申し付けください
-        </h1>
+        {welcomeMessage ? (
+          <h1 className="mb-8 text-center text-[25px] font-[780] tracking-normal text-[var(--dc-primary-strong)]">
+            {welcomeMessage}
+          </h1>
+        ) : null}
         <ChatComposer
           autoFocus
           className="mx-auto w-full"
@@ -34,20 +39,26 @@ export function ChatStartScreen({ onStart }: { onStart: (message: string) => voi
           onValueChange={setMessage}
           onSubmit={onStart}
         />
-        <div className="mt-[34px] flex flex-wrap justify-center gap-4">
-          {suggestions.map(({ label, icon: Icon }) => (
-            <Button
-              className="h-[54px] gap-3 rounded-[27px] border border-[var(--dc-border)] bg-white px-5 text-base font-bold text-[var(--dc-text)] shadow-[0_9px_22px_rgba(23,36,61,0.03)] hover:bg-white [&_svg]:text-[var(--dc-primary)]"
-              key={label}
-              type="button"
-              variant="outline"
-              onClick={() => handleSuggestionClick(label)}
-            >
-              <Icon size={22} />
-              {label}
-            </Button>
-          ))}
-        </div>
+        {inputSuggestions.length > 0 ? (
+          <div className="mt-[34px] flex flex-wrap justify-center gap-4">
+            {inputSuggestions.map((label, index) => {
+              const Icon = suggestionIcons[index % suggestionIcons.length];
+
+              return (
+                <Button
+                  className="h-[54px] gap-3 rounded-[27px] border border-[var(--dc-border)] bg-white px-5 text-base font-bold text-[var(--dc-text)] shadow-[0_9px_22px_rgba(23,36,61,0.03)] hover:bg-white [&_svg]:text-[var(--dc-primary)]"
+                  key={label}
+                  type="button"
+                  variant="outline"
+                  onClick={() => handleSuggestionClick(label)}
+                >
+                  <Icon size={22} />
+                  {label}
+                </Button>
+              );
+            })}
+          </div>
+        ) : null}
       </div>
     </section>
   );

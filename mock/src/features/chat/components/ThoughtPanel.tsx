@@ -1,16 +1,16 @@
 import { ChevronDown, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import type { ThoughtStep } from "@/features/chat/model/types";
+import type { IntermediateMessage } from "@/features/chat/model/types";
 import { cn } from "@/lib/utils";
 
 export function ThoughtPanel({
   open,
-  steps,
+  messages,
   onToggle,
 }: {
   open: boolean;
-  steps: ThoughtStep[];
+  messages: IntermediateMessage[];
   onToggle: () => void;
 }) {
   return (
@@ -32,8 +32,8 @@ export function ThoughtPanel({
       </Button>
       {open ? (
         <div className="mt-[11px] mb-[25px] ml-[60px] border-l-2 border-[#aab5c8] pl-[22px] text-base leading-[1.9] font-normal text-[#4f5f78] max-[1100px]:ml-[60px]">
-          {steps.map((step) => (
-            <div key={step.id}>{step.text}</div>
+          {messages.map((message) => (
+            <div key={message.id}>{message.text}</div>
           ))}
         </div>
       ) : null}

@@ -1,42 +1,28 @@
-import type { ChatAnswerBlock, ChatSession, ThoughtStep } from "@/features/chat/model/types";
+import type { ChatAnswer } from "@/features/chat/model/types";
 
-const DEFAULT_THOUGHT_STEP_DELAY_MS = 450;
 const DEFAULT_THOUGHT_COLLAPSE_DELAY_MS = 500;
 const DEFAULT_ANSWER_CHUNK_DELAY_MS = 30;
 const DEFAULT_ANSWER_BLOCK_DELAY_MS = 220;
 
-type RevealSubmittedSessionOptions = {
-  completedSession: ChatSession;
+type RevealSubmittedAnswerOptions = {
+  runId: string;
+  answer: ChatAnswer;
   isCurrent: () => boolean;
-  onThoughtStep: (step: ThoughtStep) => void;
   onThoughtComplete: () => void;
-  onAnswerBlockStart: (block: ChatAnswerBlock) => void;
-  onAnswerBlockMarkdown: (blockId: string, markdown: string) => void;
-  onAnswerBlockComplete: (block: ChatAnswerBlock) => void;
+  onAnswerStart: (runId: string, answer: ChatAnswer) => void;
+  onAnswerMarkdown: (runId: string, markdown: string) => void;
+  onAnswerComplete: (runId: string, answer: ChatAnswer) => void;
 };
 
-export async function revealSubmittedSession({
-  completedSession,
+export async function revealSubmittedAnswer({
+  runId,
+  answer,
   isCurrent,
-  onThoughtStep,
   onThoughtComplete,
-  onAnswerBlockStart,
-  onAnswerBlockMarkdown,
-  onAnswerBlockComplete,
-}: RevealSubmittedSessionOptions) {
-  for (const step of completedSession.thoughtSteps) {
-    if (!isCurrent()) {
-      return;
-    }
-
-    onThoughtStep(step);
-    await delay(DEFAULT_THOUGHT_STEP_DELAY_MS);
-  }
-
-  if (!isCurrent()) {
-    return;
-  }
-
+  onAnswerStart,
+  onAnswerMarkdown,
+  onAnswerComplete,
+}: RevealSubmittedAnswerOptions) {
   await delay(DEFAULT_THOUGHT_COLLAPSE_DELAY_MS);
 
   if (!isCurrent()) {
@@ -44,32 +30,25 @@ export async function revealSubmittedSession({
   }
 
   onThoughtComplete();
+  onAnswerStart(runId, answer);
 
-  for (const block of completedSession.answer.blocks) {
+  let visibleMarkdown = "";
+  for (const chunk of splitRevealChunks(answer.markdown)) {
     if (!isCurrent()) {
       return;
     }
 
-    onAnswerBlockStart(block);
-
-    let visibleMarkdown = "";
-    for (const chunk of splitRevealChunks(block.markdown)) {
-      if (!isCurrent()) {
-        return;
-      }
-
-      visibleMarkdown += chunk;
-      onAnswerBlockMarkdown(block.id, visibleMarkdown);
-      await delay(DEFAULT_ANSWER_CHUNK_DELAY_MS);
-    }
-
-    if (!isCurrent()) {
-      return;
-    }
-
-    onAnswerBlockComplete(block);
-    await delay(DEFAULT_ANSWER_BLOCK_DELAY_MS);
+    visibleMarkdown += chunk;
+    onAnswerMarkdown(runId, visibleMarkdown);
+    await delay(DEFAULT_ANSWER_CHUNK_DELAY_MS);
   }
+
+  if (!isCurrent()) {
+    return;
+  }
+
+  onAnswerComplete(runId, answer);
+  await delay(DEFAULT_ANSWER_BLOCK_DELAY_MS);
 }
 
 export function splitRevealChunks(markdown: string) {

@@ -17,7 +17,7 @@ export function ReferenceViewerDialog({
   }
 
   const pageRangeLabel = formatPdfPageRange(reference);
-  const dialogDescription = `${reference.title} PDF ${pageRangeLabel}`;
+  const dialogDescription = `${reference.label} PDF ${pageRangeLabel}`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -29,7 +29,7 @@ export function ReferenceViewerDialog({
           <DialogHeader>
             <span className="text-xs font-[820] text-[var(--dc-primary)]">参照元PDF</span>
             <DialogTitle className="mt-[3px] text-xl leading-[1.3] font-bold">
-              {reference.title}
+              {reference.label}
             </DialogTitle>
             <DialogDescription className="sr-only">{dialogDescription}</DialogDescription>
           </DialogHeader>

@@ -1,40 +1,75 @@
-import type { ChatHistoryItem, ChatSession } from "@/features/chat/model/types";
+import type {
+  AppConfigResponse,
+  ChatDetailResponse,
+  ChatHistoryResponseItem,
+  SseEvent,
+} from "@/features/chat/model/types";
 
-export const stubChatHistories: ChatHistoryItem[] = [
-  { id: "requirements-success", title: "要件定義を成功させるポイント" },
-  { id: "ipa-publication-qa", title: "IPA刊行物QA" },
-  { id: "requirements-key-items", title: "要件定義の肝どころ" },
-  { id: "sec-books-structure", title: "SEC BOOKS 構成検索" },
-  { id: "pdf-reference-link", title: "PDF相関リンク設計" },
-  { id: "codex-exec-json", title: "Codex exec JSON設計" },
-  { id: "agentic-search-comparison", title: "Agentic Search比較" },
-  { id: "systemization-plan", title: "システム化計画の進め方" },
-  { id: "non-functional-requirements", title: "非機能要件の整理方法" },
-  { id: "development-process-guide", title: "開発プロセス選定ガイド" },
-  { id: "test-view-items", title: "テスト観点の洗い出し" },
-  { id: "rfp-checklist", title: "RFP作成のチェックリスト" },
+export const stubAppConfig: AppConfigResponse = {
+  welcome_message: "何なりとお申し付けください",
+  input_suggestions: [
+    "IPA資料の要点を整理して",
+    "要件定義の観点を整理して",
+    "SEC BOOKSを検索して",
+    "PDFの参照元を明示して比較して",
+  ],
+};
+
+export const stubChatHistories: ChatHistoryResponseItem[] = [
+  {
+    chat_id: "1c1f6f9a-4b1a-4f8e-91a0-62e6d62c0d10",
+    title: "要件定義を成功させるポイント",
+    latest_run_id: "4e5e7e31-2dd6-47b8-a2e2-3c58a2a2e381",
+    latest_state: "完了",
+    updated_at: "2026-05-08T10:00:00+09:00",
+  },
+  {
+    chat_id: "2778fdaf-d3bf-42f9-9869-1939e2cd0a01",
+    title: "IPA刊行物QA",
+    latest_run_id: "c4b449ea-7e45-4e41-8888-fd2d973190ef",
+    latest_state: "完了",
+    updated_at: "2026-05-07T17:35:00+09:00",
+  },
+  {
+    chat_id: "0dfb837f-c3cf-4d3c-9219-bf1c4f7fd2e7",
+    title: "要件定義の肝どころ",
+    latest_run_id: "3e0377eb-4c3d-4086-9fb0-3e448a84e846",
+    latest_state: "完了",
+    updated_at: "2026-05-06T14:18:00+09:00",
+  },
+  {
+    chat_id: "c76ced7f-0192-4fc9-90a4-1091441f5cde",
+    title: "公開資料の構成検索",
+    latest_run_id: "47b5f723-8919-462b-9f16-7c7934dcaa62",
+    latest_state: "完了",
+    updated_at: "2026-05-05T11:20:00+09:00",
+  },
+  {
+    chat_id: "a2064873-8c32-45ab-8853-1b90bd454fb7",
+    title: "PDF相関リンク設計",
+    latest_run_id: "9e59d303-3ad9-43e6-8de2-8c69424b1630",
+    latest_state: "完了",
+    updated_at: "2026-05-04T09:40:00+09:00",
+  },
 ];
 
-export const stubChatSession: ChatSession = {
-  id: "requirements-success",
-  userMessage: {
-    id: "message-user-1",
-    role: "user",
-    text: "要件定義を成功させるポイントをIPA資料から整理して",
-  },
-  thoughtSteps: [
-    { id: "keyword", text: "検索キーワードを整理します。" },
-    { id: "search", text: "関連資料を検索します。" },
-    { id: "locate", text: "各資料の要点・要約から該当箇所を特定します。" },
-    { id: "html", text: "構造化HTML編集を実行します。" },
-    { id: "quotes", text: "quotes表（キーワード一致）を実行します。" },
-    { id: "summary", text: "要約・参照元の生成を行います。" },
-  ],
-  answer: {
-    blocks: [
+export const stubChatDetails: Record<string, ChatDetailResponse> = {
+  "1c1f6f9a-4b1a-4f8e-91a0-62e6d62c0d10": {
+    chat_id: "1c1f6f9a-4b1a-4f8e-91a0-62e6d62c0d10",
+    title: "要件定義を成功させるポイント",
+    runs: [
       {
-        id: "requirements-items",
-        markdown: `IPA資料から、要件定義を成功させるためのポイントを以下の通り整理します。
+        run_id: "d3a8f7cb-0e7c-4129-8730-52b94dfdbb1f",
+        state: "完了",
+        user_instruction: "要件定義を成功させるポイントをIPA資料から整理して",
+        intermediate_messages: [
+          { text: "検索キーワードを整理します。" },
+          { text: "関連資料を検索します。" },
+          { text: "各資料の要点・要約から該当箇所を特定します。" },
+          { text: "参照元候補を検証します。" },
+        ],
+        answer: {
+          markdown: `IPA資料から、要件定義を成功させるためのポイントを以下の通り整理します。
 
 1. **目的・背景の共有と合意形成を徹底する。**  
    要件定義では目的や背景を共有し、関係する組織や役割を明確にすることが合意形成の第一歩です。
@@ -49,11 +84,11 @@ export const stubChatSession: ChatSession = {
 sequenceDiagram
   actor User as 利用者
   participant UI as D-Concierge UI
-  participant Codex as Codex exec
+  participant Codex as 生成用codex exec
   participant Skills as Skills
   participant Docs as 構造化Markdown/PDF
 
-  User->>UI: 質問を送信
+  User->>UI: ユーザ指示を送信
   UI->>Codex: AGENTS.mdと出力スキーマを指定して実行
   Note over UI,Codex: 中間メッセージを逐次表示
   loop 参照元候補の探索
@@ -63,38 +98,45 @@ sequenceDiagram
     Skills-->>Codex: 参照元候補を返却
   end
   Codex->>Codex: 回答Markdownと参照元JSONを生成
-  alt 参照元検証に成功
-    Codex-->>UI: 回答ブロックと参照元リンクを返却
-    UI-->>User: Markdown、Mermaid、HTML表、PDFリンクを表示
-  else 参照元検証に失敗
-    Codex-->>UI: 検証エラーを返却
-    UI-->>User: 再実行またはエラーを表示
-  end
+  Codex-->>UI: 回答と参照元リンクを返却
+  UI-->>User: Markdown、Mermaid、HTML表、PDFリンクを表示
 \`\`\`
 
 ## 分析イメージ
 
-![資料検索と参照元確認の分析イメージ](/artifacts/analysis-flow.svg)`,
-        references: [
-          {
-            id: "sec-books-iot-guide-10-14",
-            title: "SEC BOOKS 開発指針手引き",
-            url: "/reference-pdf/iot-guide.pdf",
-            startPage: 10,
-            endPage: 14,
-          },
-          {
-            id: "sec-books-iot-guide-20-22",
-            title: "SEC BOOKS 開発指針手引き",
-            url: "/reference-pdf/iot-guide.pdf",
-            startPage: 20,
-            endPage: 22,
-          },
-        ],
+![資料検索と参照元確認の分析イメージ](/api/artifacts/6a9158c3-ae1c-4a13-9494-940df193ceef)`,
+          references: [
+            {
+              source_type: "pdf",
+              label: "SEC BOOKS 開発指針手引き",
+              url: "/api/references/9052af11-89cc-4273-bd2d-ad310805c442",
+              locator: {
+                page_start: 10,
+                page_end: 14,
+              },
+            },
+            {
+              source_type: "pdf",
+              label: "SEC BOOKS 開発指針手引き",
+              url: "/api/references/0125bb8d-cd63-4f12-8ce8-55a20b82d1e5",
+              locator: {
+                page_start: 20,
+                page_end: 22,
+              },
+            },
+          ],
+        },
       },
       {
-        id: "markdown-list-and-table",
-        markdown: `## 箇条書きとMarkdown表の表示例
+        run_id: "4e5e7e31-2dd6-47b8-a2e2-3c58a2a2e381",
+        state: "完了",
+        user_instruction: "回答表示で表、コードブロック、HTML表も確認できる形にして",
+        intermediate_messages: [
+          { text: "前回の文脈を引き継いで表示要素を整理します。" },
+          { text: "Markdown表、HTML表、コードブロックの表示例を作成します。" },
+        ],
+        answer: {
+          markdown: `## 箇条書きとMarkdown表の表示例
 
 次の観点を確認すると、要件定義の抜け漏れを見つけやすくなります。
 
@@ -106,20 +148,9 @@ sequenceDiagram
 | --- | --- | --- |
 | 目的共有 | 関係者が同じゴールを見て判断できる。 | 対応済み |
 | 要求具体化 | 利用者の業務課題を検証可能な要求へ落とし込む。 | 対応済み |
-| 参照元確認 | 回答ブロックごとに参照元リンクを確認できる。 | 対応済み |`,
-        references: [
-          {
-            id: "sec-books-iot-guide-markdown-table-10-14",
-            title: "SEC BOOKS 開発指針手引き",
-            url: "/reference-pdf/iot-guide.pdf",
-            startPage: 10,
-            endPage: 14,
-          },
-        ],
-      },
-      {
-        id: "requirements-html-table",
-        markdown: `## HTML表の表示例
+| 参照元確認 | 回答ごとに参照元リンクを確認できる。 | 対応済み |
+
+## HTML表の表示例
 
 <table>
   <thead>
@@ -149,71 +180,108 @@ sequenceDiagram
       <td>利用者の行動、入力、期待結果が具体化されているか。</td>
       <td>PDF p.10-14</td>
     </tr>
-    <tr>
-      <th scope="row">継続的な見直し</th>
-      <td>環境変化に合わせて、要求と合意内容を更新する。</td>
-      <td>変更時の確認手順と関係者への共有方法が決まっているか。</td>
-      <td>SEC BOOKS 開発指針手引き</td>
-      <td>PDF p.20-22</td>
-    </tr>
   </tbody>
 </table>
 
-※ 上記はIPA公開資料をもとに作成した要約です。詳細は参照元PDFをご確認ください。`,
-        references: [
-          {
-            id: "sec-books-iot-guide-table-10-14",
-            title: "SEC BOOKS 開発指針手引き",
-            url: "/reference-pdf/iot-guide.pdf",
-            startPage: 10,
-            endPage: 14,
-          },
-        ],
-      },
-      {
-        id: "markdown-code-blocks",
-        markdown: `## コードブロックの表示例
-
-回答Markdownには、実行コマンドやJSON例を含めることがあります。本文中のインラインコードは \`output-schema.json\` や \`references\` のように表示します。
+## コードブロックの表示例
 
 \`\`\`json
 {
-  "answers": [
-    {
-      "text": "参照元を確認しながら回答します。",
-      "references": [
-        {
-          "source_type": "pdf",
-          "title": "SEC BOOKS 開発指針手引き",
-          "locator": {
-            "start_page": 10,
-            "end_page": 14
-          }
+  "answer": {
+    "markdown": "参照元を確認しながら回答します。",
+    "references": [
+      {
+        "source_type": "pdf",
+        "label": "SEC BOOKS 開発指針手引き",
+        "locator": {
+          "page_start": 10,
+          "page_end": 14
         }
-      ]
-    }
-  ]
+      }
+    ]
+  }
 }
-\`\`\`
-
-\`\`\`bash
-UV_CACHE_DIR=/tmp/uv-cache uv run python -m json.tool output-schema.json
-rg -n "references" docs output-schema.json codex/.codex
-\`\`\`
-
-\`\`\`
-this-is-a-very-long-line-for-horizontal-scroll-check: https://example.internal.local/d-concierge/reference-viewer/pdf/sec-books/iot-guide?page=10&range=10-14&session=requirements-success&block=markdown-code-blocks
 \`\`\``,
-        references: [
-          {
-            id: "sec-books-iot-guide-code-example-20-22",
-            title: "SEC BOOKS 開発指針手引き",
-            url: "/reference-pdf/iot-guide.pdf",
-            startPage: 20,
-            endPage: 22,
-          },
-        ],
+          references: [
+            {
+              source_type: "pdf",
+              label: "SEC BOOKS 開発指針手引き",
+              url: "/api/references/f326ba99-872d-4c64-89b5-cadf41874f20",
+              locator: {
+                page_start: 10,
+                page_end: 14,
+              },
+            },
+          ],
+        },
       },
     ],
   },
+};
+
+export const stubSseEvents: Record<string, SseEvent[]> = {
+  "5f5e8cf2-25f6-4962-9d1d-c3c93ab6cbb2": [
+    {
+      event: "state",
+      payload: {
+        run_id: "5f5e8cf2-25f6-4962-9d1d-c3c93ab6cbb2",
+        state: "受付",
+      },
+    },
+    {
+      event: "message",
+      payload: {
+        run_id: "5f5e8cf2-25f6-4962-9d1d-c3c93ab6cbb2",
+        text: "ユーザ指示を受け付けました。",
+      },
+    },
+    {
+      event: "state",
+      payload: {
+        run_id: "5f5e8cf2-25f6-4962-9d1d-c3c93ab6cbb2",
+        state: "実行中",
+      },
+    },
+    {
+      event: "message",
+      payload: {
+        run_id: "5f5e8cf2-25f6-4962-9d1d-c3c93ab6cbb2",
+        text: "入力内容に関連する資料を確認しています。",
+      },
+    },
+    {
+      event: "message",
+      payload: {
+        run_id: "5f5e8cf2-25f6-4962-9d1d-c3c93ab6cbb2",
+        text: "参照元候補と回答内容の対応を検証しています。",
+      },
+    },
+    {
+      event: "answer",
+      payload: {
+        run_id: "5f5e8cf2-25f6-4962-9d1d-c3c93ab6cbb2",
+        state: "完了",
+        answer: {
+          markdown: `入力内容に対する整理結果です。
+
+- 目的、利用者、制約を先にそろえると、後続の設計判断がぶれにくくなります。
+- 参照元を回答に紐づけておくと、履歴再表示時にも根拠を確認できます。
+- 回答内の図や画像はCodex成果物として保存し、本文から配信用URLで参照します。
+
+![資料検索と参照元確認の分析イメージ](/api/artifacts/6a9158c3-ae1c-4a13-9494-940df193ceef)`,
+          references: [
+            {
+              source_type: "pdf",
+              label: "SEC BOOKS 開発指針手引き",
+              url: "/api/references/9052af11-89cc-4273-bd2d-ad310805c442",
+              locator: {
+                page_start: 10,
+                page_end: 14,
+              },
+            },
+          ],
+        },
+      },
+    },
+  ],
 };

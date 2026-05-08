@@ -7,7 +7,7 @@ export function ChatHistoryList({
   onOpenAnswer,
 }: {
   histories: ChatHistoryItem[];
-  onOpenAnswer: () => void;
+  onOpenAnswer: (chatId: string) => void;
 }) {
   return (
     <nav className="flex flex-col pr-0" aria-label="最近のチャット">
@@ -18,10 +18,10 @@ export function ChatHistoryList({
             index === 0 &&
               "min-h-[56px] border-y border-l-[5px] border-y-[var(--dc-border-soft)] border-l-[var(--dc-primary)] bg-transparent pl-[27px] text-[var(--dc-primary)] hover:bg-transparent",
           )}
-          key={item.id}
+          key={item.chatId}
           type="button"
           variant="ghost"
-          onClick={onOpenAnswer}
+          onClick={() => onOpenAnswer(item.chatId)}
         >
           {item.title}
         </Button>

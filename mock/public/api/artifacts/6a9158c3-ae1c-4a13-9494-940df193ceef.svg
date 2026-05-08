@@ -9,7 +9,7 @@
   <rect x="42" y="42" width="174" height="166" rx="14" fill="#fff" stroke="#b9c9ee" />
   <rect x="272" y="42" width="176" height="166" rx="14" fill="#fff" stroke="#b9c9ee" />
   <rect x="504" y="42" width="174" height="166" rx="14" fill="#fff" stroke="#b9c9ee" />
-  <text x="129" y="82" text-anchor="middle" fill="#132238" font-size="20" font-weight="700">質問</text>
+  <text x="129" y="82" text-anchor="middle" fill="#132238" font-size="20" font-weight="700">ユーザ指示</text>
   <text x="360" y="82" text-anchor="middle" fill="#132238" font-size="20" font-weight="700">検索・分析</text>
   <text x="591" y="82" text-anchor="middle" fill="#132238" font-size="20" font-weight="700">参照元確認</text>
   <path d="M225 125 H260" stroke="#0f55ad" stroke-width="5" stroke-linecap="round" />

@@ -21,7 +21,7 @@ export function AppShell({
   children: ReactNode | ((state: AppShellRenderState) => ReactNode);
   histories: ChatHistoryItem[];
   onStartNewChat: () => void;
-  onOpenAnswer: () => void;
+  onOpenAnswer: (chatId: string) => void;
 }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const autoCollapsedRef = useRef(false);

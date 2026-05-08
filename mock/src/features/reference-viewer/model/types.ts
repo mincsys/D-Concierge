@@ -1,7 +1,13 @@
-export type PdfReference = {
-  id: string;
-  title: string;
-  url: string;
-  startPage: number;
-  endPage: number;
+export type PdfLocator = {
+  page_start: number;
+  page_end: number;
 };
+
+export type PdfReference = {
+  source_type: "pdf";
+  label: string;
+  url: string;
+  locator: PdfLocator;
+};
+
+export type DisplayReference = PdfReference;

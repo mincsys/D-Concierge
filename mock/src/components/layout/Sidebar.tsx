@@ -21,7 +21,7 @@ export function Sidebar({
   collapsed: boolean;
   histories: ChatHistoryItem[];
   onStartNewChat: () => void;
-  onOpenAnswer: () => void;
+  onOpenAnswer: (chatId: string) => void;
   onToggleCollapsed: () => void;
 }) {
   if (collapsed) {
