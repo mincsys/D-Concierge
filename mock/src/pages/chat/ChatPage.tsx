@@ -165,9 +165,9 @@ export function ChatPage() {
     setHistories(await listChatHistories());
   }
 
-  async function streamAcceptedRun(runId: string, streamId: number) {
+  async function streamAcceptedRun(response: { run_id: string; sse_url: string }, streamId: number) {
     await streamChatRun({
-      runId,
+      sseUrl: response.sse_url,
       isCurrent: () => isCurrentStream(streamId),
       onEvent: (event) => applySseEvent(event, streamId),
     });
@@ -191,7 +191,7 @@ export function ChatPage() {
     setSession(accepted.session);
     setMode("answer");
     await refreshHistories();
-    await streamAcceptedRun(accepted.response.run_id, streamId);
+    await streamAcceptedRun(accepted.response, streamId);
   }
 
   async function submitContinuedInstruction(message: string) {
@@ -211,7 +211,7 @@ export function ChatPage() {
 
     setSession(accepted.session);
     await refreshHistories();
-    await streamAcceptedRun(accepted.response.run_id, streamId);
+    await streamAcceptedRun(accepted.response, streamId);
   }
 
   async function openHistorySession(chatId: string) {

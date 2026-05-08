@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
+    "dev:mock": "vite --host 127.0.0.1 --mode mock",
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 127.0.0.1"
   },

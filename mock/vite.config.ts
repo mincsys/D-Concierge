@@ -1,86 +1,56 @@
-import { createReadStream, existsSync } from "node:fs";
 import path from "node:path";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
-import type { Connect } from "vite";
 import { defineConfig } from "vite";
+import type { ViteDevServer } from "vite";
 
-const pdfPath = path.resolve(
-  __dirname,
-  "../codex/readonly/raw/pdf/SEC BOOKS：「つながる世界の開発指針」の実践に向けた手引き［IoT高信頼化機能編］.pdf",
-);
-const analysisFlowImagePath = path.resolve(__dirname, "./src/stub/artifacts/analysis-flow.svg");
+import { createBackendMockMiddleware } from "./backend_mock/server/middleware";
 
-function serveReferencePdf(): Connect.NextHandleFunction {
-  return (req, res, next) => {
-    const url = req.url?.split("?")[0];
-    if (url !== "/reference-pdf/iot-guide.pdf") {
-      next();
-      return;
-    }
+const backendTarget = process.env.VITE_BACKEND_TARGET ?? "http://127.0.0.1:8000";
 
-    if (!existsSync(pdfPath)) {
-      res.statusCode = 404;
-      res.end("reference PDF not found");
-      return;
-    }
+export default defineConfig(({ mode }) => {
+  const useBackendMock = mode === "mock";
 
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Cache-Control", "no-store");
-    createReadStream(pdfPath).pipe(res);
-  };
-}
-
-function serveStubArtifact(): Connect.NextHandleFunction {
-  return (req, res, next) => {
-    const url = req.url?.split("?")[0];
-    if (url !== "/artifacts/analysis-flow.svg") {
-      next();
-      return;
-    }
-
-    if (!existsSync(analysisFlowImagePath)) {
-      res.statusCode = 404;
-      res.end("artifact not found");
-      return;
-    }
-
-    res.setHeader("Content-Type", "image/svg+xml");
-    res.setHeader("Cache-Control", "no-store");
-    createReadStream(analysisFlowImagePath).pipe(res);
-  };
-}
-
-export default defineConfig({
-  build: {
-    assetsInlineLimit: 0,
-  },
-  plugins: [
-    react(),
-    tailwindcss(),
-    {
-      name: "serve-reference-pdf",
-      configureServer(server) {
-        server.middlewares.use(serveStubArtifact());
-        server.middlewares.use(serveReferencePdf());
-      },
-      configurePreviewServer(server) {
-        server.middlewares.use(serveStubArtifact());
-        server.middlewares.use(serveReferencePdf());
+  return {
+    build: {
+      assetsInlineLimit: 0,
+    },
+    plugins: [
+      react(),
+      tailwindcss(),
+      ...(useBackendMock
+        ? [
+            {
+              name: "backend-mock",
+              configureServer(server: ViteDevServer) {
+                server.middlewares.use(
+                  createBackendMockMiddleware(path.resolve(__dirname, "./backend_mock")),
+                );
+              },
+            },
+          ]
+        : []),
+    ],
+    server: {
+      port: 5173,
+      strictPort: false,
+      proxy: useBackendMock
+        ? undefined
+        : {
+            "/api": {
+              target: backendTarget,
+              changeOrigin: true,
+            },
+          },
+    },
+    preview: {
+      port: 4173,
+      strictPort: false,
+    },
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "./src"),
       },
     },
-  ],
-  server: {
-    port: 5173,
-    strictPort: false,
-  },
-  preview: {
-    port: 4173,
-    strictPort: false,
-  },
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-    },
-  },
+  };
 });

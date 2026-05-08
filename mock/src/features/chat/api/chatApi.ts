@@ -11,21 +11,6 @@ import type {
   IntermediateMessageResponse,
   SseEvent,
 } from "@/features/chat/model/types";
-import {
-  acceptStubContinuedRun,
-  acceptStubStartChat,
-  applyStubSseEvent,
-  getStubActiveChatDetail,
-  getStubAppConfig,
-  getStubChatDetail,
-  listStubChatHistories,
-  listStubSseEvents,
-} from "@/stub/chatStubRuntime";
-
-const ARTIFACT_URLS: Record<string, string> = {
-  "/api/artifacts/6a9158c3-ae1c-4a13-9494-940df193ceef": "/api/artifacts/6a9158c3-ae1c-4a13-9494-940df193ceef.svg",
-};
-const SSE_EVENT_DELAY_MS = 420;
 
 type AcceptedChatRun = {
   response: ChatStartResponse;
@@ -33,60 +18,133 @@ type AcceptedChatRun = {
 };
 
 type StreamChatRunOptions = {
-  runId: string;
+  sseUrl: string;
   isCurrent: () => boolean;
   onEvent: (event: SseEvent) => Promise<void> | void;
 };
 
 export async function getAppConfig(): Promise<AppConfigResponse> {
-  return getStubAppConfig();
+  return requestJson<AppConfigResponse>("/api/app-config");
 }
 
 export async function listChatHistories(): Promise<ChatHistoryItem[]> {
-  return listStubChatHistories().map(toChatHistoryItem);
+  const histories = await requestJson<ChatHistoryResponseItem[]>("/api/chat-histories");
+  return histories.map(toChatHistoryItem);
 }
 
 export async function getActiveChatSession(): Promise<ChatSession> {
-  return toChatSession(getStubActiveChatDetail());
+  const histories = await listChatHistories();
+  const activeChatId = histories[0]?.chatId;
+  if (!activeChatId) {
+    return {
+      id: "",
+      title: "",
+      runs: [],
+    };
+  }
+  return getChatDetail(activeChatId);
 }
 
 export async function getChatDetail(chatId: string): Promise<ChatSession> {
-  return toChatSession(getStubChatDetail(chatId));
+  return toChatSession(await requestJson<ChatDetailResponse>(`/api/chats/${chatId}`));
 }
 
 export async function startChat(userInstruction: string): Promise<AcceptedChatRun> {
-  const accepted = acceptStubStartChat(userInstruction);
+  const response = await requestJson<ChatStartResponse>("/api/chats/start", {
+    method: "POST",
+    body: JSON.stringify({ user_instruction: userInstruction }),
+  });
 
   return {
-    response: accepted.response,
-    session: toChatSession(accepted.detail),
+    response,
+    session: await getChatDetail(response.chat_id),
   };
 }
 
 export async function appendChatRun(chatId: string, userInstruction: string): Promise<AcceptedChatRun> {
-  const accepted = acceptStubContinuedRun(chatId, userInstruction);
+  const response = await requestJson<ChatStartResponse>(`/api/chats/${chatId}/runs`, {
+    method: "POST",
+    body: JSON.stringify({ user_instruction: userInstruction }),
+  });
 
   return {
-    response: accepted.response,
-    session: toChatSession(accepted.detail),
+    response,
+    session: await getChatDetail(response.chat_id),
   };
 }
 
-export async function streamChatRun({
-  runId,
-  isCurrent,
-  onEvent,
-}: StreamChatRunOptions) {
-  for (const event of listStubSseEvents(runId)) {
-    if (!isCurrent()) {
-      return;
+export function streamChatRun({ sseUrl, isCurrent, onEvent }: StreamChatRunOptions) {
+  return new Promise<void>((resolve, reject) => {
+    const eventSource = new EventSource(sseUrl);
+    let settled = false;
+    let terminalEventReceived = false;
+    let eventChain = Promise.resolve();
+
+    function settleAsResolved() {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      eventSource.close();
+      resolve();
     }
 
-    applyStubSseEvent(event);
-    const resolvedEvent = resolveSseEvent(event);
-    await onEvent(resolvedEvent);
-    await delay(SSE_EVENT_DELAY_MS);
-  }
+    function settleAsRejected(error: Error) {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      eventSource.close();
+      reject(error);
+    }
+
+    function enqueueEvent(event: SseEvent) {
+      if (event.event === "answer" || event.event === "error" || event.event === "canceled") {
+        terminalEventReceived = true;
+      }
+
+      eventChain = eventChain
+        .then(async () => {
+          if (!isCurrent()) {
+            settleAsResolved();
+            return;
+          }
+
+          await onEvent(event);
+
+          if (event.event === "answer" || event.event === "error" || event.event === "canceled") {
+            settleAsResolved();
+          }
+        })
+        .catch((error: unknown) => {
+          settleAsRejected(error instanceof Error ? error : new Error("SSEイベントの処理に失敗しました。"));
+        });
+    }
+
+    eventSource.addEventListener("state", (event) => enqueueEvent(parseSseEvent("state", event)));
+    eventSource.addEventListener("message", (event) => enqueueEvent(parseSseEvent("message", event)));
+    eventSource.addEventListener("answer", (event) => enqueueEvent(parseSseEvent("answer", event)));
+    eventSource.addEventListener("error", (event) => {
+      if (event instanceof MessageEvent && typeof event.data === "string" && event.data.length > 0) {
+        enqueueEvent(parseSseEvent("error", event));
+      }
+    });
+    eventSource.addEventListener("canceled", (event) => enqueueEvent(parseSseEvent("canceled", event)));
+
+    eventSource.onerror = (event) => {
+      if (event instanceof MessageEvent && typeof event.data === "string" && event.data.length > 0) {
+        return;
+      }
+
+      if (terminalEventReceived) {
+        return;
+      }
+
+      if (!settled) {
+        settleAsRejected(new Error("SSE接続が切断されました。"));
+      }
+    };
+  });
 }
 
 export function toChatHistoryItem(item: ChatHistoryResponseItem): ChatHistoryItem {
@@ -97,6 +155,29 @@ export function toChatHistoryItem(item: ChatHistoryResponseItem): ChatHistoryIte
     latestState: item.latest_state,
     updatedAt: item.updated_at,
   };
+}
+
+async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(url, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...init?.headers,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`API request failed: ${response.status}`);
+  }
+
+  return response.json() as Promise<T>;
+}
+
+function parseSseEvent(eventName: SseEvent["event"], event: MessageEvent<string>): SseEvent {
+  return {
+    event: eventName,
+    payload: JSON.parse(event.data) as SseEvent["payload"],
+  } as SseEvent;
 }
 
 function toChatSession(response: ChatDetailResponse): ChatSession {
@@ -127,43 +208,7 @@ function toIntermediateMessage(message: IntermediateMessageResponse, index: numb
 
 function toAnswer(answer: AnswerResponse) {
   return {
-    markdown: resolveArtifactUrls(answer.markdown),
+    markdown: answer.markdown,
     references: answer.references ?? [],
   };
-}
-
-function resolveSseEvent(event: SseEvent): SseEvent {
-  if (event.event !== "answer") {
-    return event;
-  }
-
-  return {
-    ...event,
-    payload: {
-      ...event.payload,
-      answer: {
-        ...event.payload.answer,
-        markdown: resolveArtifactUrls(event.payload.answer.markdown),
-        references: event.payload.answer.references ?? [],
-      },
-    },
-  };
-}
-
-function resolveArtifactUrls(markdown: string) {
-  return Object.entries(ARTIFACT_URLS).reduce(
-    (currentMarkdown, [contractUrl, displayUrl]) =>
-      currentMarkdown.replace(new RegExp(`${escapeRegExp(contractUrl)}(?!\\.svg)`, "g"), displayUrl),
-    markdown,
-  );
-}
-
-function escapeRegExp(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function delay(milliseconds: number) {
-  return new Promise<void>((resolve) => {
-    window.setTimeout(resolve, milliseconds);
-  });
 }

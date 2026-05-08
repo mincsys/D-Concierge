@@ -3,7 +3,7 @@ import type {
   ChatDetailResponse,
   ChatHistoryResponseItem,
   SseEvent,
-} from "@/features/chat/model/types";
+} from "../../src/features/chat/model/types";
 
 export const stubAppConfig: AppConfigResponse = {
   welcome_message: "何なりとお申し付けください",

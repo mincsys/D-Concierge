@@ -6,8 +6,9 @@ import type {
   ChatRunResponse,
   ChatStartResponse,
   SseEvent,
-} from "@/features/chat/model/types";
-import { stubAppConfig, stubChatDetails, stubChatHistories, stubSseEvents } from "@/stub/chatStub";
+} from "../../src/features/chat/model/types";
+import { randomUUID } from "node:crypto";
+import { stubAppConfig, stubChatDetails, stubChatHistories, stubSseEvents } from "../data/chatData";
 
 const FALLBACK_STREAM_RUN_ID = "5f5e8cf2-25f6-4962-9d1d-c3c93ab6cbb2";
 const FALLBACK_HISTORY_RUN_ID = "811cc3ac-c48a-4f20-a42c-0e2ea51b5930";
@@ -118,6 +119,19 @@ export function applyStubSseEvent(event: SseEvent) {
       updated_at: isTerminalState(latestRun.state) ? currentIsoString() : getHistoryUpdatedAt(chatId),
     });
   }
+}
+
+export function cancelStubRun(runId: string) {
+  const event: SseEvent = {
+    event: "canceled",
+    payload: {
+      run_id: runId,
+      state: "キャンセル済み",
+      user_message: "処理はキャンセルされました。",
+    },
+  };
+  applyStubSseEvent(event);
+  return event.payload;
 }
 
 function createAcceptedResponse(chatId: string, runId: string): ChatStartResponse {
@@ -268,7 +282,7 @@ function isTerminalState(state: ChatRun["state"]) {
 }
 
 function createUuid() {
-  return crypto.randomUUID();
+  return randomUUID();
 }
 
 function currentIsoString() {
