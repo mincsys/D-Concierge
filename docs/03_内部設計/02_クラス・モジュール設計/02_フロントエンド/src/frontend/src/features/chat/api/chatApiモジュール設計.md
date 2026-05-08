@@ -9,6 +9,7 @@
 - 本書の対象は `モジュール一覧.md` で詳細設計対象とした `chatApi` モジュールのみとする。
 - UIコンポーネントは `src/frontend/backend_mock/` を直接参照せず、本モジュール経由で `/api/...` と通信する。
 - API応答のsnake_caseから画面モデルのcamelCaseへの変換は本モジュールが所有する。
+- フロントエンド単体確認用モックを使う場合も、Vite middlewareが `/api/...` を応答し、本モジュールの通信境界は変えない。
 
 ## 3. 責務
 
@@ -21,6 +22,7 @@
 ## 4. 不変条件
 
 - REST通信はすべて `/api/...` パスに対して実行する。
+- `src/frontend/backend_mock/` の固定データ、参照元、Codex成果物、疑似SSEを本モジュールから直接importしない。
 - SSE終端イベントは `answer`、`error`、`canceled` のいずれかとし、終端後はEventSourceを閉じる。
 - `isCurrent()` が `false` を返した後は、以降のSSEイベントを呼出元へ通知しない。
 - `startChat` と `appendChatRun` は、受付応答の `chat_id` を使ってチャット詳細を取得する。

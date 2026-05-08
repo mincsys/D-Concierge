@@ -9,6 +9,7 @@
 - 本書の対象は `モジュール一覧.md` で詳細設計対象とした `MarkdownRenderer` モジュールのみとする。
 - Markdown構文解析は `react-markdown`、GFMは `remark-gfm`、HTML安全化は `rehype-sanitize` を利用する。
 - HTMLを許可する場合でも、許可属性はsanitize schemaで制限する。
+- Markdown内HTMLは許可要素だけを表示し、スクリプト実行、外部通信、イベント属性を除去する。
 
 ## 3. 責務
 
@@ -17,10 +18,13 @@
 - Mermaidコードブロックを `MermaidRenderer` へ委譲する。
 - 通常コードブロックをコピー可能な表示部品として描画する。
 - 画像は同一オリジンかつ `/api/artifacts/` 配下のURLのみ表示する。
+- `table`、`thead`、`tbody`、`tr`、`th`、`td`、`p`、`ul`、`ol`、`li`、`strong`、`em`、`code`、`pre`、`a` を許可要素として扱う。
+- `script`、`iframe`、`object`、`embed`、すべてのイベント属性、`javascript:` URLを除去する。
 
 ## 4. 不変条件
 
 - 許可されていない画像URLはDOMへ出力しない。
+- 許可されていないHTML要素、属性、URLスキームはDOMへ出力しない。
 - `language-mermaid` のコードブロックは通常コードブロックではなくMermaid表示へ切り替える。
 - コードブロックのコピー失敗は画面全体の例外にせず、コピー状態だけを戻す。
 - Markdown表示用CSSの適用対象は `markdown-body` と外部レンダラ生成DOMに限定する。

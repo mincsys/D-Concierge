@@ -9,6 +9,7 @@
 - 呼出方式: TypeScript関数呼出と非同期Promise。
 - 呼出主体: `ChatPage`。
 - 本IFは画面内部の契約であり、画面バックエンドAPI仕様の再掲ではない。
+- フロントエンド単体確認時も、Vite middlewareが `/api/...` を応答するだけで、本IFの呼出先パスは変更しない。
 
 ## 3. IF概要
 
@@ -57,6 +58,7 @@ sequenceDiagram
 - UIコンポーネントは `src/frontend/backend_mock/` を直接参照しない。
 - API応答のsnake_caseは、本IF内でcamelCase画面モデルへ変換する。
 - 旧ストリーム判定がfalseになった後は、呼出元イベントハンドラを呼ばない。
+- モック利用時も `src/frontend/backend_mock/` への依存はVite middleware側に閉じ、本IFは常に `/api/...` を通信境界とする。
 
 ## 6. 入出力とデータ項目
 
