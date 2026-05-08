@@ -48,6 +48,7 @@ sequenceDiagram
 
 - 作成系は採番済みIDを含む永続化結果を返す。
 - 状態条件付き更新は、期待状態と一致する場合だけ更新済みとして返す。
+- 生成用/検証用Codex側resume用IDの保存は、対象チャットが存在する場合だけ成立する。
 - 参照系は表示に必要な関連データを欠落なく返す。
 
 ### 5.3. 不変条件
@@ -55,6 +56,8 @@ sequenceDiagram
 - RepositoryはHTTP応答スキーマを返さない。
 - Repositoryはcodex exec、ファイル、SSE、トレースログを直接呼び出さない。
 - 途中失敗時に一部だけcommitしない。
+- 同一チャットに未完了runを複数保存しない。Repositoryの事前確認に加え、DBの部分UNIQUE制約違反も競合として扱う。
+- `session_id` はD-Conciergeの作業領域IDとして扱い、Codex側resume用IDと混同しない。
 
 ## 6. 入出力とデータ項目
 
@@ -68,8 +71,11 @@ sequenceDiagram
 | `user_instruction` | 利用者指示本文 |
 | `expected_state` | 状態条件付き更新で要求する現在状態 |
 | `next_state` | 更新後状態 |
+| `execution_deadline_at` | `実行中` 遷移時に保存する実行全体deadline |
 | `answer` | 採用済み回答本文と参照元 |
 | `artifact_metadata` | 保存済み成果物のメタ情報 |
+| `generation_conversation_id` | 生成用Codex側のresume用ID |
+| `validation_conversation_id` | 検証用Codex側のresume用ID |
 
 ### 6.2. 出力
 
@@ -81,13 +87,26 @@ sequenceDiagram
 | `updated` | 状態条件付き更新が成立したか |
 | `not_found` | 対象IDが存在しないことを示す結果または例外 |
 
+### 6.3. 公開メソッド
+
+| メソッド | 役割 | 主な入力 | 主な出力 |
+| --- | --- | --- | --- |
+| `create_chat_with_first_run` | 新規チャット、初回run、初回指示を同一トランザクションで保存する | チャット、チャット実行処理、ユーザ指示 | 保存結果 |
+| `append_run` | 既存チャットへrunと指示を追加する | チャットID、チャット実行処理、ユーザ指示 | 保存結果 |
+| `update_run_state_if_current` | 状態条件付き更新を行う | run ID、期待状態、更新後状態、利用者向けメッセージ、任意の `execution_deadline_at` | 更新成否 |
+| `save_generation_conversation_id` | 生成用Codex側resume用IDを保存する | チャットID、生成用Codex側resume用ID | 更新成否 |
+| `save_validation_conversation_id` | 検証用Codex側resume用IDを保存する | チャットID、検証用Codex側resume用ID | 更新成否 |
+| `list_unfinished_runs_for_recovery` | 起動時回復対象の未完了runを取得する | なし | `受付`、`実行中`、`検証中`、`キャンセル要求中` のrun一覧 |
+| `save_completed_answer` | 検証済み回答と関連データを保存する | 回答、参照元、Codex成果物メタ情報 | 保存結果 |
+
 ## 7. 例外処理
 
 | 条件 | 扱い |
 | --- | --- |
 | 対象チャットまたはrunが存在しない | `AppError` の対象なし分類へ変換できる例外を返す |
 | 状態条件付き更新が不成立 | 例外ではなく不成立結果を返し、呼出元がキャンセル済み等の扱いを判断する |
-| DB制約違反 | トランザクションをrollbackし、データ不整合分類の `AppError` へ変換する |
+| 未完了run一意制約違反 | トランザクションをrollbackし、競合分類の `AppError` へ変換する |
+| その他のDB制約違反 | トランザクションをrollbackし、データ不整合分類の `AppError` へ変換する |
 | DB接続失敗 | rollbackし、システムエラー分類として上位へ返す |
 
 ## 8. 留意事項

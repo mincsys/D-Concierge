@@ -9,6 +9,7 @@
 - 呼出方式: アプリ起動時の設定読込と、DI時の設定オブジェクト参照。
 - 呼出主体: FastAPIアプリ組み立て、各ユースケース、infrastructure実装。
 - 設定ファイル項目そのものの外部仕様は `docs/02_外部設計/06_外部インターフェース設計/設定ファイル IF.md` を正とする。
+- `server.timeout_seconds` は回答生成開始から検証完了までの実行全体deadlineを決める値として読み込み、CodexRunnerへ直接固定値として渡さない。
 
 ## 3. IF概要
 
@@ -54,6 +55,7 @@ sequenceDiagram
 - application層は生YAMLやdictを直接参照しない。
 - パス設定は文字列連結ではなく、正規化済みPathとして扱う。
 - 機密情報をtraceログへそのまま出力しない。
+- `server.timeout_seconds` は外部設定として1項目のまま保持し、内部では `ExecuteChatRunUseCase` が `execution_deadline_at` と各codex execへの残り秒数へ分解する。
 
 ## 6. 入出力とデータ項目
 
@@ -70,6 +72,14 @@ sequenceDiagram
 | --- | --- |
 | `AppConfig` | アプリ表示設定、DB、Codex、ファイル、ログ、タイムアウトなどの型付き設定 |
 | `normalized_paths` | 共有データソース、Codex作業領域、成果物保存先、トレースログ出力先 |
+
+### 6.3. タイムアウト設定の扱い
+
+| 項目 | 内容 |
+| --- | --- |
+| `server.timeout_seconds` | 回答生成から検証完了までの実行全体上限秒数。`ExecuteChatRunUseCase` が `実行中` 遷移時に `execution_deadline_at` を計算する。 |
+| codex exec単位の `timeout_seconds` | `execution_deadline_at` から現在時刻を引いた残り秒数。生成用/検証用codex exec起動ごとに算出する。 |
+| 終了要求後のgrace timeout | CodexRunner内部の短い固定値として扱い、外部設定項目にはしない。 |
 
 ## 7. 例外処理
 

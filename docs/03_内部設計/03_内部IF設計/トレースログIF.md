@@ -73,6 +73,9 @@ sequenceDiagram
 | `runner_type` | 生成用または検証用のrunner種別 |
 | `os_name` | 実行OS名 |
 | `process_result` | プロセス終了、終了要求、キャンセル、タイムアウトの結果 |
+| `execution_deadline_at` | 実行全体deadline |
+| `timeout_state` | 全体deadline超過、codex exec単位タイムアウト、終了待ちgrace timeoutのいずれか |
+| `cancel_state` | キャンセル要求受付、終了要求結果、終端整合結果 |
 | `retry_count` | 再生成回数 |
 | `validation_failure_reason` | 固定検証または参照元検証の失敗理由 |
 | `validation_comment` | 検証用Codexのcomment要約 |

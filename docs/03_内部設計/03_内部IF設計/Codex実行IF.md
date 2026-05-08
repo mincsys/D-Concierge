@@ -8,8 +8,10 @@
 
 - 呼出方式: 非同期メソッド呼出と非同期イベントストリーム。
 - 呼出主体: `ExecuteChatRunUseCase`、`ValidateAnswerUseCase`、`CancelChatRunUseCase`。
-- 生成用と検証用でCodexホーム、作業ディレクトリ、出力スキーマを分離する。
+- 生成用と検証用でCodexホーム、作業ディレクトリ、出力スキーマ、Codex側resume用IDを分離する。
 - 生成用Codexは `codex/sessions/<user-id>/<session-id>/` を作業領域とし、検証用Codexは `codex/sessions_validator/<user-id>/<session-id>/` を作業領域とする。
+- `session_id` はD-Conciergeが作業領域を決定するための内部IDであり、Codex側resume用IDは `codex_conversation_id` として別に受け渡す。
+- `timeout_seconds` は設定ファイル値そのものではなく、呼出元が全体deadlineから算出した当該codex execの残り秒数である。
 
 ## 3. IF概要
 
@@ -30,7 +32,7 @@ sequenceDiagram
     participant parser as JsonlEventParser
     participant codex as codex exec
 
-    usecase->>runner: start_generation(session, prompt, schema)
+    usecase->>runner: run_generation(session_id, codex_conversation_id, prompt, timeout_seconds)
     runner->>codex: codex exec --json --output-schema --output-last-message
     codex-->>runner: JSONL stdout
     runner->>parser: parse(line)
@@ -45,7 +47,7 @@ sequenceDiagram
 ### 5.1. 事前条件
 
 - Codexホーム、作業ディレクトリ、出力スキーマパスが設定済みである。
-- 生成用は対象チャットのsession IDを保持している。
+- 生成用は対象チャットの作業領域IDと、継続指示時に利用する生成用Codex側resume用IDを保持している。
 - 検証用は検証対象回答、参照元、検証プロンプトが揃っている。
 - `--output-last-message` の出力先は対象run専用の一時ファイルとして決定済みである。
 
@@ -71,10 +73,11 @@ sequenceDiagram
 
 | 項目 | 内容 |
 | --- | --- |
-| `session_id` | codex exec会話継続と作業領域を識別する内部ID |
+| `session_id` | D-Conciergeの作業領域を識別する内部ID |
+| `codex_conversation_id` | `codex exec resume` に渡すCodex側resume用ID。初回起動時は未指定 |
 | `prompt` | 生成または検証に渡す指示本文 |
 | `output_schema_path` | codex execに渡すJSON Schemaファイルパス |
-| `timeout_seconds` | 実行タイムアウト秒数 |
+| `timeout_seconds` | 全体deadlineから算出した当該codex execの残り秒数 |
 | `trace_id` | 実行ログとAPI呼出を関連付けるID |
 | `run_id` | キャンセル対象プロセスを特定する実行処理ID |
 | `output_last_message_path` | `--output-last-message` の出力先一時ファイルパス |
@@ -87,9 +90,10 @@ sequenceDiagram
 | --- | --- |
 | `CodexEvent` | 中間メッセージ、最終回答候補、検証結果、エラーを表す構造化イベント |
 | `exit_status` | codex exec終了コードと終了理由 |
-| `session_continuation_id` | 必要に応じて次回resumeに使う継続識別子 |
+| `codex_conversation_id` | `thread.started.thread_id` から取得した、次回resumeに使うCodex側resume用ID |
 | `artifact_candidates` | 生成結果が参照したCodex成果物候補 |
 | `last_message_consistency` | JSONL最終メッセージと `--output-last-message` の照合結果 |
+| `cancel_result` | 終了要求結果。`sent`、`already_exited`、`not_registered` のいずれか |
 
 ### 6.3. Codex作業領域
 
@@ -105,7 +109,7 @@ sequenceDiagram
 
 | イベント | 扱い |
 | --- | --- |
-| `thread.started` | `thread_id` をCodex側会話継続IDとして保持する。 |
+| `thread.started` | `thread_id` をCodex側resume用IDとして保持する。 |
 | `item.completed` の `agent_message` | 直ちに表示・採用せず、1件の `pending_agent_message` として保持する。 |
 | 後続の処理継続イベント | 直前の `pending_agent_message` が最終回答でないと判断できる場合に限り、マスク済み中間メッセージへ変換する。 |
 | `turn.completed` | 現在の `pending_agent_message` を最終回答候補とし、JSON parse、出力スキーマ検証、`--output-last-message` 照合を行う。 |
@@ -119,7 +123,7 @@ sequenceDiagram
 | codex exec起動失敗 | 生成失敗または検証失敗分類の `AppError` へ変換する |
 | JSONL解析失敗 | 解析失敗行をtraceログ対象にし、実行をエラー終端へ変換する |
 | タイムアウト | プロセスへ終了要求を送り、run状態を `タイムアウト` へ更新できる結果を返す |
-| キャンセル要求 | ユーザキャンセル要求、終了要求結果、プロセス終了結果を合わせて判定し、run状態を `キャンセル済み` へ更新できる結果を返す |
+| キャンセル要求 | ユーザキャンセル要求、`sent` / `already_exited` / `not_registered` の終了要求結果、プロセス終了結果を合わせて判定し、run状態を `キャンセル済み` へ更新できる結果を返す |
 | `--output-last-message` 照合不一致 | 最終回答候補を採用せず、生成失敗または検証失敗分類へ変換する |
 | 検証用Codex資産不足 | 設定不備分類として起動前に失敗させる |
 

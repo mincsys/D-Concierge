@@ -12,7 +12,7 @@
 ## 3. 責務
 
 - API、ユースケース、infrastructureで発生した障害調査用情報をJSONLレコードへ変換する。
-- trace_id、chat_id、run_id、user_id、stage、error_class、exception_type、stacktrace、retry_count、run_state、os_name、runner_type、codex_exit_status、process_result、validation_failure_reason、validation_comment、messageを出力する。
+- trace_id、chat_id、run_id、user_id、stage、error_class、exception_type、stacktrace、retry_count、run_state、execution_deadline_at、timeout_state、cancel_state、os_name、runner_type、codex_exit_status、process_result、validation_failure_reason、validation_comment、messageを出力する。
 - 秘密情報、絶対パス、生JSONL全文、巨大な回答全文を保存対象から除外またはマスクする。
 
 ## 4. 不変条件

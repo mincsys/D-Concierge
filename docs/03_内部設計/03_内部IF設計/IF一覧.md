@@ -23,6 +23,7 @@
 | --- | --- | --- | --- | --- | --- |
 | フロントエンド | チャットAPIクライアントIF | `ChatPage` | `chatApi` | 画面状態管理とREST/SSE通信を分離する。 | [チャットAPIクライアントIF.md](チャットAPIクライアントIF.md) |
 | バックエンド application port | チャットRepository IF | `application` | `infrastructure/database/repositories` | チャット、run、指示、回答、参照元、成果物メタ情報の永続化を抽象化する。 | [チャットRepositoryIF.md](チャットRepositoryIF.md) |
+| バックエンド application/runtime | RunExecutionDispatcher IF | `application/chat`、`app` | `application/execution` | 受付済みrunをバックグラウンド実行へ登録し、起動時に未完了runを整合させる。 | [RunExecutionDispatcherIF.md](RunExecutionDispatcherIF.md) |
 | バックエンド application port | Codex実行IF | `application/execution`、`application/validation` | `infrastructure/codex` | 生成用/検証用codex execの起動、イベント取得、終了制御を抽象化する。 | [Codex実行IF.md](Codex実行IF.md) |
 | バックエンド presentation/application | SSEイベント配信IF | `application/execution` | `presentation/sse` | run状態、中間メッセージ、回答、エラー、キャンセルをSSE購読者へ配信する。 | [SSEイベント配信IF.md](SSEイベント配信IF.md) |
 | バックエンド application port | 成果物ファイルIF | `application/artifacts`、`application/validation` | `infrastructure/filesystem/artifacts` | 採用済みCodex成果物の検証、保存、配信用読込を抽象化する。 | [成果物ファイルIF.md](成果物ファイルIF.md) |
