@@ -1,0 +1,85 @@
+name: quality
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres-test:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: d_concierge_test
+          POSTGRES_USER: d_concierge_test
+          POSTGRES_PASSWORD: d_concierge_test
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U d_concierge_test -d d_concierge_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: astral-sh/setup-uv@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: src/frontend/package-lock.json
+
+      - name: Install backend dependencies
+        run: UV_CACHE_DIR=/tmp/uv-cache uv sync --all-groups
+
+      - name: Install frontend dependencies
+        working-directory: src/frontend
+        run: npm ci
+
+      - name: Backend static checks
+        run: |
+          if find src/backend -name '*.py' -print -quit | grep -q .; then
+            UV_CACHE_DIR=/tmp/uv-cache uv run ruff check src/backend
+            UV_CACHE_DIR=/tmp/uv-cache uv run ruff format --check src/backend
+            UV_CACHE_DIR=/tmp/uv-cache uv run mypy src/backend
+          else
+            echo "No backend Python files yet. Skipping backend static checks."
+          fi
+
+      - name: Frontend static checks
+        working-directory: src/frontend
+        run: |
+          npm run lint
+          npm run format:check
+          npm run typecheck
+
+      - name: Backend unit tests
+        run: |
+          if find src/backend/tests/unit -name 'test_*.py' -print -quit | grep -q .; then
+            UV_CACHE_DIR=/tmp/uv-cache uv run pytest src/backend/tests/unit
+          else
+            echo "No backend unit tests yet. Skipping backend unit tests."
+          fi
+
+      - name: Backend integration tests
+        run: |
+          if find src/backend/tests/integration -name 'test_*.py' -print -quit | grep -q .; then
+            UV_CACHE_DIR=/tmp/uv-cache uv run pytest src/backend/tests/integration
+          else
+            echo "No backend integration tests yet. Skipping backend integration tests."
+          fi
+
+      - name: Frontend tests
+        working-directory: src/frontend
+        run: |
+          npm run test:unit
+          npm run test:integration

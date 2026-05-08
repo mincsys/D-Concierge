@@ -1,0 +1,40 @@
+name: d-concierge
+
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE:-postgres:17-alpine}
+    container_name: d-concierge-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-d_concierge}
+      POSTGRES_USER: ${POSTGRES_USER:-d_concierge}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-d_concierge}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  postgres-test:
+    image: ${POSTGRES_TEST_IMAGE:-postgres:17-alpine}
+    container_name: d-concierge-postgres-test
+    environment:
+      POSTGRES_DB: ${POSTGRES_TEST_DB:-d_concierge_test}
+      POSTGRES_USER: ${POSTGRES_TEST_USER:-d_concierge_test}
+      POSTGRES_PASSWORD: ${POSTGRES_TEST_PASSWORD:-d_concierge_test}
+    ports:
+      - "${POSTGRES_TEST_PORT:-55432}:5432"
+    volumes:
+      - postgres-test-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres-data:
+  postgres-test-data:

@@ -19,6 +19,14 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src", "vite.config.ts"],
+  "include": [
+    "src",
+    "tests",
+    "backend_mock",
+    "vite.config.ts",
+    "vitest.config.ts",
+    "eslint.config.js",
+    "prettier.config.js"
+  ],
   "references": []
 }

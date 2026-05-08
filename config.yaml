@@ -1,0 +1,30 @@
+ui:
+  welcome_message: "D-Conciergeへようこそ。調査したい内容を入力してください。"
+  input_suggestions:
+    - "資料の要点を整理してください。"
+    - "根拠となる参照元を示して説明してください。"
+
+datasource:
+  dir: "codex/readonly"
+
+codex:
+  home: "codex/.codex"
+  workdir: "codex/sessions"
+  output_schema: "codex/output_json_schema/pdf-reference-schema.json"
+  saved_artifacts_dir: "codex/saved_artifacts"
+
+validator:
+  max_retries: 2
+  codex:
+    home: "codex/.codex_validator"
+    workdir: "codex/sessions_validator"
+    output_schema: "codex/output_json_schema/validator_schema.json"
+
+database:
+  url: "postgresql+psycopg://d_concierge:d_concierge@127.0.0.1:5432/d_concierge"
+
+server:
+  timeout_seconds: 300
+
+trace_log:
+  dir: "logs/trace"

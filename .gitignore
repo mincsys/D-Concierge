@@ -1,7 +1,12 @@
 __pycache__/
+*.py[cod]
+/.mypy_cache/
 /.playwright-cli/
+/.pytest_cache/
+/.ruff_cache/
 /.uv-cache/
 /.venv/
+/coverage/
 /codex/.codex/*
 !/codex/.codex/skills/custom/
 !/codex/.codex/AGENTS.md
@@ -15,4 +20,5 @@ __pycache__/
 /src/frontend/dist/
 /src/frontend/node_modules/
 /src/frontend/tsconfig.tsbuildinfo
+/src/frontend/coverage/
 /output/playwright/
