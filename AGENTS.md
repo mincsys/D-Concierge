@@ -2,9 +2,9 @@
 - docs/ 以下のドキュメントを修正する際は、差分説明や旧仕様の痕跡を残さず、最初からその方式・仕様で設計されていた自然な文書として全面的に整合させること。文書名・ファイル名・用語・ID・導線・関連リンクも必要に応じて整理し、`廃止` や欠番を前提にした記述を残さないこと。
 - Mermaid 図で改行を表現する場合は `\n` ではなく `<br>` を使うこと。
 - 作業の途中で仕様書と実装に乖離がある箇所を発見した場合は、.issue/フォルダにファイルを作成しメモを残すこと。issueを解決した場合はそのissueファイルは削除すること。
-- `mock/` のフロントエンド単体確認で使う固定データ、API代替コード、参照元、Codex成果物は `mock/backend_mock/` に隔離すること。`mock/` のUIコンポーネントから `mock/backend_mock/` を直接参照せず、`mock/src/features/*/api/` のAPI境界を経由して `/api/...` に通信すること。バックエンド実装後も `mock/backend_mock/` はフロントエンド単体確認用の開発支援資産として維持する。
-- `mock/src/styles/globals.css` には、Tailwind/shadcnテーマ、body等のグローバル初期設定、疑似要素、Markdown/Mermaid/PDF.jsなど外部ライブラリやレンダラが生成するDOMに対するスタイルだけを残すこと。Reactコンポーネントに直接付けられる通常のレイアウト・余白・色・枠線・影・状態表示は、原則としてコンポーネント側のTailwind classNameへ記述し、`globals.css` にコンポーネント専用クラスを追加しないこと。
-- `mock/` の画面確認やスクリーンショット取得でPlaywrightを使う場合は、実利用に近い確認にするためChromeブラウザを指定すること。
+- `src/frontend/` のフロントエンド単体確認で使う固定データ、API代替コード、参照元、Codex成果物は `src/frontend/backend_mock/` に隔離すること。`src/frontend/` のUIコンポーネントから `src/frontend/backend_mock/` を直接参照せず、`src/frontend/src/features/*/api/` のAPI境界を経由して `/api/...` に通信すること。バックエンド実装後も `src/frontend/backend_mock/` はフロントエンド単体確認用の開発支援資産として維持する。
+- `src/frontend/src/styles/globals.css` には、Tailwind/shadcnテーマ、body等のグローバル初期設定、疑似要素、Markdown/Mermaid/PDF.jsなど外部ライブラリやレンダラが生成するDOMに対するスタイルだけを残すこと。Reactコンポーネントに直接付けられる通常のレイアウト・余白・色・枠線・影・状態表示は、原則としてコンポーネント側のTailwind classNameへ記述し、`globals.css` にコンポーネント専用クラスを追加しないこと。
+- `src/frontend/` の画面確認やスクリーンショット取得でPlaywrightを使う場合は、実利用に近い確認にするためChromeブラウザを指定すること。
 - TDD を原則とする。必ずRed、Green、Refactorの順に実装を行うこと。
 - Python の構造化データを `dict[str, object]`、`list[dict[str, object]]`、広すぎる `Any`、安易な`object`や `cast(...)` で表現しないこと。意味のある payload 型が必要な場合は `TypedDict` や dataclass を定義して使うこと。
 - コミットは日本語で行うこと。

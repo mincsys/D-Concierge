@@ -12,7 +12,7 @@ __pycache__/
 /codex/saved_artifacts
 /codex/sessions/
 /codex/sessions_validator/
-/mock/dist/
-/mock/node_modules/
-/mock/tsconfig.tsbuildinfo
+/src/frontend/dist/
+/src/frontend/node_modules/
+/src/frontend/tsconfig.tsbuildinfo
 /output/playwright/
