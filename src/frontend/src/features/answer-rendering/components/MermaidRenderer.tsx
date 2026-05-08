@@ -71,7 +71,9 @@ export function MermaidRenderer({ source }: { source: string }) {
         </Tooltip>
       ) : null}
       {renderFailed ? (
-        <pre className="m-0 whitespace-pre-wrap text-sm font-[720] text-[#9f1d1d]">Mermaid図を表示できませんでした。</pre>
+        <pre className="m-0 whitespace-pre-wrap text-sm font-[720] text-[#9f1d1d]">
+          Mermaid図を表示できませんでした。
+        </pre>
       ) : (
         <div className="mermaid-preview min-h-[120px]" dangerouslySetInnerHTML={{ __html: svg }} />
       )}

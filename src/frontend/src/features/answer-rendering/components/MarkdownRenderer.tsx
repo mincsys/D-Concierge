@@ -12,28 +12,13 @@ const markdownSanitizeSchema = {
   ...defaultSchema,
   attributes: {
     ...defaultSchema.attributes,
-    code: [
-      ...(defaultSchema.attributes?.code ?? []),
-      ["className", /^language-./],
-    ],
-    img: [
-      ...(defaultSchema.attributes?.img ?? []),
-      "className",
-      "loading",
-      "src",
-      "alt",
-    ],
-    table: [
-      ...(defaultSchema.attributes?.table ?? []),
-      "className",
-    ],
+    code: [...(defaultSchema.attributes?.code ?? []), ["className", /^language-./]],
+    img: [...(defaultSchema.attributes?.img ?? []), "className", "loading", "src", "alt"],
+    table: [...(defaultSchema.attributes?.table ?? []), "className"],
   },
 };
 
-const rehypePlugins: PluggableList = [
-  rehypeRaw,
-  [rehypeSanitize, markdownSanitizeSchema],
-];
+const rehypePlugins: PluggableList = [rehypeRaw, [rehypeSanitize, markdownSanitizeSchema]];
 
 const markdownComponents: Components = {
   a({ children, href }) {

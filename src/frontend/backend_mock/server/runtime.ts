@@ -117,7 +117,9 @@ export function applyStubSseEvent(event: SseEvent) {
       title: nextDetail.title,
       latest_run_id: latestRun.run_id,
       latest_state: latestRun.state,
-      updated_at: isTerminalState(latestRun.state) ? currentIsoString() : getHistoryUpdatedAt(chatId),
+      updated_at: isTerminalState(latestRun.state)
+        ? currentIsoString()
+        : getHistoryUpdatedAt(chatId),
     });
   }
 }
@@ -169,7 +171,9 @@ export function cancelStubRun(runId: string) {
 
 export function isStubRunCancelRequested(runId: string) {
   const chatId = findChatIdByRunId(runId);
-  const run = chatId ? runtimeChatDetails[chatId]?.runs.find((item) => item.run_id === runId) : undefined;
+  const run = chatId
+    ? runtimeChatDetails[chatId]?.runs.find((item) => item.run_id === runId)
+    : undefined;
   return run?.state === "キャンセル要求中";
 }
 
@@ -302,7 +306,10 @@ function findChatIdByRunId(runId: string) {
 }
 
 function getHistoryUpdatedAt(chatId: string) {
-  return runtimeChatHistories.find((history) => history.chat_id === chatId)?.updated_at ?? currentIsoString();
+  return (
+    runtimeChatHistories.find((history) => history.chat_id === chatId)?.updated_at ??
+    currentIsoString()
+  );
 }
 
 function createFallbackChatDetail(chatId: string): ChatDetailResponse {
@@ -337,7 +344,9 @@ function createChatTitle(userInstruction: string) {
 }
 
 function isTerminalState(state: ChatRun["state"]) {
-  return state === "完了" || state === "キャンセル済み" || state === "エラー" || state === "タイムアウト";
+  return (
+    state === "完了" || state === "キャンセル済み" || state === "エラー" || state === "タイムアウト"
+  );
 }
 
 function isCancelableState(state: ChatRun["state"]) {

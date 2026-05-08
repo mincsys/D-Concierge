@@ -62,7 +62,10 @@ export async function startChat(userInstruction: string): Promise<AcceptedChatRu
   };
 }
 
-export async function appendChatRun(chatId: string, userInstruction: string): Promise<AcceptedChatRun> {
+export async function appendChatRun(
+  chatId: string,
+  userInstruction: string,
+): Promise<AcceptedChatRun> {
   const response = await requestJson<ChatStartResponse>(`/api/chats/${chatId}/runs`, {
     method: "POST",
     body: JSON.stringify({ user_instruction: userInstruction }),
@@ -124,22 +127,36 @@ export function streamChatRun({ sseUrl, isCurrent, onEvent }: StreamChatRunOptio
           }
         })
         .catch((error: unknown) => {
-          settleAsRejected(error instanceof Error ? error : new Error("SSEイベントの処理に失敗しました。"));
+          settleAsRejected(
+            error instanceof Error ? error : new Error("SSEイベントの処理に失敗しました。"),
+          );
         });
     }
 
     eventSource.addEventListener("state", (event) => enqueueEvent(parseSseEvent("state", event)));
-    eventSource.addEventListener("message", (event) => enqueueEvent(parseSseEvent("message", event)));
+    eventSource.addEventListener("message", (event) =>
+      enqueueEvent(parseSseEvent("message", event)),
+    );
     eventSource.addEventListener("answer", (event) => enqueueEvent(parseSseEvent("answer", event)));
     eventSource.addEventListener("error", (event) => {
-      if (event instanceof MessageEvent && typeof event.data === "string" && event.data.length > 0) {
+      if (
+        event instanceof MessageEvent &&
+        typeof event.data === "string" &&
+        event.data.length > 0
+      ) {
         enqueueEvent(parseSseEvent("error", event));
       }
     });
-    eventSource.addEventListener("canceled", (event) => enqueueEvent(parseSseEvent("canceled", event)));
+    eventSource.addEventListener("canceled", (event) =>
+      enqueueEvent(parseSseEvent("canceled", event)),
+    );
 
     eventSource.onerror = (event) => {
-      if (event instanceof MessageEvent && typeof event.data === "string" && event.data.length > 0) {
+      if (
+        event instanceof MessageEvent &&
+        typeof event.data === "string" &&
+        event.data.length > 0
+      ) {
         return;
       }
 

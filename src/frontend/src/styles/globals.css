@@ -81,8 +81,7 @@ body {
   background: var(--dc-app-bg);
   color: var(--dc-text);
   font-family:
-    Inter, "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", "Yu Gothic",
-    system-ui, sans-serif;
+    Inter, "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", system-ui, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }

@@ -75,7 +75,11 @@ export function createBackendMockMiddleware(mockRootDir: string): Connect.NextHa
 
       const referenceMatch = pathname.match(/^\/api\/references\/([^/]+)$/);
       if (method === "GET" && referenceMatch) {
-        serveFile(res, path.join(mockRootDir, "assets/references", `${referenceMatch[1]}.pdf`), "application/pdf");
+        serveFile(
+          res,
+          path.join(mockRootDir, "assets/references", `${referenceMatch[1]}.pdf`),
+          "application/pdf",
+        );
         return;
       }
 
@@ -86,7 +90,11 @@ export function createBackendMockMiddleware(mockRootDir: string): Connect.NextHa
           sendText(res, 404, "artifact not found");
           return;
         }
-        serveFile(res, path.join(mockRootDir, "assets/artifacts", artifact.fileName), artifact.mimeType);
+        serveFile(
+          res,
+          path.join(mockRootDir, "assets/artifacts", artifact.fileName),
+          artifact.mimeType,
+        );
         return;
       }
 

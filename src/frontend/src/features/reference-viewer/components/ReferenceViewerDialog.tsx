@@ -1,4 +1,11 @@
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { formatPdfPageRange } from "@/features/reference-viewer/lib/pageRange";
 import type { PdfReference } from "@/features/reference-viewer/model/types";
 import { PdfPageViewer } from "@/features/reference-viewer/viewers/PdfPageViewer";

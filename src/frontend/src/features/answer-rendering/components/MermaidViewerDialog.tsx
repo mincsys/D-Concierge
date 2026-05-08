@@ -3,7 +3,14 @@ import { useCallback, useEffect, useRef } from "react";
 import { TransformComponent, TransformWrapper, useControls } from "react-zoom-pan-pinch";
 
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export function MermaidViewerDialog({
@@ -52,30 +59,33 @@ function MermaidZoomSurface({ svg }: { svg: string }) {
   const svgHostRef = useRef<HTMLDivElement | null>(null);
   const { setTransform, zoomIn, zoomOut } = useControls();
 
-  const fitToView = useCallback((animationTime = 180) => {
-    const surface = surfaceRef.current;
-    const svgElement = svgHostRef.current?.querySelector("svg");
-    if (!surface || !svgElement) {
-      return;
-    }
+  const fitToView = useCallback(
+    (animationTime = 180) => {
+      const surface = surfaceRef.current;
+      const svgElement = svgHostRef.current?.querySelector("svg");
+      if (!surface || !svgElement) {
+        return;
+      }
 
-    const svgSize = getSvgIntrinsicSize(svgElement);
-    if (!svgSize) {
-      return;
-    }
-    svgElement.style.width = `${svgSize.width}px`;
-    svgElement.style.height = `${svgSize.height}px`;
+      const svgSize = getSvgIntrinsicSize(svgElement);
+      if (!svgSize) {
+        return;
+      }
+      svgElement.style.width = `${svgSize.width}px`;
+      svgElement.style.height = `${svgSize.height}px`;
 
-    const horizontalPadding = 48;
-    const verticalPadding = 48;
-    const availableWidth = Math.max(120, surface.clientWidth - horizontalPadding);
-    const availableHeight = Math.max(120, surface.clientHeight - verticalPadding);
-    const scale = Math.min(availableWidth / svgSize.width, availableHeight / svgSize.height, 1);
-    const positionX = Math.round((surface.clientWidth - svgSize.width * scale) / 2);
-    const positionY = Math.round((surface.clientHeight - svgSize.height * scale) / 2);
+      const horizontalPadding = 48;
+      const verticalPadding = 48;
+      const availableWidth = Math.max(120, surface.clientWidth - horizontalPadding);
+      const availableHeight = Math.max(120, surface.clientHeight - verticalPadding);
+      const scale = Math.min(availableWidth / svgSize.width, availableHeight / svgSize.height, 1);
+      const positionX = Math.round((surface.clientWidth - svgSize.width * scale) / 2);
+      const positionY = Math.round((surface.clientHeight - svgSize.height * scale) / 2);
 
-    setTransform(positionX, positionY, scale, animationTime, "easeOut");
-  }, [setTransform]);
+      setTransform(positionX, positionY, scale, animationTime, "easeOut");
+    },
+    [setTransform],
+  );
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => fitToView(0));

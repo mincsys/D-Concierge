@@ -40,7 +40,10 @@ export function ChatThread({
   const composerActionMode =
     latestRun && (cancelingRunId === latestRun.runId || latestRun.state === "キャンセル要求中")
       ? "canceling"
-      : latestRun && (latestRun.state === "受付" || latestRun.state === "実行中" || latestRun.state === "検証中")
+      : latestRun &&
+          (latestRun.state === "受付" ||
+            latestRun.state === "実行中" ||
+            latestRun.state === "検証中")
         ? "cancel"
         : "send";
 
@@ -56,7 +59,10 @@ export function ChatThread({
       }
 
       const targetTop = targetElement.getBoundingClientRect().top + window.scrollY;
-      const scrollTop = Math.max(0, targetTop - window.innerHeight * CONTINUED_RUN_SCROLL_OFFSET_RATIO);
+      const scrollTop = Math.max(
+        0,
+        targetTop - window.innerHeight * CONTINUED_RUN_SCROLL_OFFSET_RATIO,
+      );
       window.scrollTo({ top: scrollTop, behavior: "smooth" });
       onScrollTargetHandled();
     });
@@ -75,7 +81,10 @@ export function ChatThread({
         {session.runs.map((run) => (
           <div
             ref={run.runId === scrollTargetRunId ? scrollTargetElementRef : undefined}
-            className={cn("mt-9 first:mt-0", run.runId === scrollReserveRunId && CONTINUED_RUN_SCROLL_RESERVE_CLASS)}
+            className={cn(
+              "mt-9 first:mt-0",
+              run.runId === scrollReserveRunId && CONTINUED_RUN_SCROLL_RESERVE_CLASS,
+            )}
             key={run.runId}
           >
             <div className="ml-auto mr-3 w-fit max-w-[470px] whitespace-pre-wrap rounded-2xl bg-[var(--dc-user-bubble)] px-[26px] py-5 text-[15.5px] font-normal text-[var(--dc-text)]">
@@ -84,7 +93,9 @@ export function ChatThread({
             <article
               className={cn(
                 "grid w-[min(820px,100%)] gap-[25px]",
-                sidebarCollapsed ? "mt-0" : "ml-7 max-[1280px]:w-[min(760px,100%)] max-[1100px]:ml-0",
+                sidebarCollapsed
+                  ? "mt-0"
+                  : "ml-7 max-[1280px]:w-[min(760px,100%)] max-[1100px]:ml-0",
               )}
             >
               {run.intermediateMessages.length > 0 ? (
@@ -95,8 +106,12 @@ export function ChatThread({
                 />
               ) : null}
               {run.answer ? <AnswerContent answer={run.answer} onOpenPdf={onOpenPdf} /> : null}
-              {run.statusMessage && (run.state === "キャンセル要求中" || run.state === "キャンセル済み") ? (
-                <AnswerContent answer={{ markdown: run.statusMessage, references: [] }} onOpenPdf={onOpenPdf} />
+              {run.statusMessage &&
+              (run.state === "キャンセル要求中" || run.state === "キャンセル済み") ? (
+                <AnswerContent
+                  answer={{ markdown: run.statusMessage, references: [] }}
+                  onOpenPdf={onOpenPdf}
+                />
               ) : run.statusMessage ? (
                 <div className="ml-20 mt-5 rounded-lg border border-[var(--dc-border-soft)] bg-white px-4 py-3 text-sm font-[650] text-[var(--dc-muted-strong)] max-[1100px]:ml-0">
                   {run.statusMessage}

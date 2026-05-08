@@ -25,7 +25,10 @@ export function ThoughtPanel({
           <Sparkles size={22} fill="currentColor" />
         </span>
         <ChevronDown
-          className={cn("text-[var(--dc-muted)] transition-transform duration-150", open ? "rotate-0" : "-rotate-90")}
+          className={cn(
+            "text-[var(--dc-muted)] transition-transform duration-150",
+            open ? "rotate-0" : "-rotate-90",
+          )}
           size={19}
         />
         <span>作業プロセス</span>

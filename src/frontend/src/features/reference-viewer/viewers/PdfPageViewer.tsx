@@ -16,11 +16,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url,
 ).toString();
 
-export function PdfPageViewer({
-  reference,
-}: {
-  reference: PdfReference;
-}) {
+export function PdfPageViewer({ reference }: { reference: PdfReference }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const targetPageRef = useRef<HTMLDivElement | null>(null);
   const didScrollToTargetRef = useRef(false);
@@ -31,16 +27,10 @@ export function PdfPageViewer({
   const [pagesToRender, setPagesToRender] = useState<Set<number>>(() => new Set());
   const referencePageRange = useMemo(
     () => (pdfDoc ? getValidPdfPageRange(reference, pdfDoc.numPages) : null),
-    [pdfDoc, reference.locator.page_end, reference.locator.page_start],
+    [pdfDoc, reference],
   );
-  const referencePages = useMemo(
-    () => createPages(referencePageRange),
-    [referencePageRange],
-  );
-  const referencePageSet = useMemo(
-    () => new Set(referencePages),
-    [referencePages],
-  );
+  const referencePages = useMemo(() => createPages(referencePageRange), [referencePageRange]);
+  const referencePageSet = useMemo(() => new Set(referencePages), [referencePages]);
 
   useEffect(() => {
     let destroyed = false;
@@ -81,28 +71,31 @@ export function PdfPageViewer({
     };
   }, [reference]);
 
-  const handlePageRendered = useCallback((page: number) => {
-    if (renderedPagesRef.current.has(page)) {
-      return;
-    }
+  const handlePageRendered = useCallback(
+    (page: number) => {
+      if (renderedPagesRef.current.has(page)) {
+        return;
+      }
 
-    renderedPagesRef.current = new Set(renderedPagesRef.current).add(page);
+      renderedPagesRef.current = new Set(renderedPagesRef.current).add(page);
 
-    if (page === referencePageRange?.pageStart && !didScrollToTargetRef.current) {
-      didScrollToTargetRef.current = true;
-      requestAnimationFrame(() => {
-        const container = containerRef.current;
-        const target = targetPageRef.current;
-        if (!container || !target) {
-          return;
-        }
-        container.scrollTo({
-          top: Math.max(0, target.offsetTop - container.offsetTop - 8),
-          behavior: "auto",
+      if (page === referencePageRange?.pageStart && !didScrollToTargetRef.current) {
+        didScrollToTargetRef.current = true;
+        requestAnimationFrame(() => {
+          const container = containerRef.current;
+          const target = targetPageRef.current;
+          if (!container || !target) {
+            return;
+          }
+          container.scrollTo({
+            top: Math.max(0, target.offsetTop - container.offsetTop - 8),
+            behavior: "auto",
+          });
         });
-      });
-    }
-  }, [referencePageRange?.pageStart]);
+      }
+    },
+    [referencePageRange?.pageStart],
+  );
 
   const handlePageVisible = useCallback((page: number) => {
     setPagesToRender((current) => {
@@ -181,11 +174,9 @@ function createPages(pageRange: PageRange | null) {
 
 function createInitialPagesToRender(pageRange: PageRange | null, totalPages: number) {
   const pages = pageRange
-    ? [
-        pageRange.pageStart - 1,
-        ...createPages(pageRange),
-        pageRange.pageEnd + 1,
-      ].filter((page) => page >= 1 && page <= totalPages)
+    ? [pageRange.pageStart - 1, ...createPages(pageRange), pageRange.pageEnd + 1].filter(
+        (page) => page >= 1 && page <= totalPages,
+      )
     : [1].filter((page) => page <= totalPages);
 
   return new Set(pages);
@@ -242,7 +233,12 @@ function PdfPageFrame({
 
   return (
     <div ref={frameContentRef}>
-      <div className={cn("mb-2 text-left text-[13px] font-[780] text-[var(--dc-muted-strong)]", isReferencePage && "text-[var(--dc-primary)]")}>
+      <div
+        className={cn(
+          "mb-2 text-left text-[13px] font-[780] text-[var(--dc-muted-strong)]",
+          isReferencePage && "text-[var(--dc-primary)]",
+        )}
+      >
         {isReferencePage ? `参照元ページ p.${page}` : `p.${page}`}
       </div>
       {shouldRender ? (
@@ -306,7 +302,11 @@ function PdfPageCanvas({
       canvas.style.height = `${Math.floor(scaledViewport.height)}px`;
       context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
 
-      renderTaskRef.current = pdfPage.render({ canvas, canvasContext: context, viewport: scaledViewport });
+      renderTaskRef.current = pdfPage.render({
+        canvas,
+        canvasContext: context,
+        viewport: scaledViewport,
+      });
       await renderTaskRef.current.promise;
       if (!destroyed) {
         onRendered(page);

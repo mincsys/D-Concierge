@@ -84,7 +84,10 @@ export function Sidebar({
   return (
     <aside className="sticky top-0 flex h-screen min-h-0 flex-col overflow-hidden border-r border-[var(--dc-border)] bg-linear-to-b from-[var(--dc-sidebar-from)] via-[var(--dc-sidebar-via)] to-[var(--dc-sidebar-to)] pt-7">
       <div className="mx-4 mb-6 flex h-12 items-center gap-[13px]">
-        <div className="grid size-10 shrink-0 place-items-center overflow-hidden" aria-hidden="true">
+        <div
+          className="grid size-10 shrink-0 place-items-center overflow-hidden"
+          aria-hidden="true"
+        >
           <img className="h-9 w-auto object-contain" src={brandLogoUrl} alt="" />
         </div>
         <div className="translate-y-[-2px] whitespace-nowrap text-[26px] leading-none font-extrabold tracking-normal text-[var(--dc-primary-strong)]">
@@ -132,12 +135,18 @@ export function Sidebar({
         最近のチャット
       </div>
       <ScrollArea className="min-h-0 flex-1">
-        <ChatHistoryList activeChatId={activeChatId} histories={histories} onOpenAnswer={onOpenAnswer} />
+        <ChatHistoryList
+          activeChatId={activeChatId}
+          histories={histories}
+          onOpenAnswer={onOpenAnswer}
+        />
       </ScrollArea>
 
       <div className="mt-auto grid min-h-[82px] grid-cols-[38px_1fr_34px] items-center gap-3 border-t border-[var(--dc-border-soft)] bg-[var(--dc-sidebar-to)] px-4 py-3.5 text-base font-[750]">
         <Avatar className="size-[38px] bg-[var(--dc-primary)] text-white">
-          <AvatarFallback className="bg-[var(--dc-primary)] font-[760] text-white">A</AvatarFallback>
+          <AvatarFallback className="bg-[var(--dc-primary)] font-[760] text-white">
+            A
+          </AvatarFallback>
         </Avatar>
         <span>山田 太郎</span>
         <Button

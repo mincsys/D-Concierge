@@ -111,7 +111,9 @@ export function ChatPage() {
         }));
         return;
       case "answer":
-        setCancelingRunId((currentRunId) => (currentRunId === event.payload.run_id ? null : currentRunId));
+        setCancelingRunId((currentRunId) =>
+          currentRunId === event.payload.run_id ? null : currentRunId,
+        );
         updateDisplayedRun(event.payload.run_id, (run) => ({
           ...run,
           state: event.payload.state,
@@ -131,7 +133,9 @@ export function ChatPage() {
         return;
       case "error":
       case "canceled":
-        setCancelingRunId((currentRunId) => (currentRunId === event.payload.run_id ? null : currentRunId));
+        setCancelingRunId((currentRunId) =>
+          currentRunId === event.payload.run_id ? null : currentRunId,
+        );
         updateDisplayedRun(event.payload.run_id, (run) => ({
           ...run,
           state: event.payload.state,
@@ -171,7 +175,10 @@ export function ChatPage() {
     setHistories(await listChatHistories());
   }
 
-  async function streamAcceptedRun(response: { run_id: string; sse_url: string }, streamId: number) {
+  async function streamAcceptedRun(
+    response: { run_id: string; sse_url: string },
+    streamId: number,
+  ) {
     await streamChatRun({
       sseUrl: response.sse_url,
       isCurrent: () => isCurrentStream(streamId),

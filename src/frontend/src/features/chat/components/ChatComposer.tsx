@@ -37,9 +37,17 @@ export function ChatComposer({
   const message = value ?? internalMessage;
   const canSubmit = message.trim().length > 0;
   const actionLabel =
-    actionMode === "canceling" ? "キャンセル処理中" : actionMode === "cancel" ? "キャンセル" : "送信";
+    actionMode === "canceling"
+      ? "キャンセル処理中"
+      : actionMode === "cancel"
+        ? "キャンセル"
+        : "送信";
   const actionTooltip =
-    actionMode === "canceling" ? "キャンセル処理中" : actionMode === "cancel" ? "キャンセル" : "送信（Ctrl+Enter）";
+    actionMode === "canceling"
+      ? "キャンセル処理中"
+      : actionMode === "cancel"
+        ? "キャンセル"
+        : "送信（Ctrl+Enter）";
   const actionDisabled = actionMode === "send" ? !canSubmit : actionMode === "canceling";
 
   useLayoutEffect(() => {
@@ -60,7 +68,10 @@ export function ChatComposer({
     }
 
     textarea.style.height = `${MIN_TEXTAREA_HEIGHT}px`;
-    const nextHeight = Math.min(Math.max(textarea.scrollHeight, MIN_TEXTAREA_HEIGHT), MAX_TEXTAREA_HEIGHT);
+    const nextHeight = Math.min(
+      Math.max(textarea.scrollHeight, MIN_TEXTAREA_HEIGHT),
+      MAX_TEXTAREA_HEIGHT,
+    );
     textarea.style.height = `${nextHeight}px`;
     textarea.style.overflowY = textarea.scrollHeight > MAX_TEXTAREA_HEIGHT ? "auto" : "hidden";
   }
