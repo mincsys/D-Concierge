@@ -292,7 +292,7 @@ function upsertRuntimeHistory(item: ChatHistoryResponseItem) {
   runtimeChatHistories = [
     item,
     ...runtimeChatHistories.filter((history) => history.chat_id !== item.chat_id),
-  ].sort((left, right) => right.updated_at.localeCompare(left.updated_at));
+  ].sort((left, right) => Date.parse(right.updated_at) - Date.parse(left.updated_at));
 }
 
 function findChatIdByRunId(runId: string) {
