@@ -30,7 +30,7 @@
 | 1 | REST境界で成果物IDを検証する。 |
 | 2 | Repositoryで成果物メタ情報を取得する。 |
 | 3 | FileArtifactStoreで保存済み成果物領域内のファイルを解決する。 |
-| 4 | MIMEタイプとファイルサイズを確認する。 |
+| 4 | MIMEタイプと保存済みファイル実体を確認する。 |
 | 5 | 保存済み成果物をストリーミング応答として返す。 |
 
 ## 6. 事前条件 / 事後条件 / 不変条件
@@ -74,7 +74,7 @@
 | --- | --- |
 | 取得開始 | trace_id、artifact_id |
 | 安全検証失敗 | trace_id、artifact_id、理由 |
-| 取得成功 | trace_id、artifact_id、MIMEタイプ、サイズ |
+| 取得成功 | trace_id、artifact_id、MIMEタイプ、ファイル実体の読込結果 |
 | 例外発生 | trace_id、エラー分類 |
 
 ## 10. トランザクション
