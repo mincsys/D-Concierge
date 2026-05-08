@@ -1,3 +1,5 @@
+import { useLayoutEffect, useRef } from "react";
+
 import { AnswerContent } from "@/features/answer-rendering/components/AnswerContent";
 import type { ChatSession } from "@/features/chat/model/types";
 import type { PdfReference } from "@/features/reference-viewer/model/types";
@@ -5,25 +7,35 @@ import { cn } from "@/lib/utils";
 import { ChatComposer } from "./ChatComposer";
 import { ThoughtPanel } from "./ThoughtPanel";
 
+const CONTINUED_RUN_SCROLL_OFFSET_RATIO = 0.2;
+const CONTINUED_RUN_SCROLL_RESERVE_CLASS = "min-h-[80vh]";
+
 export function ChatThread({
   cancelingRunId,
   openThoughtRunIds,
+  scrollReserveRunId,
+  scrollTargetRunId,
   session,
   sidebarCollapsed,
   onToggleThought,
   onOpenPdf,
   onCancelRun,
+  onScrollTargetHandled,
   onSubmitInstruction,
 }: {
   cancelingRunId?: string | null;
   openThoughtRunIds: Set<string>;
+  scrollReserveRunId?: string;
+  scrollTargetRunId?: string;
   session: ChatSession;
   sidebarCollapsed: boolean;
   onToggleThought: (runId: string) => void;
   onOpenPdf: (reference: PdfReference) => void;
   onCancelRun: (runId: string) => void;
+  onScrollTargetHandled: () => void;
   onSubmitInstruction: (message: string) => void;
 }) {
+  const scrollTargetElementRef = useRef<HTMLDivElement | null>(null);
   const latestRun = session.runs.at(-1);
   const composerActionMode =
     latestRun && (cancelingRunId === latestRun.runId || latestRun.state === "キャンセル要求中")
@@ -31,6 +43,26 @@ export function ChatThread({
       : latestRun && (latestRun.state === "受付" || latestRun.state === "実行中" || latestRun.state === "検証中")
         ? "cancel"
         : "send";
+
+  useLayoutEffect(() => {
+    if (!scrollTargetRunId) {
+      return;
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      const targetElement = scrollTargetElementRef.current;
+      if (!targetElement) {
+        return;
+      }
+
+      const targetTop = targetElement.getBoundingClientRect().top + window.scrollY;
+      const scrollTop = Math.max(0, targetTop - window.innerHeight * CONTINUED_RUN_SCROLL_OFFSET_RATIO);
+      window.scrollTo({ top: scrollTop, behavior: "smooth" });
+      onScrollTargetHandled();
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [onScrollTargetHandled, scrollTargetRunId, session.runs]);
 
   return (
     <section className="min-h-screen px-[34px] pt-[60px] pb-[110px] max-[1024px]:px-5">
@@ -41,7 +73,11 @@ export function ChatThread({
         )}
       >
         {session.runs.map((run) => (
-          <div className="mt-9 first:mt-0" key={run.runId}>
+          <div
+            ref={run.runId === scrollTargetRunId ? scrollTargetElementRef : undefined}
+            className={cn("mt-9 first:mt-0", run.runId === scrollReserveRunId && CONTINUED_RUN_SCROLL_RESERVE_CLASS)}
+            key={run.runId}
+          >
             <div className="ml-auto mr-3 w-fit max-w-[470px] whitespace-pre-wrap rounded-2xl bg-[var(--dc-user-bubble)] px-[26px] py-5 text-[15.5px] font-normal text-[var(--dc-text)]">
               {run.userInstruction}
             </div>

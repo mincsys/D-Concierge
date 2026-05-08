@@ -35,6 +35,8 @@ export function ChatPage() {
   const [openThoughtRunIds, setOpenThoughtRunIds] = useState<Set<string>>(() => new Set());
   const [pdfOpen, setPdfOpen] = useState(false);
   const [cancelingRunId, setCancelingRunId] = useState<string | null>(null);
+  const [scrollTargetRunId, setScrollTargetRunId] = useState<string | undefined>();
+  const [scrollReserveRunId, setScrollReserveRunId] = useState<string | undefined>();
   const streamRunIdRef = useRef(0);
 
   useEffect(() => {
@@ -187,6 +189,8 @@ export function ChatPage() {
     setReference(null);
     setOpenThoughtRunIds(new Set());
     setCancelingRunId(null);
+    setScrollTargetRunId(undefined);
+    setScrollReserveRunId(undefined);
 
     const accepted = await startChat(message);
     if (!isCurrentStream(streamId)) {
@@ -196,6 +200,7 @@ export function ChatPage() {
     setSession(accepted.session);
     openThought(accepted.response.run_id);
     setMode("answer");
+    window.scrollTo({ top: 0, behavior: "smooth" });
     await refreshHistories();
     await streamAcceptedRun(accepted.response, streamId);
   }
@@ -209,6 +214,7 @@ export function ChatPage() {
     setPdfOpen(false);
     setReference(null);
     setCancelingRunId(null);
+    setScrollTargetRunId(undefined);
 
     const accepted = await appendChatRun(session.id, message);
     if (!isCurrentStream(streamId)) {
@@ -217,6 +223,8 @@ export function ChatPage() {
 
     setSession(accepted.session);
     openThought(accepted.response.run_id);
+    setScrollReserveRunId(accepted.response.run_id);
+    setScrollTargetRunId(accepted.response.run_id);
     await refreshHistories();
     await streamAcceptedRun(accepted.response, streamId);
   }
@@ -228,6 +236,8 @@ export function ChatPage() {
     setReference(null);
     setCancelingRunId(null);
     setOpenThoughtRunIds(new Set());
+    setScrollTargetRunId(undefined);
+    setScrollReserveRunId(undefined);
     setMode("answer");
   }
 
@@ -238,6 +248,8 @@ export function ChatPage() {
     setReference(null);
     setCancelingRunId(null);
     setOpenThoughtRunIds(new Set());
+    setScrollTargetRunId(undefined);
+    setScrollReserveRunId(undefined);
   }
 
   function openThought(runId: string) {
@@ -308,9 +320,12 @@ export function ChatPage() {
               sidebarCollapsed={sidebarCollapsed}
               openThoughtRunIds={openThoughtRunIds}
               cancelingRunId={cancelingRunId}
+              scrollReserveRunId={scrollReserveRunId}
+              scrollTargetRunId={scrollTargetRunId}
               onToggleThought={toggleThought}
               onOpenPdf={openPdf}
               onCancelRun={cancelDisplayedRun}
+              onScrollTargetHandled={() => setScrollTargetRunId(undefined)}
               onSubmitInstruction={submitContinuedInstruction}
             />
           ) : (
