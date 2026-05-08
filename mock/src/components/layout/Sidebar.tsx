@@ -12,12 +12,14 @@ import { cn } from "@/lib/utils";
 const brandLogoUrl = new URL("../../assets/d-concierge-logo.png", import.meta.url).href;
 
 export function Sidebar({
+  activeChatId,
   collapsed,
   histories,
   onStartNewChat,
   onOpenAnswer,
   onToggleCollapsed,
 }: {
+  activeChatId?: string;
   collapsed: boolean;
   histories: ChatHistoryItem[];
   onStartNewChat: () => void;
@@ -130,7 +132,7 @@ export function Sidebar({
         最近のチャット
       </div>
       <ScrollArea className="min-h-0 flex-1">
-        <ChatHistoryList histories={histories} onOpenAnswer={onOpenAnswer} />
+        <ChatHistoryList activeChatId={activeChatId} histories={histories} onOpenAnswer={onOpenAnswer} />
       </ScrollArea>
 
       <div className="mt-auto grid min-h-[82px] grid-cols-[38px_1fr_34px] items-center gap-3 border-t border-[var(--dc-border-soft)] bg-[var(--dc-sidebar-to)] px-4 py-3.5 text-base font-[750]">

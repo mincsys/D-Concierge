@@ -112,7 +112,7 @@ sequenceDiagram
               url: "/api/references/9052af11-89cc-4273-bd2d-ad310805c442",
               locator: {
                 page_start: 10,
-                page_end: 14,
+                page_end: 10,
               },
             },
             {

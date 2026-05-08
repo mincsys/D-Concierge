@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import {
   appendChatRun,
+  cancelChatRun,
   getActiveChatSession,
   getAppConfig,
   getChatDetail,
@@ -31,8 +32,9 @@ export function ChatPage() {
   const [histories, setHistories] = useState<ChatHistoryItem[]>([]);
   const [session, setSession] = useState<ChatSession | null>(null);
   const [reference, setReference] = useState<PdfReference | null>(null);
-  const [thoughtOpen, setThoughtOpen] = useState(true);
+  const [openThoughtRunIds, setOpenThoughtRunIds] = useState<Set<string>>(() => new Set());
   const [pdfOpen, setPdfOpen] = useState(false);
+  const [cancelingRunId, setCancelingRunId] = useState<string | null>(null);
   const streamRunIdRef = useRef(0);
 
   useEffect(() => {
@@ -107,6 +109,7 @@ export function ChatPage() {
         }));
         return;
       case "answer":
+        setCancelingRunId((currentRunId) => (currentRunId === event.payload.run_id ? null : currentRunId));
         updateDisplayedRun(event.payload.run_id, (run) => ({
           ...run,
           state: event.payload.state,
@@ -118,7 +121,7 @@ export function ChatPage() {
             references: event.payload.answer.references ?? [],
           },
           isCurrent: () => isCurrentStream(streamId),
-          onThoughtComplete: () => setThoughtOpen(false),
+          onThoughtComplete: () => closeThought(event.payload.run_id),
           onAnswerStart: startAnswer,
           onAnswerMarkdown: updateAnswerMarkdown,
           onAnswerComplete: completeAnswer,
@@ -126,6 +129,7 @@ export function ChatPage() {
         return;
       case "error":
       case "canceled":
+        setCancelingRunId((currentRunId) => (currentRunId === event.payload.run_id ? null : currentRunId));
         updateDisplayedRun(event.payload.run_id, (run) => ({
           ...run,
           state: event.payload.state,
@@ -181,7 +185,8 @@ export function ChatPage() {
     const streamId = nextStreamRunId();
     setPdfOpen(false);
     setReference(null);
-    setThoughtOpen(true);
+    setOpenThoughtRunIds(new Set());
+    setCancelingRunId(null);
 
     const accepted = await startChat(message);
     if (!isCurrentStream(streamId)) {
@@ -189,6 +194,7 @@ export function ChatPage() {
     }
 
     setSession(accepted.session);
+    openThought(accepted.response.run_id);
     setMode("answer");
     await refreshHistories();
     await streamAcceptedRun(accepted.response, streamId);
@@ -202,7 +208,7 @@ export function ChatPage() {
     const streamId = nextStreamRunId();
     setPdfOpen(false);
     setReference(null);
-    setThoughtOpen(true);
+    setCancelingRunId(null);
 
     const accepted = await appendChatRun(session.id, message);
     if (!isCurrentStream(streamId)) {
@@ -210,6 +216,7 @@ export function ChatPage() {
     }
 
     setSession(accepted.session);
+    openThought(accepted.response.run_id);
     await refreshHistories();
     await streamAcceptedRun(accepted.response, streamId);
   }
@@ -219,7 +226,8 @@ export function ChatPage() {
     setSession(await getChatDetail(chatId));
     setPdfOpen(false);
     setReference(null);
-    setThoughtOpen(false);
+    setCancelingRunId(null);
+    setOpenThoughtRunIds(new Set());
     setMode("answer");
   }
 
@@ -228,7 +236,50 @@ export function ChatPage() {
     setMode("start");
     setPdfOpen(false);
     setReference(null);
-    setThoughtOpen(true);
+    setCancelingRunId(null);
+    setOpenThoughtRunIds(new Set());
+  }
+
+  function openThought(runId: string) {
+    setOpenThoughtRunIds((currentRunIds) => new Set([...currentRunIds, runId]));
+  }
+
+  function closeThought(runId: string) {
+    setOpenThoughtRunIds((currentRunIds) => {
+      const nextRunIds = new Set(currentRunIds);
+      nextRunIds.delete(runId);
+      return nextRunIds;
+    });
+  }
+
+  function toggleThought(runId: string) {
+    setOpenThoughtRunIds((currentRunIds) => {
+      const nextRunIds = new Set(currentRunIds);
+      if (nextRunIds.has(runId)) {
+        nextRunIds.delete(runId);
+      } else {
+        nextRunIds.add(runId);
+      }
+      return nextRunIds;
+    });
+  }
+
+  async function cancelDisplayedRun(runId: string) {
+    if (!session) {
+      return;
+    }
+
+    setCancelingRunId(runId);
+    try {
+      const response = await cancelChatRun(session.id, runId);
+      updateDisplayedRun(response.run_id, (run) => ({
+        ...run,
+        state: response.state,
+        statusMessage: response.user_message,
+      }));
+    } catch {
+      setCancelingRunId((currentRunId) => (currentRunId === runId ? null : currentRunId));
+    }
   }
 
   function openPdf(referenceToOpen: PdfReference) {
@@ -238,7 +289,12 @@ export function ChatPage() {
 
   return (
     <>
-      <AppShell histories={histories} onStartNewChat={startNewChat} onOpenAnswer={openHistorySession}>
+      <AppShell
+        activeChatId={mode === "answer" ? session?.id : undefined}
+        histories={histories}
+        onStartNewChat={startNewChat}
+        onOpenAnswer={openHistorySession}
+      >
         {({ sidebarCollapsed }) =>
           mode === "start" ? (
             <ChatStartScreen
@@ -250,9 +306,11 @@ export function ChatPage() {
             <ChatThread
               session={session}
               sidebarCollapsed={sidebarCollapsed}
-              thoughtOpen={thoughtOpen}
-              onToggleThought={() => setThoughtOpen((current) => !current)}
+              openThoughtRunIds={openThoughtRunIds}
+              cancelingRunId={cancelingRunId}
+              onToggleThought={toggleThought}
               onOpenPdf={openPdf}
+              onCancelRun={cancelDisplayedRun}
               onSubmitInstruction={submitContinuedInstruction}
             />
           ) : (

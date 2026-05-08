@@ -9,13 +9,16 @@ import {
   acceptStubStartChat,
   applyStubSseEvent,
   cancelStubRun,
+  createStubCanceledEvent,
   getStubAppConfig,
   getStubChatDetail,
+  isStubRunCancelRequested,
   listStubChatHistories,
   listStubSseEvents,
 } from "./runtime";
 
-const SSE_EVENT_DELAY_MS = 420;
+const SSE_EVENT_DELAY_MS = 900;
+const CANCEL_COMPLETION_DELAY_MS = 1800;
 
 type UserInstructionBody = {
   user_instruction?: unknown;
@@ -140,14 +143,33 @@ async function streamRunEvents(res: ServerResponse, runId: string) {
     if (closed) {
       return;
     }
+    if (isStubRunCancelRequested(runId)) {
+      await streamCanceledEvent(res, runId, () => closed);
+      res.end();
+      return;
+    }
     writeSseEvent(res, event.event, event.payload);
     applyStubSseEvent(event);
     await delay(SSE_EVENT_DELAY_MS);
   }
 
   if (!closed) {
+    if (isStubRunCancelRequested(runId)) {
+      await streamCanceledEvent(res, runId, () => closed);
+    }
     res.end();
   }
+}
+
+async function streamCanceledEvent(res: ServerResponse, runId: string, isClosed: () => boolean) {
+  await delay(CANCEL_COMPLETION_DELAY_MS);
+  if (isClosed()) {
+    return;
+  }
+
+  const canceledEvent = createStubCanceledEvent(runId);
+  writeSseEvent(res, canceledEvent.event, canceledEvent.payload);
+  applyStubSseEvent(canceledEvent);
 }
 
 function writeSseEvent(res: ServerResponse, eventName: string, payload: unknown) {

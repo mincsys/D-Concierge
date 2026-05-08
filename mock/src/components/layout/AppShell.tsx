@@ -13,11 +13,13 @@ type AppShellRenderState = {
 const AUTO_COLLAPSE_WIDTH = 1100;
 
 export function AppShell({
+  activeChatId,
   children,
   histories,
   onStartNewChat,
   onOpenAnswer,
 }: {
+  activeChatId?: string;
   children: ReactNode | ((state: AppShellRenderState) => ReactNode);
   histories: ChatHistoryItem[];
   onStartNewChat: () => void;
@@ -67,6 +69,7 @@ export function AppShell({
       )}
     >
       <Sidebar
+        activeChatId={activeChatId}
         collapsed={sidebarCollapsed}
         histories={histories}
         onStartNewChat={onStartNewChat}

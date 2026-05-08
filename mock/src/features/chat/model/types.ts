@@ -32,6 +32,12 @@ export type ChatStartResponse = {
   state: ChatRunState;
 };
 
+export type CancelChatRunResponse = {
+  run_id: string;
+  state: "キャンセル要求中";
+  user_message: string;
+};
+
 export type ChatRunResponse = {
   run_id: string;
   state: ChatRunState;

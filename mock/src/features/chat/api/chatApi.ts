@@ -1,6 +1,7 @@
 import type {
   AnswerResponse,
   AppConfigResponse,
+  CancelChatRunResponse,
   ChatDetailResponse,
   ChatHistoryItem,
   ChatHistoryResponseItem,
@@ -71,6 +72,12 @@ export async function appendChatRun(chatId: string, userInstruction: string): Pr
     response,
     session: await getChatDetail(response.chat_id),
   };
+}
+
+export async function cancelChatRun(chatId: string, runId: string): Promise<CancelChatRunResponse> {
+  return requestJson<CancelChatRunResponse>(`/api/chats/${chatId}/runs/${runId}/cancel`, {
+    method: "POST",
+  });
 }
 
 export function streamChatRun({ sseUrl, isCurrent, onEvent }: StreamChatRunOptions) {

@@ -1,4 +1,4 @@
-import { Paperclip, Send, SlidersHorizontal } from "lucide-react";
+import { LoaderCircle, Paperclip, Send, SlidersHorizontal, Square } from "lucide-react";
 import { FormEvent, KeyboardEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -10,9 +10,11 @@ const MAX_TEXTAREA_HEIGHT = 480;
 const COMPOSER_PLACEHOLDER = "指示を入力してください";
 
 type ChatComposerProps = {
+  actionMode?: "send" | "cancel" | "canceling";
   autoFocus?: boolean;
   className?: string;
   focusSignal?: number;
+  onCancel?: () => void;
   onSubmit: (message: string) => void;
   onValueChange?: (message: string) => void;
   onFocus?: () => void;
@@ -20,9 +22,11 @@ type ChatComposerProps = {
 };
 
 export function ChatComposer({
+  actionMode = "send",
   autoFocus = false,
   className,
   focusSignal,
+  onCancel,
   onSubmit,
   onValueChange,
   onFocus,
@@ -32,6 +36,11 @@ export function ChatComposer({
   const [internalMessage, setInternalMessage] = useState("");
   const message = value ?? internalMessage;
   const canSubmit = message.trim().length > 0;
+  const actionLabel =
+    actionMode === "canceling" ? "キャンセル処理中" : actionMode === "cancel" ? "キャンセル" : "送信";
+  const actionTooltip =
+    actionMode === "canceling" ? "キャンセル処理中" : actionMode === "cancel" ? "キャンセル" : "送信（Ctrl+Enter）";
+  const actionDisabled = actionMode === "send" ? !canSubmit : actionMode === "canceling";
 
   useLayoutEffect(() => {
     resizeTextarea();
@@ -65,6 +74,9 @@ export function ChatComposer({
   }
 
   function submitMessage() {
+    if (actionMode !== "send") {
+      return;
+    }
     const trimmed = message.trim();
     if (!trimmed) {
       return;
@@ -75,6 +87,10 @@ export function ChatComposer({
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (actionMode === "cancel") {
+      onCancel?.();
+      return;
+    }
     submitMessage();
   }
 
@@ -140,14 +156,21 @@ export function ChatComposer({
             className={cn(
               "grid size-11 rounded-xl bg-[var(--dc-primary)] p-0 text-white shadow-[0_10px_20px_var(--dc-shadow-primary)] hover:bg-[var(--dc-primary)] disabled:bg-[var(--dc-muted)] disabled:text-white disabled:opacity-100 disabled:shadow-none disabled:hover:bg-[var(--dc-muted)]",
             )}
-            type="submit"
-            aria-label="送信"
-            disabled={!canSubmit}
+            type={actionMode === "send" ? "submit" : "button"}
+            aria-label={actionLabel}
+            disabled={actionDisabled}
+            onClick={actionMode === "cancel" ? onCancel : undefined}
           >
-            <Send size={22} fill="currentColor" />
+            {actionMode === "canceling" ? (
+              <LoaderCircle className="animate-spin" size={22} />
+            ) : actionMode === "cancel" ? (
+              <Square size={18} fill="currentColor" />
+            ) : (
+              <Send size={22} fill="currentColor" />
+            )}
           </Button>
         </TooltipTrigger>
-        <TooltipContent>送信（Ctrl+Enter）</TooltipContent>
+        <TooltipContent>{actionTooltip}</TooltipContent>
       </Tooltip>
     </form>
   );
