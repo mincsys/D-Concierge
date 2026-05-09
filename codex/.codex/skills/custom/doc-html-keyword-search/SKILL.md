@@ -1,13 +1,13 @@
 ---
 name: doc-html-keyword-search
-description: Search structured document HTML files under html/*/index.html by keyword or optional regular expression, page by page. Use when Codex needs to return a JSON list of documents and PDF page numbers where specific search words appear, without doing semantic passage selection.
+description: Search structured document HTML files under readonly/html/*/index.html by keyword or optional regular expression, page by page. Use when Codex needs to return a JSON list of documents and PDF page numbers where specific search words appear, without doing semantic passage selection.
 ---
 
 # Doc HTML Keyword Search
 
 ## 概要
 
-`html/*/index.html` の文書 HTML を `<section class="page" id="page-N">` 単位で検索し、検索ワードにヒットした文書名と PDF ページ番号の一覧を JSON で返す。
+`readonly/html/*/index.html` の文書 HTML を `<section class="page" id="page-N">` 単位で検索し、検索ワードにヒットした文書名と PDF ページ番号の一覧を JSON で返す。
 
 このスキルは機械的なキーワード検索用。質問意図に合う本文を解釈して探す場合は `doc-html-finder` を使う。
 
@@ -18,26 +18,26 @@ Python は必ず `uv run python` で実行する。
 複数文書を横断検索する:
 
 ```powershell
-uv run python .\.codex\skills\doc-html-keyword-search\scripts\search_html_pages.py .\html コーディング規約
+uv run python .\.codex\skills\doc-html-keyword-search\scripts\search_html_pages.py .\readonly\html コーディング規約
 ```
 
 正規表現で検索する:
 
 ```powershell
-uv run python .\.codex\skills\doc-html-keyword-search\scripts\search_html_pages.py .\html "コーディング.*規約" --regex
+uv run python .\.codex\skills\doc-html-keyword-search\scripts\search_html_pages.py .\readonly\html "コーディング.*規約" --regex
 ```
 
 複数語をすべて含むページだけ返す:
 
 ```powershell
-uv run python .\.codex\skills\doc-html-keyword-search\scripts\search_html_pages.py .\html 安全 要求 --mode and
+uv run python .\.codex\skills\doc-html-keyword-search\scripts\search_html_pages.py .\readonly\html 安全 要求 --mode and
 ```
 
 入力パスには以下を指定できる。
 
-- `html` ルート
-- `html/<文書名>` の文書ディレクトリ
-- `html/<文書名>/index.html`
+- `readonly/html` ルート
+- `readonly/html/<文書名>` の文書ディレクトリ
+- `readonly/html/<文書名>/index.html`
 
 ## 検索仕様
 
@@ -69,7 +69,7 @@ uv run python .\.codex\skills\doc-html-keyword-search\scripts\search_html_pages.
   "results": [
     {
       "document": "文書名",
-      "path": "html/文書名/index.html",
+      "path": "readonly/html/文書名/index.html",
       "page": 34,
       "hit_count": 2,
       "matched_terms": ["検索語"],
