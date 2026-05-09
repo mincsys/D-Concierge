@@ -109,8 +109,14 @@ export function streamChatRun({ sseUrl, isCurrent, onEvent }: StreamChatRunOptio
     }
 
     function enqueueEvent(event: SseEvent) {
-      if (event.event === "answer" || event.event === "error" || event.event === "canceled") {
+      if (settled || terminalEventReceived) {
+        return;
+      }
+
+      const terminalEvent = isTerminalSseEvent(event);
+      if (terminalEvent) {
         terminalEventReceived = true;
+        eventSource.close();
       }
 
       eventChain = eventChain
@@ -122,7 +128,7 @@ export function streamChatRun({ sseUrl, isCurrent, onEvent }: StreamChatRunOptio
 
           await onEvent(event);
 
-          if (event.event === "answer" || event.event === "error" || event.event === "canceled") {
+          if (terminalEvent) {
             settleAsResolved();
           }
         })
@@ -169,6 +175,10 @@ export function streamChatRun({ sseUrl, isCurrent, onEvent }: StreamChatRunOptio
       }
     };
   });
+}
+
+function isTerminalSseEvent(event: SseEvent) {
+  return event.event === "answer" || event.event === "error" || event.event === "canceled";
 }
 
 export function toChatHistoryItem(item: ChatHistoryResponseItem): ChatHistoryItem {
@@ -232,7 +242,9 @@ function toIntermediateMessage(message: IntermediateMessageResponse, index: numb
 
 function toAnswer(answer: AnswerResponse) {
   return {
-    markdown: answer.markdown,
-    references: answer.references ?? [],
+    blocks: answer.blocks.map((block) => ({
+      markdown: block.markdown,
+      references: block.references ?? [],
+    })),
   };
 }

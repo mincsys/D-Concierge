@@ -13,7 +13,7 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,css,json}\"",
     "typecheck": "tsc -b",
     "test:unit": "vitest run --config vitest.config.ts --dir tests/unit --passWithNoTests",
-    "test:integration": "vitest run --config vitest.config.ts --dir tests/integration --passWithNoTests"
+    "test:integration": "VITEST_SUITE=integration vitest run --config vitest.config.ts --dir tests/integration --passWithNoTests"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.11",

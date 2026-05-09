@@ -34,8 +34,9 @@ export function ChatComposer({
 }: ChatComposerProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [internalMessage, setInternalMessage] = useState("");
+  const [validationMessage, setValidationMessage] = useState<string | null>(null);
   const message = value ?? internalMessage;
-  const canSubmit = message.trim().length > 0;
+  const canAttemptSubmit = message.length > 0;
   const actionLabel =
     actionMode === "canceling"
       ? "キャンセル処理中"
@@ -48,7 +49,7 @@ export function ChatComposer({
       : actionMode === "cancel"
         ? "キャンセル"
         : "送信（Ctrl+Enter）";
-  const actionDisabled = actionMode === "send" ? !canSubmit : actionMode === "canceling";
+  const actionDisabled = actionMode === "send" ? !canAttemptSubmit : actionMode === "canceling";
 
   useLayoutEffect(() => {
     resizeTextarea();
@@ -63,6 +64,7 @@ export function ChatComposer({
 
   function resizeTextarea() {
     const textarea = textareaRef.current;
+    /* istanbul ignore next -- useLayoutEffect後はtextarea refが設定される */
     if (!textarea) {
       return;
     }
@@ -77,6 +79,9 @@ export function ChatComposer({
   }
 
   function updateMessage(nextMessage: string) {
+    if (nextMessage.trim().length > 0) {
+      setValidationMessage(null);
+    }
     if (onValueChange) {
       onValueChange(nextMessage);
       return;
@@ -90,9 +95,11 @@ export function ChatComposer({
     }
     const trimmed = message.trim();
     if (!trimmed) {
+      setValidationMessage("ユーザ指示を入力してください。");
       return;
     }
     onSubmit(trimmed);
+    setValidationMessage(null);
     updateMessage("");
   }
 
@@ -115,74 +122,78 @@ export function ChatComposer({
   }
 
   return (
-    <form
-      className={cn(
-        "grid min-h-[66px] grid-cols-[auto_minmax(0,1fr)_auto_auto] items-end gap-[17px] rounded-[11px] border border-[var(--dc-border)] bg-white/95 py-[10px] pr-[15px] pl-[17px] text-[var(--dc-muted)] shadow-[0_10px_30px_var(--dc-shadow-soft)] backdrop-blur-[10px]",
-        className,
-      )}
-      onSubmit={handleSubmit}
-    >
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            className="mb-[6px] grid size-[30px] place-items-center rounded-full bg-transparent p-0 text-[var(--dc-primary)] shadow-none hover:bg-[var(--dc-primary-hover)] hover:text-[var(--dc-primary-strong)]"
-            type="button"
-            variant="ghost"
-            aria-label="ファイルを添付"
-          >
-            <Paperclip size={23} />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>ファイルを添付</TooltipContent>
-      </Tooltip>
-      <textarea
-        ref={textareaRef}
-        autoFocus={autoFocus}
-        className="min-h-[42px] w-full resize-none overflow-hidden border-0 bg-transparent px-0 py-[9px] text-base leading-6 font-[560] whitespace-pre-wrap text-[var(--dc-text)] shadow-none break-words placeholder:text-[var(--dc-muted)] focus-visible:ring-0 focus-visible:outline-none"
-        placeholder={COMPOSER_PLACEHOLDER}
-        rows={1}
-        value={message}
-        onChange={(event) => updateMessage(event.target.value)}
-        onFocus={onFocus}
-        onKeyDown={handleKeyDown}
-      />
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            className={cn(
-              "grid size-[42px] rounded-full bg-transparent p-0 text-[var(--dc-primary)] shadow-none hover:bg-transparent hover:text-[var(--dc-primary-strong)]",
-            )}
-            type="button"
-            variant="ghost"
-            aria-label="表示設定"
-          >
-            <SlidersHorizontal size={24} />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>表示設定</TooltipContent>
-      </Tooltip>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            className={cn(
-              "grid size-11 rounded-xl bg-[var(--dc-primary)] p-0 text-white shadow-[0_10px_20px_var(--dc-shadow-primary)] hover:bg-[var(--dc-primary)] disabled:bg-[var(--dc-muted)] disabled:text-white disabled:opacity-100 disabled:shadow-none disabled:hover:bg-[var(--dc-muted)]",
-            )}
-            type={actionMode === "send" ? "submit" : "button"}
-            aria-label={actionLabel}
-            disabled={actionDisabled}
-            onClick={actionMode === "cancel" ? onCancel : undefined}
-          >
-            {actionMode === "canceling" ? (
-              <LoaderCircle className="animate-spin" size={22} />
-            ) : actionMode === "cancel" ? (
-              <Square size={18} fill="currentColor" />
-            ) : (
-              <Send size={22} fill="currentColor" />
-            )}
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>{actionTooltip}</TooltipContent>
-      </Tooltip>
-    </form>
+    <div className={cn("grid gap-2", className)}>
+      <form
+        className="grid min-h-[66px] grid-cols-[auto_minmax(0,1fr)_auto_auto] items-end gap-[17px] rounded-[11px] border border-[var(--dc-border)] bg-white/95 py-[10px] pr-[15px] pl-[17px] text-[var(--dc-muted)] shadow-[0_10px_30px_var(--dc-shadow-soft)] backdrop-blur-[10px]"
+        onSubmit={handleSubmit}
+      >
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              className="mb-[6px] grid size-[30px] place-items-center rounded-full bg-transparent p-0 text-[var(--dc-primary)] shadow-none hover:bg-[var(--dc-primary-hover)] hover:text-[var(--dc-primary-strong)]"
+              type="button"
+              variant="ghost"
+              aria-label="ファイルを添付"
+            >
+              <Paperclip size={23} />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>ファイルを添付</TooltipContent>
+        </Tooltip>
+        <textarea
+          ref={textareaRef}
+          autoFocus={autoFocus}
+          className="min-h-[42px] w-full resize-none overflow-hidden border-0 bg-transparent px-0 py-[9px] text-base leading-6 font-[560] whitespace-pre-wrap text-[var(--dc-text)] shadow-none break-words placeholder:text-[var(--dc-muted)] focus-visible:ring-0 focus-visible:outline-none"
+          placeholder={COMPOSER_PLACEHOLDER}
+          rows={1}
+          value={message}
+          onChange={(event) => updateMessage(event.target.value)}
+          onFocus={onFocus}
+          onKeyDown={handleKeyDown}
+        />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              className={cn(
+                "grid size-[42px] rounded-full bg-transparent p-0 text-[var(--dc-primary)] shadow-none hover:bg-transparent hover:text-[var(--dc-primary-strong)]",
+              )}
+              type="button"
+              variant="ghost"
+              aria-label="表示設定"
+            >
+              <SlidersHorizontal size={24} />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>表示設定</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              className={cn(
+                "grid size-11 rounded-xl bg-[var(--dc-primary)] p-0 text-white shadow-[0_10px_20px_var(--dc-shadow-primary)] hover:bg-[var(--dc-primary)] disabled:bg-[var(--dc-muted)] disabled:text-white disabled:opacity-100 disabled:shadow-none disabled:hover:bg-[var(--dc-muted)]",
+              )}
+              type={actionMode === "send" ? "submit" : "button"}
+              aria-label={actionLabel}
+              disabled={actionDisabled}
+              onClick={actionMode === "cancel" ? onCancel : undefined}
+            >
+              {actionMode === "canceling" ? (
+                <LoaderCircle className="animate-spin" size={22} />
+              ) : actionMode === "cancel" ? (
+                <Square size={18} fill="currentColor" />
+              ) : (
+                <Send size={22} fill="currentColor" />
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{actionTooltip}</TooltipContent>
+        </Tooltip>
+      </form>
+      {validationMessage ? (
+        <p className="text-sm font-medium text-[var(--dc-danger)]" role="alert">
+          {validationMessage}
+        </p>
+      ) : null}
+    </div>
   );
 }

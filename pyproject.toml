@@ -5,10 +5,12 @@ description = "D-Concierge MVP backend"
 requires-python = ">=3.12"
 dependencies = [
   "alembic>=1.17.0",
+  "cryptography>=48.0.0",
   "fastapi>=0.124.0",
   "psycopg[binary]>=3.3.0",
   "pydantic>=2.12.0",
   "pydantic-settings>=2.12.0",
+  "pypdf>=6.10.2",
   "pyyaml>=6.0.0",
   "sqlalchemy>=2.0.0",
   "uvicorn[standard]>=0.38.0",
@@ -46,6 +48,9 @@ exclude = [
 
 [tool.pytest.ini_options]
 addopts = "--strict-config --strict-markers"
+pythonpath = [
+  "src",
+]
 testpaths = [
   "src/backend/tests",
 ]
@@ -54,6 +59,11 @@ testpaths = [
 branch = true
 source = [
   "src/backend",
+]
+omit = [
+  "src/backend/tests/*",
+  "src/backend/main.py",
+  "src/backend/infrastructure/database/migrations/*",
 ]
 
 [tool.coverage.report]

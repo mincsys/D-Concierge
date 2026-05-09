@@ -33,7 +33,7 @@ export function ThoughtPanel({
         />
         <span>作業プロセス</span>
       </Button>
-      {open ? (
+      {open && messages.length > 0 ? (
         <div className="mt-[11px] ml-[60px] border-l-2 border-[#aab5c8] pl-[22px] text-base leading-[1.9] font-normal text-[#4f5f78] max-[1100px]:ml-[60px]">
           {messages.map((message) => (
             <div key={message.id}>{message.text}</div>

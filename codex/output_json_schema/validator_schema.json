@@ -1,17 +1,52 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
-  "description": "検証結果。合格可否と、不合格時の詳細な指摘内容を返す。",
+  "description": "検証用Codex出力。中間メッセージはprogress、最終検証結果はfinalとしてpayload.kindで区別する。",
   "properties": {
-    "valid": {
-      "type": "boolean",
-      "description": "検証に合格した場合はtrue、不合格の場合はfalse。"
-    },
-    "comment": {
-      "type": "string",
-      "description": "validがtrue(合格)の場合は空文字。false(不合格)の場合は、修正指示としてそのまま利用できる詳細な指摘内容。"
+    "payload": {
+      "description": "Codexが出力する中間メッセージまたは最終検証結果。",
+      "anyOf": [
+        {
+          "type": "object",
+          "description": "利用者へ逐次表示する中間メッセージ。",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "progress",
+              "description": "中間メッセージであることを示す識別子。"
+            },
+            "text": {
+              "type": "string",
+              "description": "利用者へ表示する中間メッセージ本文。"
+            }
+          },
+          "required": ["kind", "text"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "description": "回答候補の参照元検証結果。",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "final",
+              "description": "最終検証結果であることを示す識別子。"
+            },
+            "valid": {
+              "type": "boolean",
+              "description": "検証に合格した場合はtrue、不合格の場合はfalse。"
+            },
+            "comment": {
+              "type": "string",
+              "description": "validがtrueの場合は空文字。falseの場合は修正指示として利用できる詳細な指摘内容。"
+            }
+          },
+          "required": ["kind", "valid", "comment"],
+          "additionalProperties": false
+        }
+      ]
     }
   },
-  "required": ["valid", "comment"],
+  "required": ["payload"],
   "additionalProperties": false
 }

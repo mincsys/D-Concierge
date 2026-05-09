@@ -69,7 +69,9 @@ export const stubChatDetails: Record<string, ChatDetailResponse> = {
           { text: "参照元候補を検証します。" },
         ],
         answer: {
-          markdown: `IPA資料から、要件定義を成功させるためのポイントを以下の通り整理します。
+          blocks: [
+            {
+              markdown: `IPA資料から、要件定義を成功させるためのポイントを以下の通り整理します。
 
 1. **目的・背景の共有と合意形成を徹底する。**  
    要件定義では目的や背景を共有し、関係する組織や役割を明確にすることが合意形成の第一歩です。
@@ -124,6 +126,8 @@ sequenceDiagram
                 page_end: 22,
               },
             },
+              ],
+            },
           ],
         },
       },
@@ -136,7 +140,9 @@ sequenceDiagram
           { text: "Markdown表、HTML表、コードブロックの表示例を作成します。" },
         ],
         answer: {
-          markdown: `## 箇条書きとMarkdown表の表示例
+          blocks: [
+            {
+              markdown: `## 箇条書きとMarkdown表の表示例
 
 次の観点を確認すると、要件定義の抜け漏れを見つけやすくなります。
 
@@ -202,15 +208,17 @@ sequenceDiagram
   }
 }
 \`\`\``,
-          references: [
-            {
-              source_type: "pdf",
-              label: "SEC BOOKS 開発指針手引き",
-              url: "/api/references/f326ba99-872d-4c64-89b5-cadf41874f20",
-              locator: {
-                page_start: 10,
-                page_end: 14,
-              },
+              references: [
+                {
+                  source_type: "pdf",
+                  label: "SEC BOOKS 開発指針手引き",
+                  url: "/api/references/f326ba99-872d-4c64-89b5-cadf41874f20",
+                  locator: {
+                    page_start: 10,
+                    page_end: 14,
+                  },
+                },
+              ],
             },
           ],
         },
@@ -262,7 +270,9 @@ export const stubSseEvents: Record<string, SseEvent[]> = {
         run_id: "5f5e8cf2-25f6-4962-9d1d-c3c93ab6cbb2",
         state: "完了",
         answer: {
-          markdown: `入力内容に対する整理結果です。
+          blocks: [
+            {
+              markdown: `入力内容に対する整理結果です。
 
 - 目的、利用者、制約を先にそろえると、後続の設計判断がぶれにくくなります。
 - 参照元を回答に紐づけておくと、履歴再表示時にも根拠を確認できます。
@@ -305,15 +315,17 @@ flowchart TD
 \`\`\`
 
 ![資料検索と参照元確認の分析イメージ](/api/artifacts/6a9158c3-ae1c-4a13-9494-940df193ceef)`,
-          references: [
-            {
-              source_type: "pdf",
-              label: "SEC BOOKS 開発指針手引き",
-              url: "/api/references/9052af11-89cc-4273-bd2d-ad310805c442",
-              locator: {
-                page_start: 10,
-                page_end: 14,
-              },
+              references: [
+                {
+                  source_type: "pdf",
+                  label: "SEC BOOKS 開発指針手引き",
+                  url: "/api/references/9052af11-89cc-4273-bd2d-ad310805c442",
+                  locator: {
+                    page_start: 10,
+                    page_end: 14,
+                  },
+                },
+              ],
             },
           ],
         },

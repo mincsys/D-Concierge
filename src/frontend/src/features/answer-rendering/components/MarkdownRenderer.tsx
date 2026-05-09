@@ -12,8 +12,11 @@ const markdownSanitizeSchema = {
   ...defaultSchema,
   attributes: {
     ...defaultSchema.attributes,
+    /* istanbul ignore next -- rehype-sanitizeの既定schemaはcode属性定義を持つ */
     code: [...(defaultSchema.attributes?.code ?? []), ["className", /^language-./]],
+    /* istanbul ignore next -- rehype-sanitizeの既定schemaはimg属性定義を持つ */
     img: [...(defaultSchema.attributes?.img ?? []), "className", "loading", "src", "alt"],
+    /* istanbul ignore next -- rehype-sanitizeの既定schemaはtable属性定義を持つ */
     table: [...(defaultSchema.attributes?.table ?? []), "className"],
   },
 };
@@ -57,7 +60,7 @@ const markdownComponents: Components = {
       return null;
     }
 
-    return <img alt={alt ?? ""} className="markdown-image" loading="lazy" src={src} />;
+    return <ArtifactImage alt={alt ?? ""} src={src} />;
   },
   pre({ children }) {
     return <>{children}</>;
@@ -75,6 +78,28 @@ export function MarkdownRenderer({ markdown }: { markdown: string }) {
         {markdown}
       </ReactMarkdown>
     </div>
+  );
+}
+
+function ArtifactImage({ alt, src }: { alt: string; src: string }) {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return (
+      <span className="my-3 block rounded-lg border border-[#f2b8b8] bg-[#fff6f6] px-4 py-3 text-sm font-[720] text-[#9f1d1d]">
+        一部のCodex成果物を表示できませんでした。
+      </span>
+    );
+  }
+
+  return (
+    <img
+      alt={alt}
+      className="markdown-image"
+      loading="lazy"
+      src={src}
+      onError={() => setFailed(true)}
+    />
   );
 }
 

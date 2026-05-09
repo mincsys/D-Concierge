@@ -51,7 +51,8 @@ sequenceDiagram
 - 生成用/検証用Codex側resume用IDの保存は、対象チャットが存在する場合だけ成立する。
 - 参照系は表示に必要な関連データを欠落なく返す。
 - チャット詳細取得では、runを開始日時とIDの安定順、中間メッセージを作成日時とIDの安定順で返す。
-- 参照元とCodex成果物メタ情報はDB上の表示順を持たず、回答本文または表示側の決定的な並び替えに委ねる。
+- 回答ブロックと参照元はDB上に表示順を持ち、履歴再表示ではその順序で返す。
+- Codex成果物メタ情報はDB上の表示順を持たず、回答ブロック本文内の参照位置に従う。
 
 ### 5.3. 不変条件
 
@@ -74,7 +75,7 @@ sequenceDiagram
 | `expected_state` | 状態条件付き更新で要求する現在状態 |
 | `next_state` | 更新後状態 |
 | `execution_deadline_at` | `実行中` 遷移時に保存する実行全体deadline |
-| `answer` | 採用済み回答本文と参照元 |
+| `answer` | 採用済み回答ブロック、ブロックごとの参照元、Codex成果物メタ情報 |
 | `artifact_metadata` | 保存済み成果物のメタ情報 |
 | `generation_conversation_id` | 生成用Codex側のresume用ID |
 | `validation_conversation_id` | 検証用Codex側のresume用ID |
@@ -99,7 +100,7 @@ sequenceDiagram
 | `save_generation_conversation_id` | 生成用Codex側resume用IDを保存する | チャットID、生成用Codex側resume用ID | 更新成否 |
 | `save_validation_conversation_id` | 検証用Codex側resume用IDを保存する | チャットID、検証用Codex側resume用ID | 更新成否 |
 | `list_unfinished_runs_for_recovery` | 起動時回復対象の未完了runを取得する | なし | `受付`、`実行中`、`検証中`、`キャンセル要求中` のrun一覧 |
-| `save_completed_answer` | 検証済み回答と関連データを保存する | 回答、参照元、Codex成果物メタ情報 | 保存結果 |
+| `save_completed_answer` | 検証済み回答と関連データを保存する | 回答ブロック、ブロックごとの参照元、Codex成果物メタ情報 | 保存結果 |
 
 ## 7. 例外処理
 

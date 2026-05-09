@@ -11,7 +11,6 @@ PDF検索アプリを構成する場合の生成用codex exec起動例:
 ```bash
 CODEX_HOME=codex/.codex \
 codex exec --json --output-schema codex/output_json_schema/pdf-reference-schema.json \
-  --output-last-message codex/sessions/<user-id>/<session-id>/tmp/last-message.json \
   -C codex/sessions/<user-id>/<session-id> \
   "<利用者のユーザ指示>"
 ```
@@ -21,7 +20,6 @@ codex exec --json --output-schema codex/output_json_schema/pdf-reference-schema.
 ```bash
 CODEX_HOME=codex/.codex \
 codex exec --json --output-schema codex/output_json_schema/pdf-reference-schema.json \
-  --output-last-message codex/sessions/<user-id>/<session-id>/tmp/last-message.json \
   -C codex/sessions/<user-id>/<session-id> \
   resume <codex-thread-id> \
   "<利用者の継続指示>"

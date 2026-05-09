@@ -10,10 +10,10 @@
 
 - 実施日: 2026-05-07
 - Codex CLI: `codex-cli 0.128.0`
+- モデル: GPT-5.5
 - 生成用ホーム: `codex/.codex`
 - 作業ディレクトリ: `codex/sessions/user-id-xxxxx/id-xxxxx`
 - 出力スキーマ: `codex/sessions/user-id-xxxxx/id-xxxxx/tmp/verification-output-schema.json`
-- 最終メッセージファイル: `codex/sessions/user-id-xxxxx/id-xxxxx/tmp/last-message-*.json`
 
 検証用作業ディレクトリには次の要素を配置した。
 
@@ -27,13 +27,13 @@ codex/sessions/user-id-xxxxx/id-xxxxx/
 通常実行の検証コマンド:
 
 ```bash
-CODEX_HOME=codex/.codex codex exec --json --output-schema codex/sessions/user-id-xxxxx/id-xxxxx/tmp/verification-output-schema.json --output-last-message codex/sessions/user-id-xxxxx/id-xxxxx/tmp/last-message-normal.json -C codex/sessions/user-id-xxxxx/id-xxxxx "<検証用プロンプト>"
+CODEX_HOME=codex/.codex codex exec --json --output-schema codex/sessions/user-id-xxxxx/id-xxxxx/tmp/verification-output-schema.json -C codex/sessions/user-id-xxxxx/id-xxxxx "<検証用プロンプト>"
 ```
 
 継続指示の検証コマンド:
 
 ```bash
-CODEX_HOME=codex/.codex codex exec --json --output-schema codex/sessions/user-id-xxxxx/id-xxxxx/tmp/verification-output-schema.json --output-last-message codex/sessions/user-id-xxxxx/id-xxxxx/tmp/last-message-resume.json -C codex/sessions/user-id-xxxxx/id-xxxxx resume <codex-thread-id> "<継続指示プロンプト>"
+CODEX_HOME=codex/.codex codex exec --json --output-schema codex/sessions/user-id-xxxxx/id-xxxxx/tmp/verification-output-schema.json -C codex/sessions/user-id-xxxxx/id-xxxxx resume <codex-thread-id> "<継続指示プロンプト>"
 ```
 
 ## 観測結果
@@ -41,10 +41,10 @@ CODEX_HOME=codex/.codex codex exec --json --output-schema codex/sessions/user-id
 - `resume <codex-thread-id>` 実行時も、標準出力には `thread.started`、`turn.started`、`item.completed`、`turn.completed` がJSONLとして出力された。
 - `thread.started` の `thread_id` は、指定した生成用Codex側の会話継続IDと同じ値だった。
 - `--output-schema` は、`resume` より前の `codex exec` オプションとして指定すれば有効だった。
-- `--output-last-message` には、通常実行時と同じく最後の `agent_message.text` と同等のJSON文字列が保存された。
 - `-C` を `resume` より前に指定することで、継続指示時も指定した作業ディレクトリが使われた。
 - `item.completed` のうち、`item.type` が `agent_message` のイベントでは、`item.text` にJSON文字列が入った。
-- ツール実行を伴う場合は、`command_execution` の開始・完了イベントが出力された。
+- `item.completed.item.text` は、出力スキーマに従い `payload.kind="progress"` の中間メッセージ、または `payload.kind="final"` の最終結果として出力された。
+- `item.type` が `agent_message` ではない `item.completed` は、利用者向け中間メッセージ本文にも最終結果にも採用しない。
 
 ## 実測JSONLサンプル
 
@@ -57,31 +57,19 @@ resume時の最小例:
 通常完了時の `agent_message` 例:
 
 ```json
-{"type":"item.completed","item":{"type":"agent_message","text":"{\"answers\":[{\"text\":\"テスト用の短い回答です。\",\"references\":[]}]}"}}
+{"type":"item.completed","item":{"type":"agent_message","text":"{\"payload\":{\"kind\":\"final\",\"answers\":[{\"text\":\"テスト用の短い回答です。\",\"references\":[]}]}}"}}
 ```
 
 resume時の `agent_message` 例:
 
 ```json
-{"type":"item.completed","item":{"type":"agent_message","text":"{\"answers\":[{\"text\":\"はい。resumeでも中間JSONLの継続と最終回答の受け取りを検証できます。\",\"references\":[]}]}"}}
+{"type":"item.completed","item":{"type":"agent_message","text":"{\"payload\":{\"kind\":\"progress\",\"text\":\"参照元を確認しています。\"}}"}}
 ```
 
-`command_execution` の開始例:
+完了イベント例:
 
 ```json
-{"type":"item.started","item":{"type":"command_execution","command":"<コマンド>","status":"in_progress"}}
-```
-
-`command_execution` の完了例:
-
-```json
-{"type":"item.completed","item":{"type":"command_execution","command":"<コマンド>","aggregated_output":"<出力>","exit_code":0,"status":"completed"}}
-```
-
-`--output-last-message` の出力例:
-
-```json
-{"answers":[{"text":"テスト用の短い回答です。","references":[]}]}
+{"type":"turn.completed"}
 ```
 
 ## エラー時の観測結果
@@ -94,7 +82,7 @@ resume時の `agent_message` 例:
 invalid_json_schema
 ```
 
-この場合、最終回答ファイルは作成されなかった。
+この場合、採用可能な最終 `agent_message` は出力されなかった。
 
 技術検証では、既存のPDF参照用スキーマに `const` のみで `type` がないプロパティがあり、Codex CLIの `--output-schema` では受理されなかった。
 
@@ -104,4 +92,4 @@ invalid_json_schema
 
 ## キャンセル時の観測結果
 
-PTY付きでcodex exec実行中に割り込みを入れたところ、プロセスは終了コード1で終了した。割り込み時点では `turn.failed` が出力されず、`--output-last-message` のファイルも作成されなかった。
+PTY付きでcodex exec実行中に割り込みを入れたところ、プロセスは終了コード1で終了した。割り込み時点では `turn.failed` も採用可能な最終 `agent_message` も出力されなかった。

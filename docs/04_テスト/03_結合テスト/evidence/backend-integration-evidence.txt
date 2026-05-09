@@ -1,0 +1,10 @@
+target=backend
+executed_at=2026-05-09T14:20:58+09:00
+command=UV_CACHE_DIR=/tmp/uv-cache uv run pytest src/backend/tests/unit src/backend/tests/integration --cov=src/backend --cov-branch --cov-report=term
+design_coverage=REST API全件、SSE API、起動時実行回復、既定実行構成のFake Codex連携、codex exec JSONL中間メッセージ逐次配信、session readonly共有データソース提示、deadline連携、二段階キャンセル、REST/SSE/参照元/成果物配信トレースを確認済み
+branch_coverage=95.60%
+covered_branches=413
+total_branches=432
+tests=234
+failures=0
+result=pass

@@ -330,8 +330,12 @@ function createFallbackChatDetail(chatId: string): ChatDetailResponse {
           { text: "回答本文と参照元を復元します。" },
         ],
         answer: {
-          markdown: `${title}の保存済み回答です。履歴詳細取得APIのレスポンスをもとに再表示しています。`,
-          references: [],
+          blocks: [
+            {
+              markdown: `${title}の保存済み回答です。履歴詳細取得APIのレスポンスをもとに再表示しています。`,
+              references: [],
+            },
+          ],
         },
       },
     ],

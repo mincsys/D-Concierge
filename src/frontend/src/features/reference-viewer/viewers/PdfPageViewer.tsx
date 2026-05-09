@@ -56,9 +56,9 @@ export function PdfPageViewer({ reference }: { reference: PdfReference }) {
           Math.max(620, (containerRef.current?.clientWidth ?? 804) - 44),
         );
         setContainerWidth(nextContainerWidth);
-      } catch (error) {
+      } catch {
         if (!destroyed) {
-          setErrorMessage(error instanceof Error ? error.message : "PDFを表示できませんでした。");
+          setErrorMessage("参照元を表示できませんでした。");
         }
       }
     }
@@ -116,6 +116,11 @@ export function PdfPageViewer({ reference }: { reference: PdfReference }) {
       {errorMessage ? (
         <div className="m-auto w-[min(760px,100%)] rounded-lg border border-[#f2b8b8] bg-[#fff6f6] px-5 py-[18px] text-left text-sm font-[720] text-[#9f1d1d]">
           {errorMessage}
+        </div>
+      ) : null}
+      {pdfDoc && !referencePageRange ? (
+        <div className="mx-auto w-[min(760px,100%)] rounded-lg border border-[#f2b8b8] bg-[#fff6f6] px-5 py-[14px] text-left text-sm font-[720] text-[#9f1d1d]">
+          参照元の位置情報を表示できませんでした。
         </div>
       ) : null}
       {pdfDoc

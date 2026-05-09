@@ -58,6 +58,10 @@ export type IntermediateMessageResponse = {
 };
 
 export type AnswerResponse = {
+  blocks: AnswerBlockResponse[];
+};
+
+export type AnswerBlockResponse = {
   markdown: string;
   references?: DisplayReference[];
 };
@@ -116,6 +120,10 @@ export type IntermediateMessage = {
 };
 
 export type ChatAnswer = {
+  blocks: ChatAnswerBlock[];
+};
+
+export type ChatAnswerBlock = {
   markdown: string;
   references: DisplayReference[];
 };

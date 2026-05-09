@@ -51,7 +51,7 @@ sequenceDiagram
 ### 5.3. 不変条件
 
 - 全APIとSSE接続はtrace_idを持つ。
-- 利用者指示本文、回答本文、ファイルパスなどの長文/機密候補は必要最小限にマスクまたは要約する。
+- 利用者指示本文、回答ブロック本文、ファイルパスなどの長文/機密候補は必要最小限にマスクまたは要約する。
 - traceログはJSONL 1行1イベントで出力する。
 
 ## 6. 入出力とデータ項目
@@ -77,7 +77,7 @@ sequenceDiagram
 | `timeout_state` | 全体deadline超過、codex exec単位タイムアウト、終了待ちgrace timeoutのいずれか |
 | `cancel_state` | キャンセル要求受付、終了要求結果、終端整合結果 |
 | `retry_count` | 再生成回数 |
-| `validation_failure_reason` | 固定検証または参照元検証の失敗理由 |
+| `validation_failure_reason` | 固定検証、参照元検証、参照元PDF読み取り失敗の理由 |
 | `validation_comment` | 検証用Codexのcomment要約 |
 | `message` | 調査用要約メッセージ |
 

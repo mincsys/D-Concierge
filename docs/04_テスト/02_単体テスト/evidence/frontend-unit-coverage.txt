@@ -1,0 +1,7 @@
+target=frontend
+executed_at=2026-05-09T13:51:56+09:00
+command=cd src/frontend && npm run test:unit -- --coverage
+branch_coverage=95.36%
+covered_branches=288
+total_branches=302
+result=pass

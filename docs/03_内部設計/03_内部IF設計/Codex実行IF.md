@@ -32,8 +32,8 @@ sequenceDiagram
     participant parser as JsonlEventParser
     participant codex as codex exec
 
-    usecase->>runner: run_generation(session_id, codex_conversation_id, prompt, timeout_seconds)
-    runner->>codex: codex exec --json --output-schema --output-last-message
+    usecase->>runner: run_generation / run_validation(session_id, codex_conversation_id, prompt, timeout_seconds)
+    runner->>codex: codex exec --json --output-schema
     codex-->>runner: JSONL stdout
     runner->>parser: parse(line)
     parser-->>runner: CodexEvent
@@ -49,14 +49,14 @@ sequenceDiagram
 - Codexホーム、作業ディレクトリ、出力スキーマパスが設定済みである。
 - 生成用は対象チャットの作業領域IDと、継続指示時に利用する生成用Codex側resume用IDを保持している。
 - 検証用は検証対象回答、参照元、検証プロンプトが揃っている。
-- `--output-last-message` の出力先は対象run専用の一時ファイルとして決定済みである。
 
 ### 5.2. 事後条件
 
 - 生成用は中間メッセージイベントと最終回答候補を返す。
-- 検証用は検証合否と指摘内容を返す。
+- 検証用は中間メッセージイベント、検証合否、指摘内容を返す。
 - `thread.started.thread_id` を受信した場合、生成用は `generation_conversation_id`、検証用は `validation_conversation_id` として保存できる値を返す。
-- 正常終了時はJSONL上の最終 `agent_message.text` と `--output-last-message` ファイル内容が一致していることを確認した結果を返す。
+- 正常終了時はJSONL上の最新 `item.completed.agent_message.text` を最終出力候補として返す。
+- 生成用の最終回答候補に含まれるPDF参照元pathは、Codex作業領域上の `readonly/` から始まる実PDFファイルへの相対パスである。
 - タイムアウトまたはキャンセル時はプロセス終了要求を行い、終端状態へ変換可能な結果を返す。
 
 ### 5.3. 不変条件
@@ -64,8 +64,11 @@ sequenceDiagram
 - JSONLの生文字列はinfrastructure内に閉じ、applicationへは構造化イベントだけを返す。
 - 生成用Codexホームと検証用Codexホームを混在させない。
 - codex exec作業領域から許可外のファイルを採用済み成果物として扱わない。
+- 生成用の最終回答候補では、絶対パス、`codex/` から始まるパス、`readonly/` 配下以外のパス、HTML/メタデータファイルをPDF参照元pathとして扱わない。
 - `turn.failed`、プロセス異常終了、キャンセル要求後の `agent_message` は最終回答候補として返さない。
-- `command_execution` のコマンド、標準出力、絶対パスは利用者向け中間メッセージとして返さない。
+- `item.completed.agent_message.text` が `payload.kind="progress"` のJSONである場合だけ、`payload.text` を利用者向け中間メッセージとして返す。
+- `payload.kind="final"` の生成結果JSONまたは検証結果JSONは利用者向け中間メッセージとして返さない。
+- コマンド、標準出力、絶対パスは利用者向け中間メッセージとして返さない。
 
 ## 6. 入出力とデータ項目
 
@@ -80,7 +83,6 @@ sequenceDiagram
 | `timeout_seconds` | 全体deadlineから算出した当該codex execの残り秒数 |
 | `trace_id` | 実行ログとAPI呼出を関連付けるID |
 | `run_id` | キャンセル対象プロセスを特定する実行処理ID |
-| `output_last_message_path` | `--output-last-message` の出力先一時ファイルパス |
 | `codex_home` | 生成用または検証用のCodexホーム |
 | `work_dir` | 生成用または検証用のセッション作業領域 |
 
@@ -92,17 +94,16 @@ sequenceDiagram
 | `exit_status` | codex exec終了コードと終了理由 |
 | `codex_conversation_id` | `thread.started.thread_id` から取得した、次回resumeに使うCodex側resume用ID |
 | `artifact_candidates` | 生成結果が参照したCodex成果物候補 |
-| `last_message_consistency` | JSONL最終メッセージと `--output-last-message` の照合結果 |
 | `cancel_result` | 終了要求結果。`sent`、`already_exited`、`not_registered` のいずれか |
 
 ### 6.3. Codex作業領域
 
 | 用途 | 作業領域 | 内容 |
 | --- | --- | --- |
-| 生成用 | `codex/sessions/<user-id>/<session-id>/readonly/` | 生成用Codexへ読み取り専用で提示する共有データソース、抽出済みPDF情報、メタ情報を配置する。 |
+| 生成用 | `codex/sessions/<user-id>/<session-id>/readonly/` | 生成用Codexへ読み取り専用で提示する共有データソース、抽出済みPDF情報、メタ情報を配置する。`readonly/html/<文書名>/index.html` は検索・本文確認用であり、対応する実PDFは `readonly/raw/pdf/<文書名>.pdf` として参照する。 |
 | 生成用 | `codex/sessions/<user-id>/<session-id>/tmp/` | 生成用Codexがresumeをまたいで使う中間作業ファイルを配置する。 |
 | 生成用 | `codex/sessions/<user-id>/<session-id>/artifacts/` | 採用前のCodex成果物候補を一時配置する。 |
-| 検証用 | `codex/sessions_validator/<user-id>/<session-id>/readonly/` | 検証用Codexへ読み取り専用で提示する回答候補と参照元情報を配置する。 |
+| 検証用 | `codex/sessions_validator/<user-id>/<session-id>/readonly/` | 検証用Codexへ読み取り専用で提示する共有データソース、抽出済みPDF情報、メタ情報を生成用と同じ方式で配置する。回答候補は検証プロンプト本文で渡す。 |
 | 検証用 | `codex/sessions_validator/<user-id>/<session-id>/tmp/` | 検証用Codexがresumeをまたいで使う中間作業ファイルを配置する。 |
 
 ### 6.4. JSONLイベント採用規則
@@ -110,11 +111,9 @@ sequenceDiagram
 | イベント | 扱い |
 | --- | --- |
 | `thread.started` | `thread_id` をCodex側resume用IDとして保持する。 |
-| `item.completed` の `agent_message` | 直ちに表示・採用せず、1件の `pending_agent_message` として保持する。 |
-| 後続の処理継続イベント | 直前の `pending_agent_message` が最終回答でないと判断できる場合に限り、マスク済み中間メッセージへ変換する。 |
-| `turn.completed` | 現在の `pending_agent_message` を最終回答候補とし、JSON parse、出力スキーマ検証、`--output-last-message` 照合を行う。 |
-| `turn.failed` または `error` | `pending_agent_message` を破棄し、最終回答候補を返さない。 |
-| `command_execution` | トレースログ用に要約できるが、利用者向けイベントにはしない。 |
+| `item.completed` の `agent_message` | `item.text` をJSONとして解析し、`payload.kind="progress"` の場合は `payload.text` を利用者向け中間メッセージへ変換する。`payload.kind="final"` の場合は中間メッセージへ変換しない。 |
+| `turn.completed` | 最新の `item.completed.agent_message.text` を最終回答候補または検証結果候補とし、JSON parseと出力スキーマ検証を行う。 |
+| `turn.failed` または `error` | 最終回答候補を返さない。 |
 
 ## 7. 例外処理
 
@@ -124,7 +123,6 @@ sequenceDiagram
 | JSONL解析失敗 | 解析失敗行をtraceログ対象にし、実行をエラー終端へ変換する |
 | タイムアウト | プロセスへ終了要求を送り、run状態を `タイムアウト` へ更新できる結果を返す |
 | キャンセル要求 | ユーザキャンセル要求、`sent` / `already_exited` / `not_registered` の終了要求結果、プロセス終了結果を合わせて判定し、run状態を `キャンセル済み` へ更新できる結果を返す |
-| `--output-last-message` 照合不一致 | 最終回答候補を採用せず、生成失敗または検証失敗分類へ変換する |
 | 検証用Codex資産不足 | 設定不備分類として起動前に失敗させる |
 
 ## 8. 留意事項

@@ -1,61 +1,96 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
-  "description": "コード調査に基づく回答。回答文のかたまりごとに参照元となるコード行範囲を紐づける。",
+  "description": "コード調査に基づくCodex出力。中間メッセージはprogress、最終回答はfinalとしてpayload.kindで区別する。",
   "properties": {
-    "answers": {
-      "type": "array",
-      "description": "回答文と参照元の組。最低1件。",
-      "minItems": 1,
-      "items": {
-        "type": "object",
-        "properties": {
-          "text": {
-            "type": "string",
-            "description": "ユーザに提示する回答文のかたまり。"
-          },
-          "references": {
-            "type": "array",
-            "description": "この回答文の参照元。参照元がない場合は空配列。",
-            "items": {
-              "type": "object",
-              "properties": {
-                "source_type": {
-                  "type": "string",
-                  "const": "code"
-                },
-                "locator": {
-                  "type": "object",
-                  "properties": {
-                    "path": {
-                      "type": "string",
-                      "description": "参照元となるコードファイルのパス。可能ならワークスペースからの相対パス。"
-                    },
-                    "start_line": {
-                      "type": "integer",
-                      "description": "参照元範囲の開始行番号。1始まり。",
-                      "minimum": 1
-                    },
-                    "end_line": {
-                      "type": "integer",
-                      "description": "参照元範囲の終了行番号。単一行の場合はstart_lineと同じ値。",
-                      "minimum": 1
-                    }
-                  },
-                  "required": ["path", "start_line", "end_line"],
-                  "additionalProperties": false
-                }
-              },
-              "required": ["source_type", "locator"],
-              "additionalProperties": false
+    "payload": {
+      "description": "Codexが出力する中間メッセージまたは最終回答。",
+      "anyOf": [
+        {
+          "type": "object",
+          "description": "利用者へ逐次表示する中間メッセージ。",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "progress",
+              "description": "中間メッセージであることを示す識別子。"
+            },
+            "text": {
+              "type": "string",
+              "description": "利用者へ表示する中間メッセージ本文。"
             }
-          }
+          },
+          "required": ["kind", "text"],
+          "additionalProperties": false
         },
-        "required": ["text", "references"],
-        "additionalProperties": false
-      }
+        {
+          "type": "object",
+          "description": "コード参照元に基づく最終回答。",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "final",
+              "description": "最終回答であることを示す識別子。"
+            },
+            "answers": {
+              "type": "array",
+              "description": "回答文と参照元の組。最低1件。",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "description": "ユーザに提示する回答文のかたまり。"
+                  },
+                  "references": {
+                    "type": "array",
+                    "description": "この回答文の参照元。参照元がない場合は空配列。",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "source_type": {
+                          "type": "string",
+                          "const": "code"
+                        },
+                        "locator": {
+                          "type": "object",
+                          "properties": {
+                            "path": {
+                              "type": "string",
+                              "description": "参照元となるコードファイルのパス。ワークスペースからの相対パス。"
+                            },
+                            "start_line": {
+                              "type": "integer",
+                              "description": "参照元範囲の開始行番号。1始まり。",
+                              "minimum": 1
+                            },
+                            "end_line": {
+                              "type": "integer",
+                              "description": "参照元範囲の終了行番号。単一行の場合はstart_lineと同じ値。",
+                              "minimum": 1
+                            }
+                          },
+                          "required": ["path", "start_line", "end_line"],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": ["source_type", "locator"],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": ["text", "references"],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": ["kind", "answers"],
+          "additionalProperties": false
+        }
+      ]
     }
   },
-  "required": ["answers"],
+  "required": ["payload"],
   "additionalProperties": false
 }

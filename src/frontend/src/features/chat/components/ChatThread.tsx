@@ -54,6 +54,7 @@ export function ChatThread({
 
     const frameId = window.requestAnimationFrame(() => {
       const targetElement = scrollTargetElementRef.current;
+      /* istanbul ignore next -- スクロール対象runがある場合はref設定済みの要素へ到達する */
       if (!targetElement) {
         return;
       }
@@ -98,18 +99,16 @@ export function ChatThread({
                   : "ml-7 max-[1280px]:w-[min(760px,100%)] max-[1100px]:ml-0",
               )}
             >
-              {run.intermediateMessages.length > 0 ? (
-                <ThoughtPanel
-                  open={openThoughtRunIds.has(run.runId)}
-                  messages={run.intermediateMessages}
-                  onToggle={() => onToggleThought(run.runId)}
-                />
-              ) : null}
+              <ThoughtPanel
+                open={openThoughtRunIds.has(run.runId)}
+                messages={run.intermediateMessages}
+                onToggle={() => onToggleThought(run.runId)}
+              />
               {run.answer ? <AnswerContent answer={run.answer} onOpenPdf={onOpenPdf} /> : null}
               {run.statusMessage &&
               (run.state === "キャンセル要求中" || run.state === "キャンセル済み") ? (
                 <AnswerContent
-                  answer={{ markdown: run.statusMessage, references: [] }}
+                  answer={{ blocks: [{ markdown: run.statusMessage, references: [] }] }}
                   onOpenPdf={onOpenPdf}
                 />
               ) : run.statusMessage ? (

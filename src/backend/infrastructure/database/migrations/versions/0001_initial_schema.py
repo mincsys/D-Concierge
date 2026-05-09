@@ -109,18 +109,35 @@ def upgrade() -> None:
         "answers",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column("run_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("markdown", sa.Text(), nullable=False),
         sa.ForeignKeyConstraint(["run_id"], ["chat_runs.id"], ondelete="CASCADE"),
         sa.UniqueConstraint("run_id", name="uq_answers_run_id"),
     )
 
     op.create_table(
-        "references",
+        "answer_blocks",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column("answer_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("position", sa.Integer(), nullable=False),
+        sa.Column("markdown", sa.Text(), nullable=False),
+        sa.CheckConstraint("position > 0", name="ck_answer_blocks_position_positive"),
+        sa.CheckConstraint(
+            "length(trim(markdown)) > 0", name="ck_answer_blocks_markdown_not_blank"
+        ),
+        sa.ForeignKeyConstraint(["answer_id"], ["answers.id"], ondelete="CASCADE"),
+        sa.UniqueConstraint(
+            "answer_id", "position", name="uq_answer_blocks_answer_id_position"
+        ),
+    )
+
+    op.create_table(
+        "references",
+        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
+        sa.Column("answer_block_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("position", sa.Integer(), nullable=False),
         sa.Column("source_type", sa.String(length=20), nullable=False),
         sa.Column("label", sa.String(length=255), nullable=False),
         sa.Column("locator", postgresql.JSONB(), nullable=False),
+        sa.CheckConstraint("position > 0", name="ck_references_position_positive"),
         sa.CheckConstraint("source_type = 'pdf'", name="ck_references_source_type_pdf"),
         sa.CheckConstraint(
             "jsonb_typeof(locator) = 'object' "
@@ -133,7 +150,12 @@ def upgrade() -> None:
             "<= (locator ->> 'page_end')::integer",
             name="ck_references_locator_pdf",
         ),
-        sa.ForeignKeyConstraint(["answer_id"], ["answers.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["answer_block_id"], ["answer_blocks.id"], ondelete="CASCADE"
+        ),
+        sa.UniqueConstraint(
+            "answer_block_id", "position", name="uq_references_block_id_position"
+        ),
     )
 
     op.create_table(
@@ -151,6 +173,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_table("artifacts")
     op.drop_table("references")
+    op.drop_table("answer_blocks")
     op.drop_table("answers")
     op.drop_index(
         "ix_intermediate_messages_run_id_created_at_id",

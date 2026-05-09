@@ -13,15 +13,15 @@
 
 - codex exec標準出力の1行をJSONとして解析する。
 - `thread.started`、`turn.started`、`item.started`、`item.completed`、`turn.completed`、`turn.failed`、`error` を構造化イベントへ変換する。
-- `item.completed` の `agent_message`、`command_execution`、未知イベントを表示可否判断前の構造化イベントとして区別する。
+- `item.completed` の `agent_message` を、利用側が中間メッセージ候補または最終回答候補として判定できる構造化イベントへ変換する。
+- `item.completed` の `agent_message` 以外の項目と未知イベントは、回答候補にしない内部イベントとして扱う。
 - 解析不能な行をJSONL解析失敗として扱えるエラーへ変換する。
 
 ## 4. 不変条件
 
 - 解析結果には、生の標準出力全文を利用者表示用に含めない。
-- `command_execution` のコマンド文字列と出力は、利用者向けメッセージとして直接扱わない。
 - 未知イベントは内部イベントとして保持できるが、最終回答採用条件にはしない。
-- `agent_message` は解析時点では中間メッセージにも最終回答にも分類せず、利用側が `pending_agent_message` として判定できる形で返す。
+- `agent_message` は `item.text` を構造化イベントの本文として返し、利用側が `payload.kind` で中間メッセージ候補または最終回答候補として判定できる形にする。
 - `turn.failed` と `error` は、保持中の回答候補を破棄すべき終端イベントとして識別できる。
 
 ## 5. 公開メソッド
