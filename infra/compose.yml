@@ -1,6 +1,22 @@
 name: d-concierge
 
 services:
+  app:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+    container_name: d-concierge-app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    volumes:
+      - ../config.yaml:/app/config.yaml:ro
+      - ../codex:/app/codex
+      - ../logs:/app/logs
+    restart: unless-stopped
+
   postgres:
     image: ${POSTGRES_IMAGE:-postgres:17-alpine}
     container_name: d-concierge-postgres

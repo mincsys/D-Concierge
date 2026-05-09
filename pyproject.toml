@@ -36,7 +36,8 @@ strict = true
 disallow_any_explicit = true
 disallow_any_generics = true
 warn_redundant_casts = true
-mypy_path = ["src/backend"]
+mypy_path = ["src"]
+explicit_package_bases = true
 exclude = [
   ".venv",
   ".mypy_cache",
