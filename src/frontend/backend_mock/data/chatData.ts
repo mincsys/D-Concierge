@@ -107,25 +107,25 @@ sequenceDiagram
 ## 分析イメージ
 
 ![資料検索と参照元確認の分析イメージ](/api/artifacts/6a9158c3-ae1c-4a13-9494-940df193ceef)`,
-          references: [
-            {
-              source_type: "pdf",
-              label: "SEC BOOKS 開発指針手引き",
-              url: "/api/references/9052af11-89cc-4273-bd2d-ad310805c442",
-              locator: {
-                page_start: 10,
-                page_end: 10,
-              },
-            },
-            {
-              source_type: "pdf",
-              label: "SEC BOOKS 開発指針手引き",
-              url: "/api/references/0125bb8d-cd63-4f12-8ce8-55a20b82d1e5",
-              locator: {
-                page_start: 20,
-                page_end: 22,
-              },
-            },
+              references: [
+                {
+                  source_type: "pdf",
+                  label: "SEC BOOKS 開発指針手引き",
+                  url: "/api/references/9052af11-89cc-4273-bd2d-ad310805c442",
+                  locator: {
+                    page_start: 10,
+                    page_end: 10,
+                  },
+                },
+                {
+                  source_type: "pdf",
+                  label: "SEC BOOKS 開発指針手引き",
+                  url: "/api/references/0125bb8d-cd63-4f12-8ce8-55a20b82d1e5",
+                  locator: {
+                    page_start: 20,
+                    page_end: 22,
+                  },
+                },
               ],
             },
           ],

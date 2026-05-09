@@ -569,8 +569,7 @@ describe("frontend components", () => {
       answer,
       isCurrent: () => true,
       onAnswerComplete: () => events.push("complete"),
-      onAnswerChange: (_runId, changedAnswer) =>
-        events.push(changedAnswer.blocks[0].markdown),
+      onAnswerChange: (_runId, changedAnswer) => events.push(changedAnswer.blocks[0].markdown),
       onAnswerStart: () => events.push("start"),
       onThoughtComplete: () => events.push("thought"),
       runId: "run-1",

@@ -165,7 +165,9 @@ vi.mock("@/features/chat/components/ChatThread", () => ({
             <div>{run.runId}</div>
             <div>{run.state}</div>
             <div>{run.statusMessage ?? "status none"}</div>
-            <div>{run.answer?.blocks.map((block) => block.markdown).join("\n") ?? "answer none"}</div>
+            <div>
+              {run.answer?.blocks.map((block) => block.markdown).join("\n") ?? "answer none"}
+            </div>
             {run.intermediateMessages.map((message) => (
               <div key={message.id}>{message.text}</div>
             ))}
