@@ -261,28 +261,28 @@ def test_sse_streams_published_message_and_answer_events(tmp_path: Path) -> None
                 run_id=accepted.run_id,
                 text="資料を検索しています。",
             ),
-                RunEvent(
-                    event="answer",
-                    chat_id=accepted.chat_id,
-                    run_id=accepted.run_id,
-                    state="完了",
-                    answer=AnswerData(
-                        blocks=(
-                            AnswerBlockData(
-                                markdown="検証済み回答",
-                                references=(
-                                    DisplayReferenceData(
-                                        reference_id=reference_id,
-                                        source_type="pdf",
-                                        label="資料",
-                                        relative_path="manual.pdf",
-                                        page_start=2,
-                                        page_end=3,
-                                    ),
+            RunEvent(
+                event="answer",
+                chat_id=accepted.chat_id,
+                run_id=accepted.run_id,
+                state="完了",
+                answer=AnswerData(
+                    blocks=(
+                        AnswerBlockData(
+                            markdown="検証済み回答",
+                            references=(
+                                DisplayReferenceData(
+                                    reference_id=reference_id,
+                                    source_type="pdf",
+                                    label="資料",
+                                    relative_path="manual.pdf",
+                                    page_start=2,
+                                    page_end=3,
                                 ),
                             ),
                         ),
                     ),
+                ),
             ),
         )
     )

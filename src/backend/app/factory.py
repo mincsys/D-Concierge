@@ -552,9 +552,7 @@ async def _run_sse_events(
 ) -> AsyncIterator[bytes]:
     with _api_trace(trace_logger, trace_id, "sse", chat_id=chat_id, run_id=run_id):
         if run_event_source is None:
-            state, saved_messages = _run_sse_snapshot(
-                chat_repository, chat_id, run_id
-            )
+            state, saved_messages = _run_sse_snapshot(chat_repository, chat_id, run_id)
             yield _sse_event_bytes("state", _state_payload(run_id, state))
             for message in saved_messages:
                 yield _sse_event_bytes(
@@ -564,9 +562,7 @@ async def _run_sse_events(
 
         subscription = run_event_source.subscribe(run_id)
         try:
-            state, saved_messages = _run_sse_snapshot(
-                chat_repository, chat_id, run_id
-            )
+            state, saved_messages = _run_sse_snapshot(chat_repository, chat_id, run_id)
             replayed_messages = list(saved_messages)
             yield _sse_event_bytes("state", _state_payload(run_id, state))
             for message in saved_messages:
@@ -604,9 +600,7 @@ def _run_sse_snapshot(
     raise AppError(ErrorClass.NOT_FOUND, "対象のチャット実行処理が見つかりません。")
 
 
-def _is_replayed_message_event(
-    event: RunEvent, replayed_messages: list[str]
-) -> bool:
+def _is_replayed_message_event(event: RunEvent, replayed_messages: list[str]) -> bool:
     if event.event != "message" or not replayed_messages:
         return False
     try:

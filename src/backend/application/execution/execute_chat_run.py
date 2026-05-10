@@ -341,9 +341,7 @@ class ExecuteChatRunUseCase:
             self._record_intermediate_message(
                 chat_id,
                 run_id,
-                WORK_STARTED_MESSAGE
-                if retry_count == 0
-                else ANSWER_REVISION_MESSAGE,
+                WORK_STARTED_MESSAGE if retry_count == 0 else ANSWER_REVISION_MESSAGE,
             )
             result = self._codex_runner.run_generation(
                 chat_id,
@@ -361,9 +359,7 @@ class ExecuteChatRunUseCase:
 
             for message in result.intermediate_messages:
                 self._record_intermediate_message(chat_id, run_id, message)
-            self._record_intermediate_message(
-                chat_id, run_id, WORK_COMPLETED_MESSAGE
-            )
+            self._record_intermediate_message(chat_id, run_id, WORK_COMPLETED_MESSAGE)
             validation_timeout_seconds = self._remaining_seconds(execution_deadline_at)
             self._change_state(
                 chat_id,

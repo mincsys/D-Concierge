@@ -79,8 +79,7 @@ def test_parse_generation_final_output_accepts_payload_final_answers() -> None:
 
     assert candidate.blocks[0].markdown == "最終回答"
     assert (
-        candidate.blocks[0].references[0].relative_path
-        == "system-test-reference.pdf"
+        candidate.blocks[0].references[0].relative_path == "system-test-reference.pdf"
     )
 
 

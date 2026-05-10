@@ -131,9 +131,7 @@ def test_codex_runner_converts_process_start_and_exit_failures(
             process_factory=RecordingProcessFactory(
                 CompletedProcess(stdout="", return_code=1)
             )
-        ).run_generation(
-            _make_request(tmp_path)
-        )
+        ).run_generation(_make_request(tmp_path))
 
     assert start_error.value.error_class is ErrorClass.SYSTEM
     assert exit_error.value.error_class is ErrorClass.SYSTEM
@@ -164,9 +162,7 @@ def test_codex_runner_rejects_failed_or_incomplete_jsonl(
                     )
                 )
             )
-        ).run_generation(
-            _make_request(tmp_path)
-        )
+        ).run_generation(_make_request(tmp_path))
     with pytest.raises(AppError) as incomplete_error:
         CodexRunner(
             process_factory=RecordingProcessFactory(
@@ -174,9 +170,7 @@ def test_codex_runner_rejects_failed_or_incomplete_jsonl(
                     stdout='{"type":"thread.started","thread_id":"thread-006"}\n'
                 )
             )
-        ).run_generation(
-            _make_request(tmp_path)
-        )
+        ).run_generation(_make_request(tmp_path))
 
     assert failed_event_error.value.error_class is ErrorClass.SYSTEM
     assert incomplete_error.value.error_class is ErrorClass.SYSTEM

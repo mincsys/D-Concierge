@@ -420,12 +420,9 @@ def test_execute_chat_run_regenerates_when_validator_requests_retry() -> None:
         "回答の検証を開始します。",
         "回答の検証を完了しました。",
     ]
-    assert (
-        [message.text for message in detail.runs[0].intermediate_messages].count(
-            "作業を開始します。"
-        )
-        == 1
-    )
+    assert [message.text for message in detail.runs[0].intermediate_messages].count(
+        "作業を開始します。"
+    ) == 1
     assert runner.prompts[1] == "資料を要約してください\n\n参照元を具体化してください。"
     assert validator.retry_counts == [0, 1]
 

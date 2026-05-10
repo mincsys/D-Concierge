@@ -38,8 +38,7 @@ class ReferencePdfReadError(AppError):
         """トレースログ向けの診断メッセージを返す。"""
         if self.cause_message == "":
             return (
-                f"参照元PDFを読み取れません: {self.relative_path} "
-                f"({self.cause_type})"
+                f"参照元PDFを読み取れません: {self.relative_path} ({self.cause_type})"
             )
         return (
             f"参照元PDFを読み取れません: {self.relative_path} "

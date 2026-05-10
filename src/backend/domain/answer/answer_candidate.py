@@ -82,8 +82,7 @@ def invalid_reference_path_message(paths: list[str]) -> str:
 def invalid_reference_page_range_message(page_ranges: list[InvalidPageRange]) -> str:
     """不正な参照元ページ範囲を生成用Codexへ伝える再生成指示を組み立てる。"""
     range_lines = "\n".join(
-        f"- {page_range.path} "
-        f"{page_range.page_start}-{page_range.page_end}ページ"
+        f"- {page_range.path} {page_range.page_start}-{page_range.page_end}ページ"
         for page_range in page_ranges
     )
     return (

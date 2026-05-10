@@ -243,8 +243,7 @@ def test_generation_streamer_handles_payload_progress_and_final_json() -> None:
             kind="agent_message",
             event_type="item.completed",
             text=(
-                '{"payload":{"kind":"progress",'
-                '"text":"関連文書を確認しています。"}}'
+                '{"payload":{"kind":"progress","text":"関連文書を確認しています。"}}'
             ),
         )
     )
@@ -287,9 +286,7 @@ def test_intermediate_message_streamer_ignores_non_progress_events() -> None:
             text='{"payload":{"kind":"final","answers":[{"text":"回答","references":[]}]}}',
         )
     )
-    streamer.accept(
-        ParsedCodexEvent(kind="unknown", event_type="item.completed")
-    )
+    streamer.accept(ParsedCodexEvent(kind="unknown", event_type="item.completed"))
 
     assert messages == []
 
@@ -308,9 +305,7 @@ def test_intermediate_message_streamer_allows_no_emit_callback() -> None:
             text="通知されないメッセージ",
         )
     )
-    streamer.accept(
-        ParsedCodexEvent(kind="unknown", event_type="item.completed")
-    )
+    streamer.accept(ParsedCodexEvent(kind="unknown", event_type="item.completed"))
 
 
 @dataclass(slots=True)
