@@ -10,6 +10,7 @@ import { MarkdownRenderer } from "@/features/answer-rendering/components/Markdow
 import { MermaidRenderer } from "@/features/answer-rendering/components/MermaidRenderer";
 import { MermaidViewerDialog } from "@/features/answer-rendering/components/MermaidViewerDialog";
 import { ChatComposer } from "@/features/chat/components/ChatComposer";
+import { ChatHistoryList } from "@/features/chat/components/ChatHistoryList";
 import { ChatStartScreen } from "@/features/chat/components/ChatStartScreen";
 import { ChatThread } from "@/features/chat/components/ChatThread";
 import { ThoughtPanel } from "@/features/chat/components/ThoughtPanel";
@@ -148,6 +149,31 @@ describe("frontend components", () => {
     expect(onStart).toHaveBeenCalledWith("差分を整理");
   });
 
+  it("観点：ChatHistoryList。確認：長い履歴名は領域内で省略表示できる。", async () => {
+    const user = userEvent.setup();
+    const onOpenAnswer = vi.fn();
+    const longTitle =
+      "C++の組み込みソフトのコーディングで移植性を重視した書き方をするにはどうすればいいですか？";
+
+    render(
+      <Providers>
+        <ChatHistoryList
+          activeChatId="chat-1"
+          histories={[{ chatId: "chat-1", title: longTitle } as ChatHistoryItem]}
+          onOpenAnswer={onOpenAnswer}
+        />
+      </Providers>,
+    );
+
+    const historyButton = screen.getByRole("button", { name: longTitle });
+    const title = screen.getByText(longTitle);
+    expect(historyButton).toHaveAttribute("title", longTitle);
+    expect(historyButton).toHaveClass("min-w-0", "overflow-hidden");
+    expect(title).toHaveClass("block", "min-w-0", "truncate");
+    await user.click(historyButton);
+    expect(onOpenAnswer).toHaveBeenCalledWith("chat-1");
+  });
+
   it("観点：AppShellとSidebar。確認：履歴、新規開始、折りたたみ表示を切り替える。", async () => {
     const user = userEvent.setup();
     const onStart = vi.fn();
@@ -172,6 +198,11 @@ describe("frontend components", () => {
       </Providers>,
     );
 
+    expect(document.querySelector('[data-slot="scroll-area-viewport"]')).toHaveClass(
+      "[&>div]:!block",
+      "[&>div]:!min-w-0",
+      "[&>div]:!w-full",
+    );
     await user.click(screen.getByRole("button", { name: "履歴1" }));
     expect(onOpen).toHaveBeenCalledWith("chat-1");
     await user.click(screen.getByRole("button", { name: /新しいチャット/ }));
@@ -378,6 +409,27 @@ describe("frontend components", () => {
     );
   });
 
+  it("観点：MermaidRenderer。確認：描画失敗時にMermaidの一時エラーDOMを残さない。", async () => {
+    mermaidMocks.render.mockImplementationOnce((id: string) => {
+      const injectedError = document.createElement("div");
+      injectedError.id = id;
+      injectedError.textContent = "Syntax error in text mermaid version 11.14.0";
+      document.body.appendChild(injectedError);
+      return Promise.reject(new Error("parse error"));
+    });
+
+    render(
+      <Providers>
+        <MermaidRenderer source="broken" />
+      </Providers>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByText("Mermaid図を表示できませんでした。")).toBeInTheDocument(),
+    );
+    expect(screen.queryByText(/Syntax error in text/)).not.toBeInTheDocument();
+  });
+
   it("観点：MermaidRendererのアンマウント。確認：描画完了前に破棄された場合は状態更新しない。", async () => {
     let resolveRender: (value: { svg: string }) => void = () => undefined;
     mermaidMocks.render.mockReturnValueOnce(
@@ -475,14 +527,25 @@ describe("frontend components", () => {
   it("観点：参照元表示。確認：ページ範囲、リンク、PDFダイアログなし状態を処理する。", async () => {
     const user = userEvent.setup();
     const onClick = vi.fn();
+    const longReferenceLabel =
+      "SEC BOOKS：ESCR C++ Ver. 2.0：【改訂版】組込みソフトウェア開発向けコーディング作法ガイド［C++言語版］ Ver. 2.0.pdf p.181-192";
     const { rerender } = render(
       <Providers>
-        <ReferenceLink label="資料 p.1" onClick={onClick} />
+        <ReferenceLink label={longReferenceLabel} onClick={onClick} />
         <ReferenceViewerDialog open reference={null} onOpenChange={vi.fn()} />
       </Providers>,
     );
 
-    await user.click(screen.getByRole("button", { name: "資料 p.1" }));
+    const referenceLink = screen.getByRole("button", { name: longReferenceLabel });
+    expect(referenceLink).toHaveClass(
+      "w-full",
+      "max-w-full",
+      "min-w-0",
+      "whitespace-normal",
+      "break-words",
+      "[overflow-wrap:anywhere]",
+    );
+    await user.click(referenceLink);
     expect(onClick).toHaveBeenCalled();
     expect(formatPdfPageRange(reference())).toBe("p.1-2");
     expect(formatPdfPageRange({ locator: { page_end: 3, page_start: 3 } })).toBe("p.3");

@@ -28,18 +28,21 @@ export function MermaidRenderer({ source }: { source: string }) {
 
   useEffect(() => {
     let cancelled = false;
+    const renderId = `mock-flow-${reactId.replace(/[^a-zA-Z0-9_-]/g, "")}`;
     setSvg("");
     setRenderFailed(false);
 
     mermaid
-      .render(`mock-flow-${reactId.replace(/[^a-zA-Z0-9_-]/g, "")}`, source)
+      .render(renderId, source)
       .then(({ svg: renderedSvg }) => {
+        removeMermaidInjectedElement(renderId);
         if (!cancelled) {
           setSvg(renderedSvg);
           setRenderFailed(false);
         }
       })
       .catch(() => {
+        removeMermaidInjectedElement(renderId);
         if (!cancelled) {
           setSvg("");
           setRenderFailed(true);
@@ -48,6 +51,7 @@ export function MermaidRenderer({ source }: { source: string }) {
 
     return () => {
       cancelled = true;
+      removeMermaidInjectedElement(renderId);
     };
   }, [reactId, source]);
 
@@ -80,4 +84,8 @@ export function MermaidRenderer({ source }: { source: string }) {
       <MermaidViewerDialog open={viewerOpen} onOpenChange={setViewerOpen} svg={svg} />
     </div>
   );
+}
+
+function removeMermaidInjectedElement(renderId: string) {
+  document.getElementById(renderId)?.remove();
 }

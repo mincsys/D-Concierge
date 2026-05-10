@@ -12,12 +12,12 @@ export function AnswerContent({
   onOpenPdf: (reference: PdfReference) => void;
 }) {
   return (
-    <div className="ml-20 text-[15.5px] leading-[1.72] text-[var(--dc-text)] max-[1100px]:ml-0">
+    <div className="ml-20 min-w-0 text-[15.5px] leading-[1.72] text-[var(--dc-text)] max-[1100px]:ml-0">
       {answer.blocks.map((block, blockIndex) => (
         <section className="mt-7 first:mt-0" key={`answer-block-${blockIndex}`}>
           <MarkdownRenderer markdown={block.markdown} />
           {block.references.length > 0 ? (
-            <div className="mt-3 grid gap-1.5" aria-label="参照元">
+            <div className="mt-3 grid min-w-0 gap-1.5" aria-label="参照元">
               {block.references.map((reference) => (
                 <ReferenceLink
                   key={`${reference.url}-${formatPdfPageRange(reference)}`}

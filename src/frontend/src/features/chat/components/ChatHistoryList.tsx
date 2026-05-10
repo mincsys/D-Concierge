@@ -16,16 +16,17 @@ export function ChatHistoryList({
       {histories.map((item) => (
         <Button
           className={cn(
-            "relative min-h-[46px] w-full justify-start overflow-hidden rounded-none border-y border-l-[5px] border-y-transparent border-l-transparent bg-transparent pr-8 pl-[27px] text-left text-[15.5px] font-[620] text-ellipsis whitespace-nowrap text-[var(--dc-text-strong)] shadow-none hover:bg-[var(--dc-primary-hover)]",
+            "relative min-h-[46px] w-full min-w-0 justify-start overflow-hidden rounded-none border-y border-l-[5px] border-y-transparent border-l-transparent bg-transparent pr-8 pl-[27px] text-left text-[15.5px] font-[620] text-[var(--dc-text-strong)] shadow-none hover:bg-[var(--dc-primary-hover)]",
             item.chatId === activeChatId &&
               "border-y-[var(--dc-border-soft)] border-l-[var(--dc-primary)] bg-transparent text-[var(--dc-primary)] hover:bg-transparent hover:text-[var(--dc-primary)]",
           )}
           key={item.chatId}
+          title={item.title}
           type="button"
           variant="ghost"
           onClick={() => onOpenAnswer(item.chatId)}
         >
-          {item.title}
+          <span className="block min-w-0 truncate">{item.title}</span>
         </Button>
       ))}
     </nav>
