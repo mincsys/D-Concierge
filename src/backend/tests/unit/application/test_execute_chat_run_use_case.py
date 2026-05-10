@@ -426,6 +426,10 @@ def test_execute_chat_run_regenerates_when_validator_requests_retry() -> None:
     ) == 1
     assert runner.prompts[1] == "資料を要約してください\n\n参照元を具体化してください。"
     assert validator.retry_counts == [0, 1]
+    assert validator.user_instructions == [
+        "資料を要約してください",
+        "資料を要約してください",
+    ]
 
 
 def test_execute_chat_run_publishes_revision_message_before_retry_generation() -> None:
@@ -1292,6 +1296,7 @@ class AdoptionWithoutCandidateValidator:
         self,
         raw_answer_json: str,
         retry_count: int,
+        user_instruction: str,
         chat_id: UUID,
         run_id: UUID,
         trace_id: str,
@@ -1303,6 +1308,7 @@ class AdoptionWithoutCandidateValidator:
         _ = (
             raw_answer_json,
             retry_count,
+            user_instruction,
             chat_id,
             run_id,
             trace_id,
@@ -1326,6 +1332,7 @@ class CancelingValidationValidator:
         self,
         raw_answer_json: str,
         retry_count: int,
+        user_instruction: str,
         chat_id: UUID,
         run_id: UUID,
         trace_id: str,
@@ -1337,6 +1344,7 @@ class CancelingValidationValidator:
         _ = (
             raw_answer_json,
             retry_count,
+            user_instruction,
             chat_id,
             run_id,
             trace_id,
@@ -1364,6 +1372,7 @@ class ParsingAnswerValidator:
         self,
         raw_answer_json: str,
         retry_count: int,
+        user_instruction: str,
         chat_id: UUID,
         run_id: UUID,
         trace_id: str,
@@ -1373,6 +1382,7 @@ class ParsingAnswerValidator:
     ) -> AnswerValidationResult:
         _ = (
             retry_count,
+            user_instruction,
             chat_id,
             run_id,
             trace_id,
@@ -1396,11 +1406,13 @@ class QueuedAnswerValidator:
 
     results: tuple[AnswerValidationResult, ...]
     retry_counts: list[int] = field(default_factory=list)
+    user_instructions: list[str] = field(default_factory=list)
 
     def validate(
         self,
         raw_answer_json: str,
         retry_count: int,
+        user_instruction: str,
         chat_id: UUID,
         run_id: UUID,
         trace_id: str,
@@ -1418,6 +1430,7 @@ class QueuedAnswerValidator:
             session_workdir,
         )
         self.retry_counts.append(retry_count)
+        self.user_instructions.append(user_instruction)
         return self.results[len(self.retry_counts) - 1]
 
 
@@ -1431,6 +1444,7 @@ class FailingValidationValidator:
         self,
         raw_answer_json: str,
         retry_count: int,
+        user_instruction: str,
         chat_id: UUID,
         run_id: UUID,
         trace_id: str,
@@ -1442,6 +1456,7 @@ class FailingValidationValidator:
         _ = (
             raw_answer_json,
             retry_count,
+            user_instruction,
             chat_id,
             run_id,
             trace_id,
@@ -1460,6 +1475,7 @@ class ValidationStreamingAnswerValidator:
         self,
         raw_answer_json: str,
         retry_count: int,
+        user_instruction: str,
         chat_id: UUID,
         run_id: UUID,
         trace_id: str,
@@ -1468,7 +1484,15 @@ class ValidationStreamingAnswerValidator:
         session_workdir: Path | None = None,
     ) -> AnswerValidationResult:
         """検証完了前に中間メッセージを通知する。"""
-        _ = (retry_count, chat_id, run_id, trace_id, timeout_seconds, session_workdir)
+        _ = (
+            retry_count,
+            user_instruction,
+            chat_id,
+            run_id,
+            trace_id,
+            timeout_seconds,
+            session_workdir,
+        )
         if on_intermediate_message is None:
             raise AssertionError("検証中間メッセージ通知コールバックがありません。")
         on_intermediate_message("参照元PDFを検証しています。")

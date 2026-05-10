@@ -137,6 +137,7 @@ class AnswerValidator(Protocol):
         self,
         raw_answer_json: str,
         retry_count: int,
+        user_instruction: str,
         chat_id: UUID,
         run_id: UUID,
         trace_id: str,
@@ -406,6 +407,7 @@ class ExecuteChatRunUseCase:
             validation = self._answer_validator.validate(
                 result.final_answer_json,
                 retry_count,
+                user_instruction,
                 chat_id,
                 run_id,
                 trace_id,

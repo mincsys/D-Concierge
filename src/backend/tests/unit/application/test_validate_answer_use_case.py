@@ -24,12 +24,14 @@ def test_validate_answer_accepts_fixed_and_reference_valid_candidate() -> None:
     result = use_case.validate(
         _valid_answer_json(),
         retry_count=0,
+        user_instruction="資料を要約",
     )
 
     assert result.status == "採用可能"
     assert result.candidate is not None
     assert result.candidate.blocks[0].markdown == "要点はAです。"
     assert validator.validated_candidates[0].blocks[0].references[0].page_start == 2
+    assert validator.user_instructions == ["資料を要約"]
 
 
 def test_validate_answer_forwards_reference_intermediate_callback() -> None:
@@ -50,6 +52,7 @@ def test_validate_answer_forwards_reference_intermediate_callback() -> None:
     result = use_case.validate(
         _valid_answer_json(),
         retry_count=0,
+        user_instruction="資料を要約",
         on_intermediate_message=messages.append,
     )
 
@@ -70,7 +73,11 @@ def test_validate_answer_returns_regeneration_for_fixed_validation_failure() -> 
         max_retries=2,
     )
 
-    result = use_case.validate('{"answers":[]}', retry_count=0)
+    result = use_case.validate(
+        '{"answers":[]}',
+        retry_count=0,
+        user_instruction="資料を要約",
+    )
 
     assert result.status == "再生成指示"
     assert "固定検証" in result.regeneration_instruction
@@ -97,6 +104,7 @@ def test_validate_answer_returns_specific_regeneration_for_invalid_paths() -> No
             '"start_page":1,"end_page":1}}]}]}}'
         ),
         retry_count=0,
+        user_instruction="資料を要約",
     )
 
     assert result.status == "再生成指示"
@@ -127,7 +135,11 @@ def test_validate_answer_returns_regeneration_for_reference_failure() -> None:
         max_retries=2,
     )
 
-    result = use_case.validate(_valid_answer_json(), retry_count=1)
+    result = use_case.validate(
+        _valid_answer_json(),
+        retry_count=1,
+        user_instruction="資料を要約",
+    )
 
     assert result.status == "再生成指示"
     assert result.regeneration_instruction == "2ページの根拠が不足しています。"
@@ -145,7 +157,11 @@ def test_validate_answer_fails_when_retry_limit_reached() -> None:
         max_retries=2,
     )
 
-    result = use_case.validate(_valid_answer_json(), retry_count=2)
+    result = use_case.validate(
+        _valid_answer_json(),
+        retry_count=2,
+        user_instruction="資料を要約",
+    )
 
     assert result.status == "失敗"
     assert result.user_message == (
@@ -162,11 +178,13 @@ class RecordingReferenceValidator:
     result: ReferenceValidationResult
     emitted_message: str | None = None
     validated_candidates: list[ParsedAnswerCandidate] = field(default_factory=list)
+    user_instructions: list[str] = field(default_factory=list)
     timeout_seconds: list[int | None] = field(default_factory=list)
 
     def validate_references(
         self,
         candidate: ParsedAnswerCandidate,
+        user_instruction: str,
         chat_id: object | None = None,
         run_id: object | None = None,
         trace_id: str = "",
@@ -178,6 +196,7 @@ class RecordingReferenceValidator:
         """検証対象を記録して固定結果を返す。"""
         _ = (chat_id, run_id, trace_id, session_workdir, has_artifact_links)
         self.validated_candidates.append(candidate)
+        self.user_instructions.append(user_instruction)
         self.timeout_seconds.append(timeout_seconds)
         if self.emitted_message is not None and callable(on_intermediate_message):
             on_intermediate_message(self.emitted_message)

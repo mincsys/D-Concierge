@@ -1,3 +1,4 @@
+import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -68,6 +69,7 @@ def test_codex_reference_validator_runs_validation_and_saves_resume_id(
 
     result = validator.validate_references(
         candidate,
+        user_instruction="資料を要約",
         chat_id=accepted.chat_id,
         run_id=accepted.run_id,
         trace_id="trace-601",
@@ -88,7 +90,24 @@ def test_codex_reference_validator_runs_validation_and_saves_resume_id(
         / str(saved_context.local_user_id)
         / str(saved_context.session_id)
     )
-    assert "manual.pdf" in codex_runner.requests[0].prompt
+    assert json.loads(codex_runner.requests[0].prompt) == {
+        "instruction": "資料を要約",
+        "answers": [
+            {
+                "text": "回答",
+                "references": [
+                    {
+                        "label": "manual.pdf",
+                        "path": "readonly/manual.pdf",
+                        "page_start": 1,
+                        "page_end": 2,
+                    }
+                ],
+            }
+        ],
+    }
+    assert "relative_path" not in codex_runner.requests[0].prompt
+    assert "readonly_path" not in codex_runner.requests[0].prompt
     assert codex_runner.requests[0].timeout_seconds == 55
     assert codex_runner.requests[0].trace_id == "trace-601"
 
@@ -128,6 +147,7 @@ def test_codex_reference_validator_prepares_readonly_validation_context(
 
     validator.validate_references(
         candidate,
+        user_instruction="資料を要約",
         chat_id=accepted.chat_id,
         run_id=accepted.run_id,
     )
@@ -174,6 +194,7 @@ def test_codex_reference_validator_links_generation_artifacts_when_needed(
 
     validator.validate_references(
         _candidate_with_pdf(),
+        user_instruction="資料を要約",
         chat_id=accepted.chat_id,
         run_id=accepted.run_id,
         session_workdir=generation_workdir,
@@ -239,6 +260,7 @@ def test_codex_reference_validator_streams_intermediate_messages(
 
     result = validator.validate_references(
         candidate,
+        user_instruction="資料を要約",
         chat_id=accepted.chat_id,
         run_id=accepted.run_id,
         on_intermediate_message=streamed_messages.append,
@@ -307,6 +329,7 @@ def test_codex_reference_validator_streams_progress_only(
 
     result = validator.validate_references(
         candidate,
+        user_instruction="資料を要約",
         chat_id=accepted.chat_id,
         run_id=accepted.run_id,
         on_intermediate_message=streamed_messages.append,
@@ -346,10 +369,11 @@ def test_codex_reference_validator_rejects_invalid_context_or_payload(
     )
 
     with pytest.raises(AppError) as context_error:
-        validator.validate_references(candidate)
+        validator.validate_references(candidate, user_instruction="資料を要約")
     with pytest.raises(AppError) as payload_error:
         validator.validate_references(
             candidate,
+            user_instruction="資料を要約",
             chat_id=accepted.chat_id,
             run_id=accepted.run_id,
             trace_id="trace-602",
@@ -386,6 +410,7 @@ def test_codex_reference_validator_rejects_missing_pdf_before_codex(
 
     result = validator.validate_references(
         _candidate_with_pdf(),
+        user_instruction="資料を要約",
         chat_id=accepted.chat_id,
         run_id=accepted.run_id,
     )
@@ -431,6 +456,7 @@ def test_codex_reference_validator_rejects_page_out_of_range_before_codex(
 
     result = validator.validate_references(
         _candidate_with_pdf(),
+        user_instruction="資料を要約",
         chat_id=accepted.chat_id,
         run_id=accepted.run_id,
     )
@@ -478,6 +504,7 @@ def test_codex_reference_validator_raises_when_existing_pdf_is_unreadable(
     with pytest.raises(ReferencePdfReadError) as exc_info:
         validator.validate_references(
             _candidate_with_pdf(),
+            user_instruction="資料を要約",
             chat_id=accepted.chat_id,
             run_id=accepted.run_id,
         )

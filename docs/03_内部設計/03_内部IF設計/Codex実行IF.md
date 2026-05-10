@@ -48,7 +48,7 @@ sequenceDiagram
 
 - Codexホーム、作業ディレクトリ、出力スキーマパスが設定済みである。
 - 生成用は対象チャットの作業領域IDと、継続指示時に利用する生成用Codex側resume用IDを保持している。
-- 検証用は検証対象回答、参照元、検証プロンプトが揃っている。
+- 検証用は元のユーザ指示、検証対象回答、参照元を含む `ValidatorCodexInput` 形式の検証プロンプトが揃っている。
 
 ### 5.2. 事後条件
 
@@ -78,7 +78,7 @@ sequenceDiagram
 | --- | --- |
 | `session_id` | D-Conciergeの作業領域を識別する内部ID |
 | `codex_conversation_id` | `codex exec resume` に渡すCodex側resume用ID。初回起動時は未指定 |
-| `prompt` | 生成または検証に渡す指示本文 |
+| `prompt` | 生成または検証に渡す指示本文。検証用では `ValidatorCodexInput` JSON |
 | `output_schema_path` | codex execに渡すJSON Schemaファイルパス |
 | `timeout_seconds` | 全体deadlineから算出した当該codex execの残り秒数 |
 | `trace_id` | 実行ログとAPI呼出を関連付けるID |
@@ -86,7 +86,20 @@ sequenceDiagram
 | `codex_home` | 生成用または検証用のCodexホーム |
 | `work_dir` | 生成用または検証用のセッション作業領域 |
 
-### 6.2. 出力
+### 6.2. 検証用Codex入力
+
+検証用Codexへ渡す `prompt` は、以下の `ValidatorCodexInput` JSONとする。DB保存用の共有データソース相対パスは含めず、検証用Codexが実際に読む作業領域上の `readonly/` 付きPDFパスだけを渡す。
+
+| 項目 | 内容 |
+| --- | --- |
+| `instruction` | 利用者が送信した元のユーザ指示本文。再生成指示は含めない |
+| `answers[].text` | 検証対象の回答本文 |
+| `answers[].references[].label` | 参照元表示名 |
+| `answers[].references[].path` | 検証用作業領域上の `readonly/` から始まるPDF相対パス |
+| `answers[].references[].page_start` | 検証対象PDF開始ページ |
+| `answers[].references[].page_end` | 検証対象PDF終了ページ |
+
+### 6.3. 出力
 
 | 項目 | 内容 |
 | --- | --- |
@@ -96,17 +109,17 @@ sequenceDiagram
 | `artifact_candidates` | 生成結果が参照したCodex成果物候補 |
 | `cancel_result` | 終了要求結果。`sent`、`already_exited`、`not_registered` のいずれか |
 
-### 6.3. Codex作業領域
+### 6.4. Codex作業領域
 
 | 用途 | 作業領域 | 内容 |
 | --- | --- | --- |
 | 生成用 | `codex/sessions/<user-id>/<session-id>/readonly/` | 生成用Codexへ読み取り専用で提示する共有データソース、抽出済みPDF情報、メタ情報を配置する。`readonly/html/<文書名>/index.html` は検索・本文確認用であり、対応する実PDFは `readonly/raw/pdf/<文書名>.pdf` として参照する。 |
 | 生成用 | `codex/sessions/<user-id>/<session-id>/tmp/` | 生成用Codexがresumeをまたいで使う中間作業ファイルを配置する。 |
 | 生成用 | `codex/sessions/<user-id>/<session-id>/artifacts/` | 採用前のCodex成果物候補を一時配置する。 |
-| 検証用 | `codex/sessions_validator/<user-id>/<session-id>/readonly/` | 検証用Codexへ読み取り専用で提示する共有データソース、抽出済みPDF情報、メタ情報を生成用と同じ方式で配置する。回答候補は検証プロンプト本文で渡す。 |
+| 検証用 | `codex/sessions_validator/<user-id>/<session-id>/readonly/` | 検証用Codexへ読み取り専用で提示する共有データソース、抽出済みPDF情報、メタ情報を生成用と同じ方式で配置する。回答候補は `ValidatorCodexInput` として検証プロンプト本文で渡す。 |
 | 検証用 | `codex/sessions_validator/<user-id>/<session-id>/tmp/` | 検証用Codexがresumeをまたいで使う中間作業ファイルを配置する。 |
 
-### 6.4. JSONLイベント採用規則
+### 6.5. JSONLイベント採用規則
 
 | イベント | 扱い |
 | --- | --- |

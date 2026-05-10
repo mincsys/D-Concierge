@@ -10,7 +10,7 @@ Do not infer PDF page content from filenames, metadata, or memory; inspect the c
 
 ## Workflow
 
-1. Take the cited `references[].locator.path`, `start_page`, and `end_page`.
+1. Take the cited `answers[].references[].path`, `page_start`, and `page_end`.
 2. Run the bundled script from the validator workdir where `readonly/` exists:
 
 ```bash

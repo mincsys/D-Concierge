@@ -46,6 +46,7 @@ class ReferenceValidator(Protocol):
     def validate_references(
         self,
         candidate: ParsedAnswerCandidate,
+        user_instruction: str,
         chat_id: UUID | None = None,
         run_id: UUID | None = None,
         trace_id: str = "",
@@ -89,6 +90,7 @@ class ValidateAnswerUseCase:
         self,
         raw_answer_json: str,
         retry_count: int,
+        user_instruction: str,
         chat_id: UUID | None = None,
         run_id: UUID | None = None,
         trace_id: str = "",
@@ -117,6 +119,7 @@ class ValidateAnswerUseCase:
 
         validation = self._reference_validator.validate_references(
             candidate=candidate,
+            user_instruction=user_instruction,
             chat_id=chat_id,
             run_id=run_id,
             trace_id=trace_id,

@@ -97,7 +97,7 @@ def invalid_reference_page_range_message(page_ranges: list[InvalidPageRange]) ->
     )
 
 
-def readonly_display_path(relative_path: str) -> str:
+def codex_visible_reference_path(relative_path: str) -> str:
     """共有データソース相対pathをCodex作業領域上の表示pathへ戻す。"""
     return PurePosixPath(_CODEX_READONLY_DIR, relative_path).as_posix()
 

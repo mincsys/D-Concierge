@@ -1,33 +1,8 @@
 import os
 import shutil
-from pathlib import Path, PurePosixPath
-from typing import TypedDict
+from pathlib import Path
 
-from backend.domain.answer.answer_candidate import ParsedAnswerCandidate
 from backend.shared.errors import ValidationWorkspacePreparationError
-
-
-class ReadonlyReferencePayload(TypedDict):
-    """検証用Codexへ渡す参照元情報。"""
-
-    label: str
-    relative_path: str
-    readonly_path: str
-    page_start: int
-    page_end: int
-
-
-class ReadonlyAnswerCandidatePayload(TypedDict):
-    """検証用Codexへ渡す回答候補情報。"""
-
-    blocks: list["ReadonlyAnswerBlockPayload"]
-
-
-class ReadonlyAnswerBlockPayload(TypedDict):
-    """検証用Codexへ渡す回答ブロック情報。"""
-
-    markdown: str
-    references: list[ReadonlyReferencePayload]
 
 
 def prepare_generation_session_readonly(
@@ -103,30 +78,6 @@ def _prepare_session_readonly(
     )
 
 
-def build_readonly_answer_candidate_payload(
-    candidate: ParsedAnswerCandidate,
-) -> ReadonlyAnswerCandidatePayload:
-    """検証対象候補をCodexへ渡すpayloadへ変換する。"""
-    return ReadonlyAnswerCandidatePayload(
-        blocks=[
-            ReadonlyAnswerBlockPayload(
-                markdown=block.markdown,
-                references=[
-                    ReadonlyReferencePayload(
-                        label=reference.label,
-                        relative_path=reference.relative_path,
-                        readonly_path=_readonly_reference_path(reference.relative_path),
-                        page_start=reference.page_start,
-                        page_end=reference.page_end,
-                    )
-                    for reference in block.references
-                ],
-            )
-            for block in candidate.blocks
-        ],
-    )
-
-
 def _ensure_runtime_dirs(workdir: Path, *, include_artifacts: bool) -> None:
     workdir.mkdir(parents=True, exist_ok=True)
     (workdir / "tmp").mkdir(parents=True, exist_ok=True)
@@ -168,7 +119,3 @@ def _replace_with_link_or_copy(*, source: Path, destination: Path) -> None:
             shutil.copytree(source, destination)
         else:
             shutil.copy2(source, destination)
-
-
-def _readonly_reference_path(relative_path: str) -> str:
-    return PurePosixPath("readonly", *PurePosixPath(relative_path).parts).as_posix()

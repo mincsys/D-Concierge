@@ -12,10 +12,10 @@ from backend.domain.answer.answer_candidate import (
     InvalidPageRange,
     ParsedAnswerCandidate,
     ParsedReference,
+    codex_visible_reference_path,
     invalid_reference_page_range_message,
     invalid_reference_path_message,
     parsed_candidate_references,
-    readonly_display_path,
 )
 from backend.infrastructure.codex.codex_runner import (
     CodexRunRequest,
@@ -28,9 +28,11 @@ from backend.infrastructure.codex.intermediate_messages import (
 )
 from backend.infrastructure.codex.jsonl_event_parser import JsonValue
 from backend.infrastructure.codex.session_readonly import (
-    build_readonly_answer_candidate_payload,
     prepare_validation_session_artifacts,
     prepare_validation_session_readonly,
+)
+from backend.infrastructure.codex.validator_codex_input import (
+    build_validator_codex_input,
 )
 from backend.infrastructure.config.models import CodexConfig
 from backend.infrastructure.filesystem.path_security import PathSecurityService
@@ -88,6 +90,7 @@ class CodexReferenceValidator:
     def validate_references(
         self,
         candidate: ParsedAnswerCandidate,
+        user_instruction: str,
         chat_id: UUID | None = None,
         run_id: UUID | None = None,
         trace_id: str = "",
@@ -133,7 +136,10 @@ class CodexReferenceValidator:
         result = self._codex_runner.run_validation(
             CodexRunRequest(
                 run_id=run_id,
-                prompt=_validation_prompt(candidate),
+                prompt=_validation_prompt(
+                    candidate=candidate,
+                    user_instruction=user_instruction,
+                ),
                 codex_home=self._validator_config.home,
                 workdir=workdir,
                 output_schema=self._validator_config.output_schema,
@@ -160,9 +166,16 @@ class CodexReferenceValidator:
         )
 
 
-def _validation_prompt(candidate: ParsedAnswerCandidate) -> str:
+def _validation_prompt(
+    *,
+    candidate: ParsedAnswerCandidate,
+    user_instruction: str,
+) -> str:
     return json.dumps(
-        build_readonly_answer_candidate_payload(candidate),
+        build_validator_codex_input(
+            user_instruction=user_instruction,
+            candidate=candidate,
+        ),
         ensure_ascii=False,
         separators=(",", ":"),
     )
@@ -193,7 +206,7 @@ def _validate_reference_files(
     invalid_paths: list[str] = []
     resolved_paths: dict[str, Path] = {}
     for reference in references:
-        display_path = readonly_display_path(reference.relative_path)
+        display_path = codex_visible_reference_path(reference.relative_path)
         try:
             resolved_path = PathSecurityService.resolve_file(
                 datasource_dir,
@@ -229,7 +242,7 @@ def _validate_reference_files(
         if reference.page_end > page_count:
             invalid_page_ranges.append(
                 InvalidPageRange(
-                    path=readonly_display_path(reference.relative_path),
+                    path=codex_visible_reference_path(reference.relative_path),
                     page_start=reference.page_start,
                     page_end=reference.page_end,
                 ),
