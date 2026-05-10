@@ -9,22 +9,33 @@ from sqlalchemy.pool import ConnectionPoolEntry, StaticPool
 
 from backend.application.ports.database.dto import (
     SHARED_LOCAL_USER_ID,
+    AcceptedRun,
     AnswerBlockData,
     AnswerData,
     ArtifactData,
+    ChatDetail,
+    ChatRuntimeContext,
     DisplayReferenceData,
+    HistoryItem,
+    UnfinishedRun,
 )
-from backend.infrastructure.database.models import (
+from backend.domain.execution.run_state_policy import RunState
+from backend.infrastructure.database.models.answer import (
     AnswerBlockModel,
-    Base,
+    ReferenceModel,
+)
+from backend.infrastructure.database.models.base import Base
+from backend.infrastructure.database.models.chat import (
     ChatModel,
     ChatRunModel,
     LocalUserModel,
-    ReferenceModel,
     UserInstructionModel,
 )
 from backend.infrastructure.database.repositories.sqlalchemy_chat_repository import (
     SqlAlchemyChatRepository,
+)
+from backend.infrastructure.database.session.transaction_manager import (
+    SqlAlchemyTransactionManager,
 )
 from backend.shared.errors import AppError, ErrorClass
 
@@ -445,21 +456,24 @@ def test_sqlalchemy_repository_ignores_history_without_run() -> None:
     assert repository.list_histories() == ()
 
 
-def _make_repository() -> SqlAlchemyChatRepository:
+def _make_repository() -> "TransactionalSqlAlchemyChatRepository":
     repository, _session_factory = _make_repository_with_session_factory()
     return repository
 
 
 def _make_repository_with_session_factory() -> tuple[
-    SqlAlchemyChatRepository, sessionmaker[Session]
+    "TransactionalSqlAlchemyChatRepository", sessionmaker[Session]
 ]:
     engine = create_engine("sqlite+pysqlite:///:memory:")
     Base.metadata.create_all(engine)
     session_factory = sessionmaker(bind=engine, class_=Session, expire_on_commit=False)
-    return SqlAlchemyChatRepository(session_factory=session_factory), session_factory
+    transaction_manager = SqlAlchemyTransactionManager(session_factory=session_factory)
+    return TransactionalSqlAlchemyChatRepository(transaction_manager), session_factory
 
 
-def _make_repository_with_foreign_key_checks() -> SqlAlchemyChatRepository:
+def _make_repository_with_foreign_key_checks() -> (
+    "TransactionalSqlAlchemyChatRepository"
+):
     engine = create_engine(
         "sqlite+pysqlite://",
         connect_args={"check_same_thread": False},
@@ -475,4 +489,115 @@ def _make_repository_with_foreign_key_checks() -> SqlAlchemyChatRepository:
 
     Base.metadata.create_all(engine)
     session_factory = sessionmaker(bind=engine, class_=Session, expire_on_commit=False)
-    return SqlAlchemyChatRepository(session_factory=session_factory)
+    transaction_manager = SqlAlchemyTransactionManager(session_factory=session_factory)
+    return TransactionalSqlAlchemyChatRepository(transaction_manager)
+
+
+class TransactionalSqlAlchemyChatRepository(SqlAlchemyChatRepository):
+    """Repositoryテスト用に各呼び出しを明示トランザクションへ包む。"""
+
+    def __init__(self, transaction_manager: SqlAlchemyTransactionManager) -> None:
+        super().__init__(session_provider=transaction_manager)
+        self._transaction_manager = transaction_manager
+
+    def create_chat_with_first_run(self, user_instruction: str) -> AcceptedRun:
+        with self._transaction_manager.transaction():
+            return super().create_chat_with_first_run(user_instruction)
+
+    def append_run(self, chat_id: UUID, user_instruction: str) -> AcceptedRun:
+        with self._transaction_manager.transaction():
+            return super().append_run(chat_id, user_instruction)
+
+    def list_histories(self) -> tuple[HistoryItem, ...]:
+        with self._transaction_manager.transaction():
+            return super().list_histories()
+
+    def list_unfinished_runs_for_recovery(self) -> tuple[UnfinishedRun, ...]:
+        with self._transaction_manager.transaction():
+            return super().list_unfinished_runs_for_recovery()
+
+    def get_chat_detail(self, chat_id: UUID) -> ChatDetail:
+        with self._transaction_manager.transaction():
+            return super().get_chat_detail(chat_id)
+
+    def get_chat_runtime_context(self, chat_id: UUID) -> ChatRuntimeContext:
+        with self._transaction_manager.transaction():
+            return super().get_chat_runtime_context(chat_id)
+
+    def save_generation_conversation_id(
+        self,
+        chat_id: UUID,
+        codex_conversation_id: str,
+    ) -> None:
+        with self._transaction_manager.transaction():
+            super().save_generation_conversation_id(chat_id, codex_conversation_id)
+
+    def save_validation_conversation_id(
+        self,
+        chat_id: UUID,
+        codex_conversation_id: str,
+    ) -> None:
+        with self._transaction_manager.transaction():
+            super().save_validation_conversation_id(chat_id, codex_conversation_id)
+
+    def get_run_state(self, chat_id: UUID, run_id: UUID) -> RunState:
+        with self._transaction_manager.transaction():
+            return super().get_run_state(chat_id, run_id)
+
+    def get_run_instruction(self, chat_id: UUID, run_id: UUID) -> str:
+        with self._transaction_manager.transaction():
+            return super().get_run_instruction(chat_id, run_id)
+
+    def set_run_state(
+        self,
+        chat_id: UUID,
+        run_id: UUID,
+        state: RunState,
+        user_message: str | None = None,
+    ) -> None:
+        with self._transaction_manager.transaction():
+            super().set_run_state(chat_id, run_id, state, user_message)
+
+    def update_run_state_if_current(
+        self,
+        chat_id: UUID,
+        run_id: UUID,
+        expected_states: tuple[RunState, ...],
+        state: RunState,
+        user_message: str | None = None,
+        execution_deadline_at: datetime | None = None,
+    ) -> bool:
+        with self._transaction_manager.transaction():
+            return super().update_run_state_if_current(
+                chat_id,
+                run_id,
+                expected_states,
+                state,
+                user_message,
+                execution_deadline_at,
+            )
+
+    def add_intermediate_message(self, chat_id: UUID, run_id: UUID, text: str) -> None:
+        with self._transaction_manager.transaction():
+            super().add_intermediate_message(chat_id, run_id, text)
+
+    def save_completed_answer(
+        self,
+        chat_id: UUID,
+        run_id: UUID,
+        answer: AnswerData,
+    ) -> None:
+        with self._transaction_manager.transaction():
+            super().save_completed_answer(chat_id, run_id, answer)
+
+    def cancel_run(self, chat_id: UUID, run_id: UUID) -> None:
+        with self._transaction_manager.transaction():
+            super().cancel_run(chat_id, run_id)
+
+    def get_reference(self, reference_id: UUID) -> DisplayReferenceData:
+        with self._transaction_manager.transaction():
+            return super().get_reference(reference_id)
+
+    def get_artifact(self, artifact_id: UUID) -> ArtifactData:
+        with self._transaction_manager.transaction():
+            return super().get_artifact(artifact_id)

@@ -1,3 +1,4 @@
+from contextlib import AbstractContextManager
 from datetime import datetime
 from typing import Protocol
 from uuid import UUID
@@ -13,6 +14,13 @@ from backend.application.ports.database.dto import (
     UnfinishedRun,
 )
 from backend.domain.execution.run_state_policy import RunState
+
+
+class TransactionManagerPort(Protocol):
+    """DBトランザクション境界を管理する境界。"""
+
+    def transaction(self) -> AbstractContextManager[None]:
+        """1つのDB作業単位を開始する。"""
 
 
 class AcceptedRunStateRepositoryPort(Protocol):

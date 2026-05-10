@@ -1,13 +1,15 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from backend.application.artifacts.validate_artifact_links import extract_artifact_links
 from backend.application.ports.filesystem.dto import (
     SavedArtifactFile,
 )
 from backend.application.ports.filesystem.interface import AdoptedArtifactStorePort
+from backend.application.ports.runtime.interface import IdGeneratorPort
+from backend.infrastructure.runtime.uuid_generator import UuidGenerator
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,10 +40,17 @@ class SaveAdoptedArtifactsUseCase:
     def __init__(
         self,
         artifact_store: AdoptedArtifactStorePort,
-        artifact_id_factory: Callable[[], UUID] = uuid4,
+        artifact_id_factory: Callable[[], UUID] | None = None,
+        id_generator: IdGeneratorPort | None = None,
     ) -> None:
         self._artifact_store = artifact_store
-        self._artifact_id_factory = artifact_id_factory
+        if artifact_id_factory is not None:
+            self._artifact_id_factory = artifact_id_factory
+        else:
+            runtime_id_generator = (
+                id_generator if id_generator is not None else UuidGenerator()
+            )
+            self._artifact_id_factory = runtime_id_generator.new_uuid
 
     def save_for_answer_blocks(
         self,

@@ -26,7 +26,7 @@ class InProcessRunExecutionDispatcher:
         self._active_run_ids: set[UUID] = set()
         self._lock = RLock()
 
-    def register(self, chat_id: UUID, run_id: UUID) -> DispatchResult:
+    def register(self, chat_id: UUID, run_id: UUID, trace_id: str) -> DispatchResult:
         """受付済みrunをバックグラウンド実行へ登録する。"""
         with self._lock:
             if run_id in self._active_run_ids:
@@ -35,16 +35,16 @@ class InProcessRunExecutionDispatcher:
 
         try:
             self._background_executor.submit(
-                lambda: self._execute_and_release(chat_id, run_id)
+                lambda: self._execute_and_release(chat_id, run_id, trace_id)
             )
         except RuntimeError as exc:
             self._release(run_id)
             return DispatchResult(status="failed", failure_reason=str(exc))
         return DispatchResult(status="registered")
 
-    def _execute_and_release(self, chat_id: UUID, run_id: UUID) -> None:
+    def _execute_and_release(self, chat_id: UUID, run_id: UUID, trace_id: str) -> None:
         try:
-            self._run_executor.execute(chat_id, run_id)
+            self._run_executor.execute(chat_id, run_id, trace_id)
         finally:
             self._release(run_id)
 

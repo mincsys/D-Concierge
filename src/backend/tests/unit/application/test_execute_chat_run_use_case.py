@@ -1,4 +1,5 @@
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -638,6 +639,31 @@ def test_execute_chat_run_saves_deadline_and_passes_remaining_seconds() -> None:
     assert validator.timeout_seconds == [295]
 
 
+def test_execute_chat_run_does_not_keep_transaction_open_during_codex_generation() -> (
+    None
+):
+    """観点：チャット実行処理のトランザクション境界。
+
+    確認：生成用Codex実行中にDBトランザクションを開きっぱなしにしない。
+    """
+    repository = InMemoryChatRepository()
+    accepted = repository.create_chat_with_first_run("資料を要約してください")
+    transaction_manager = RecordingTransactionManager()
+    runner = TransactionObservingCodexRunner(transaction_manager)
+    use_case = ExecuteChatRunUseCase(
+        repository=repository,
+        codex_runner=runner,
+        answer_validator=ParsingAnswerValidator(),
+        event_publisher=RecordingPublisher(),
+        transaction_manager=transaction_manager,
+    )
+
+    use_case.execute(accepted.chat_id, accepted.run_id, trace_id="trace-transaction")
+
+    assert runner.transaction_was_active_during_generation is False
+    assert transaction_manager.entered_count > 0
+
+
 def test_execute_chat_run_times_out_before_next_codex_exec_when_deadline_exceeded() -> (
     None
 ):
@@ -1031,6 +1057,39 @@ class FakeCodexRunner:
         self.prompts.append(user_instruction)
         self.timeout_seconds.append(timeout_seconds)
         return self.results[len(self.prompts) - 1]
+
+
+@dataclass(slots=True)
+class TransactionObservingCodexRunner:
+    """生成実行中のトランザクション状態を記録するテスト用CodexRunner。"""
+
+    transaction_manager: "RecordingTransactionManager"
+    transaction_was_active_during_generation: bool | None = None
+
+    def run_generation(
+        self,
+        chat_id: UUID,
+        run_id: UUID,
+        user_instruction: str,
+        timeout_seconds: int,
+        trace_id: str,
+        on_intermediate_message: Callable[[str], None] | None = None,
+    ) -> CodexRunResult:
+        """TransactionManagerが非アクティブな状態で固定結果を返す。"""
+        _ = (
+            chat_id,
+            run_id,
+            user_instruction,
+            timeout_seconds,
+            trace_id,
+            on_intermediate_message,
+        )
+        self.transaction_was_active_during_generation = self.transaction_manager.active
+        return CodexRunResult(
+            conversation_id="codex-thread-1",
+            intermediate_messages=(),
+            final_answer_json=_valid_answer_json(),
+        )
 
 
 @dataclass(slots=True)
@@ -1564,11 +1623,31 @@ class SequenceClock:
     values: tuple[datetime, ...]
     index: int = 0
 
-    def __call__(self) -> datetime:
+    def now(self) -> datetime:
         """登録済み時刻を順番に返す。"""
         value = self.values[min(self.index, len(self.values) - 1)]
         self.index += 1
         return value
+
+
+@dataclass(slots=True)
+class RecordingTransactionManager:
+    """テスト用TransactionManager。"""
+
+    entered_count: int = 0
+    active: bool = False
+
+    @contextmanager
+    def transaction(self) -> Iterator[None]:
+        """トランザクション状態を記録する。"""
+        self.entered_count += 1
+        if self.active:
+            raise AssertionError("トランザクションがネストされました。")
+        self.active = True
+        try:
+            yield
+        finally:
+            self.active = False
 
 
 def _valid_answer_json() -> str:

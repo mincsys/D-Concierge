@@ -3,8 +3,12 @@ from backend.application.chat.acceptance import (
     accepted_chat_run_result,
     register_accepted_run,
 )
-from backend.application.ports.database.interface import StartChatRepositoryPort
+from backend.application.ports.database.interface import (
+    StartChatRepositoryPort,
+    TransactionManagerPort,
+)
 from backend.application.ports.runtime.interface import RunExecutionDispatcherPort
+from backend.application.transactions import NoopTransactionManager
 
 
 class StartChatUseCase:
@@ -14,13 +18,25 @@ class StartChatUseCase:
         self,
         repository: StartChatRepositoryPort,
         run_dispatcher: RunExecutionDispatcherPort | None,
+        transaction_manager: TransactionManagerPort | None = None,
     ) -> None:
         self._repository = repository
         self._run_dispatcher = run_dispatcher
+        self._transaction_manager = (
+            transaction_manager
+            if transaction_manager is not None
+            else NoopTransactionManager()
+        )
 
     def execute(self, user_instruction: str, trace_id: str) -> AcceptedChatRunResult:
         """初回指示を受付状態で保存し、実行dispatcherへ登録する。"""
-        _ = trace_id
-        accepted = self._repository.create_chat_with_first_run(user_instruction)
-        register_accepted_run(self._repository, self._run_dispatcher, accepted)
+        with self._transaction_manager.transaction():
+            accepted = self._repository.create_chat_with_first_run(user_instruction)
+        register_accepted_run(
+            self._repository,
+            self._transaction_manager,
+            self._run_dispatcher,
+            accepted,
+            trace_id,
+        )
         return accepted_chat_run_result(accepted)

@@ -1,10 +1,10 @@
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from math import ceil
 from pathlib import Path
 from typing import Literal, Protocol
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from backend.application.artifacts.save_adopted_artifacts import (
     SavedAnswerBlocksArtifacts,
@@ -19,15 +19,22 @@ from backend.application.ports.database.dto import (
     ArtifactData,
     DisplayReferenceData,
 )
-from backend.application.ports.database.interface import ChatExecutionRepositoryPort
+from backend.application.ports.database.interface import (
+    ChatExecutionRepositoryPort,
+    TransactionManagerPort,
+)
+from backend.application.ports.runtime.interface import ClockPort, IdGeneratorPort
 from backend.application.ports.trace_log.dto import TraceLogRecord
 from backend.application.ports.trace_log.interface import TraceLoggerPort
+from backend.application.transactions import NoopTransactionManager
 from backend.application.validation.validate_answer import AnswerValidationResult
 from backend.domain.answer.answer_candidate import (
     ParsedAnswerCandidate,
     ParsedReference,
 )
 from backend.domain.execution.run_state_policy import RunState
+from backend.infrastructure.runtime.system_clock import SystemClock
+from backend.infrastructure.runtime.uuid_generator import UuidGenerator
 from backend.shared.errors import (
     AppError,
     ErrorClass,
@@ -116,7 +123,9 @@ class ExecuteChatRunUseCase:
         session_workdir_resolver: SessionWorkdirResolverPort | None = None,
         trace_logger: TraceLoggerPort | None = None,
         timeout_seconds: int = 300,
-        clock: Callable[[], datetime] | None = None,
+        clock: ClockPort | None = None,
+        id_generator: IdGeneratorPort | None = None,
+        transaction_manager: TransactionManagerPort | None = None,
     ) -> None:
         if timeout_seconds <= 0:
             raise ValueError("timeout_secondsは1以上である必要があります。")
@@ -129,11 +138,21 @@ class ExecuteChatRunUseCase:
         self._session_workdir_resolver = session_workdir_resolver
         self._trace_logger = trace_logger
         self._timeout_seconds = timeout_seconds
-        self._clock = clock if clock is not None else lambda: datetime.now(UTC)
+        self._clock = clock if clock is not None else SystemClock()
+        self._id_generator = (
+            id_generator if id_generator is not None else UuidGenerator()
+        )
+        self._transaction_manager = (
+            transaction_manager
+            if transaction_manager is not None
+            else NoopTransactionManager()
+        )
 
     def execute(self, chat_id: UUID, run_id: UUID, trace_id: str = "") -> None:
         """受付済みrunを実行し、完了またはエラーへ終端する。"""
-        execution_deadline_at = self._clock() + timedelta(seconds=self._timeout_seconds)
+        execution_deadline_at = self._clock.now() + timedelta(
+            seconds=self._timeout_seconds
+        )
         self._write_trace(
             TraceLogRecord(
                 trace_id=trace_id,
@@ -287,7 +306,8 @@ class ExecuteChatRunUseCase:
         trace_id: str,
         execution_deadline_at: datetime,
     ) -> None:
-        user_instruction = self._repository.get_run_instruction(chat_id, run_id)
+        with self._transaction_manager.transaction():
+            user_instruction = self._repository.get_run_instruction(chat_id, run_id)
         if self._is_canceled(chat_id, run_id):
             self._finish_canceled(chat_id, run_id)
             return
@@ -393,13 +413,14 @@ class ExecuteChatRunUseCase:
         expected_states: tuple[RunState, ...],
         execution_deadline_at: datetime | None = None,
     ) -> None:
-        updated = self._repository.update_run_state_if_current(
-            chat_id=chat_id,
-            run_id=run_id,
-            expected_states=expected_states,
-            state=state,
-            execution_deadline_at=execution_deadline_at,
-        )
+        with self._transaction_manager.transaction():
+            updated = self._repository.update_run_state_if_current(
+                chat_id=chat_id,
+                run_id=run_id,
+                expected_states=expected_states,
+                state=state,
+                execution_deadline_at=execution_deadline_at,
+            )
         if not updated:
             if self._is_canceled(chat_id, run_id):
                 self._finish_canceled(chat_id, run_id)
@@ -412,7 +433,8 @@ class ExecuteChatRunUseCase:
     def _record_intermediate_message(
         self, chat_id: UUID, run_id: UUID, message: str
     ) -> None:
-        self._repository.add_intermediate_message(chat_id, run_id, message)
+        with self._transaction_manager.transaction():
+            self._repository.add_intermediate_message(chat_id, run_id, message)
         self._event_publisher.publish(
             RunEvent(
                 event="message",
@@ -463,7 +485,7 @@ class ExecuteChatRunUseCase:
                     markdown=markdown,
                     references=tuple(
                         DisplayReferenceData(
-                            reference_id=uuid4(),
+                            reference_id=self._id_generator.new_uuid(),
                             source_type="pdf",
                             label=reference.label,
                             relative_path=reference.relative_path,
@@ -479,8 +501,9 @@ class ExecuteChatRunUseCase:
                 )
             ),
         )
-        self._repository.save_completed_answer(chat_id, run_id, answer)
-        self._repository.set_run_state(chat_id, run_id, "完了")
+        with self._transaction_manager.transaction():
+            self._repository.save_completed_answer(chat_id, run_id, answer)
+            self._repository.set_run_state(chat_id, run_id, "完了")
         self._event_publisher.publish(
             RunEvent(
                 event="answer",
@@ -503,17 +526,21 @@ class ExecuteChatRunUseCase:
 
     def _resolve_session_workdir(self, chat_id: UUID) -> Path | None:
         if self._session_workdir_resolver is not None:
-            return self._session_workdir_resolver.resolve_generation_workdir(chat_id)
+            with self._transaction_manager.transaction():
+                return self._session_workdir_resolver.resolve_generation_workdir(
+                    chat_id
+                )
         return self._session_workdir
 
     def _finish_error(self, chat_id: UUID, run_id: UUID, user_message: str) -> None:
-        updated = self._repository.update_run_state_if_current(
-            chat_id=chat_id,
-            run_id=run_id,
-            expected_states=("受付", "実行中", "検証中"),
-            state="エラー",
-            user_message=user_message,
-        )
+        with self._transaction_manager.transaction():
+            updated = self._repository.update_run_state_if_current(
+                chat_id=chat_id,
+                run_id=run_id,
+                expected_states=("受付", "実行中", "検証中"),
+                state="エラー",
+                user_message=user_message,
+            )
         if not updated:
             if self._is_canceled(chat_id, run_id):
                 self._finish_canceled(chat_id, run_id)
@@ -529,13 +556,14 @@ class ExecuteChatRunUseCase:
         )
 
     def _finish_timeout(self, chat_id: UUID, run_id: UUID) -> None:
-        updated = self._repository.update_run_state_if_current(
-            chat_id=chat_id,
-            run_id=run_id,
-            expected_states=("受付", "実行中", "検証中"),
-            state="タイムアウト",
-            user_message=TIMEOUT_FAILURE_MESSAGE,
-        )
+        with self._transaction_manager.transaction():
+            updated = self._repository.update_run_state_if_current(
+                chat_id=chat_id,
+                run_id=run_id,
+                expected_states=("受付", "実行中", "検証中"),
+                state="タイムアウト",
+                user_message=TIMEOUT_FAILURE_MESSAGE,
+            )
         if not updated:
             if self._is_canceled(chat_id, run_id):
                 self._finish_canceled(chat_id, run_id)
@@ -551,13 +579,14 @@ class ExecuteChatRunUseCase:
         )
 
     def _finish_canceled(self, chat_id: UUID, run_id: UUID) -> None:
-        self._repository.update_run_state_if_current(
-            chat_id=chat_id,
-            run_id=run_id,
-            expected_states=("受付", "実行中", "検証中", "キャンセル要求中"),
-            state="キャンセル済み",
-            user_message=CANCELED_MESSAGE,
-        )
+        with self._transaction_manager.transaction():
+            self._repository.update_run_state_if_current(
+                chat_id=chat_id,
+                run_id=run_id,
+                expected_states=("受付", "実行中", "検証中", "キャンセル要求中"),
+                state="キャンセル済み",
+                user_message=CANCELED_MESSAGE,
+            )
         self._event_publisher.publish(
             RunEvent(
                 event="canceled",
@@ -569,13 +598,14 @@ class ExecuteChatRunUseCase:
         )
 
     def _is_canceled(self, chat_id: UUID, run_id: UUID) -> bool:
-        return self._repository.get_run_state(chat_id, run_id) in {
-            "キャンセル要求中",
-            "キャンセル済み",
-        }
+        with self._transaction_manager.transaction():
+            return self._repository.get_run_state(chat_id, run_id) in {
+                "キャンセル要求中",
+                "キャンセル済み",
+            }
 
     def _remaining_seconds(self, execution_deadline_at: datetime) -> int:
-        remaining = (execution_deadline_at - self._clock()).total_seconds()
+        remaining = (execution_deadline_at - self._clock.now()).total_seconds()
         if remaining <= 0:
             raise RunTimeoutError()
         return max(1, ceil(remaining))

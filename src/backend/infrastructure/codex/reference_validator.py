@@ -8,7 +8,11 @@ from uuid import UUID
 from pypdf import PdfReader
 
 from backend.application.ports.codex.dto import ReferenceValidationResult
-from backend.application.ports.database.interface import ChatRuntimeRepositoryPort
+from backend.application.ports.database.interface import (
+    ChatRuntimeRepositoryPort,
+    TransactionManagerPort,
+)
+from backend.application.transactions import NoopTransactionManager
 from backend.domain.answer.answer_candidate import (
     InvalidPageRange,
     ParsedAnswerCandidate,
@@ -68,12 +72,18 @@ class CodexReferenceValidator:
         validator_config: CodexConfig,
         datasource_dir: Path,
         timeout_seconds: int,
+        transaction_manager: TransactionManagerPort | None = None,
     ) -> None:
         self._repository = repository
         self._codex_runner = codex_runner
         self._validator_config = validator_config
         self._datasource_dir = datasource_dir
         self._timeout_seconds = timeout_seconds
+        self._transaction_manager = (
+            transaction_manager
+            if transaction_manager is not None
+            else NoopTransactionManager()
+        )
 
     def validate_references(
         self,
@@ -91,7 +101,8 @@ class CodexReferenceValidator:
         if chat_id is None or run_id is None:
             raise AppError(ErrorClass.SYSTEM, "検証対象の実行文脈が不正です。")
 
-        context = self._repository.get_chat_runtime_context(chat_id)
+        with self._transaction_manager.transaction():
+            context = self._repository.get_chat_runtime_context(chat_id)
         workdir = (
             self._validator_config.workdir
             / str(context.local_user_id)
@@ -143,10 +154,11 @@ class CodexReferenceValidator:
                 else None,
             )
         )
-        self._repository.save_validation_conversation_id(
-            chat_id,
-            result.codex_conversation_id,
-        )
+        with self._transaction_manager.transaction():
+            self._repository.save_validation_conversation_id(
+                chat_id,
+                result.codex_conversation_id,
+            )
         parsed = _parse_validation_result(result.final_message)
         return ReferenceValidationResult(
             valid=parsed.valid,

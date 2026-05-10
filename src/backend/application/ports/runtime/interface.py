@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from concurrent.futures import Future
+from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
@@ -9,7 +10,7 @@ from backend.application.ports.runtime.dto import DispatchResult
 class ChatRunExecutorPort(Protocol):
     """チャット実行ユースケース境界。"""
 
-    def execute(self, chat_id: UUID, run_id: UUID) -> None:
+    def execute(self, chat_id: UUID, run_id: UUID, trace_id: str = "") -> None:
         """指定runを実行する。"""
 
 
@@ -20,8 +21,26 @@ class BackgroundExecutorPort(Protocol):
         """実行タスクを登録する。"""
 
 
+class ClockPort(Protocol):
+    """現在時刻取得境界。"""
+
+    def now(self) -> datetime:
+        """タイムゾーン付き現在日時を返す。"""
+
+
+class IdGeneratorPort(Protocol):
+    """UUID発番境界。"""
+
+    def new_uuid(self) -> UUID:
+        """新しいUUIDを返す。"""
+
+
+class UuidGeneratorPort(IdGeneratorPort, Protocol):
+    """UUID発番境界の互換名。"""
+
+
 class RunExecutionDispatcherPort(Protocol):
     """受付済みrunをバックグラウンド登録する境界。"""
 
-    def register(self, chat_id: UUID, run_id: UUID) -> DispatchResult:
+    def register(self, chat_id: UUID, run_id: UUID, trace_id: str) -> DispatchResult:
         """対象runの実行を登録する。"""

@@ -1,3 +1,5 @@
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from uuid import UUID, uuid4
 
@@ -54,6 +56,34 @@ def test_start_chat_use_case_marks_run_error_when_dispatcher_fails() -> None:
     assert detail.runs[0].run_id == dispatcher.registered_run_id
     assert detail.runs[0].state == "エラー"
     assert detail.runs[0].user_message == "チャット実行処理を開始できませんでした。"
+
+
+def test_start_chat_use_case_uses_transaction_for_acceptance_and_failure_update() -> (
+    None
+):
+    """観点：新規チャット開始トランザクション。
+
+    確認：受付保存とdispatcher失敗時のエラー更新を別トランザクションで扱う。
+    """
+    repository = InMemoryChatRepository()
+    transaction_manager = RecordingTransactionManager()
+    dispatcher = FailingDispatcher()
+    usecase = StartChatUseCase(
+        repository=repository,
+        run_dispatcher=dispatcher,
+        transaction_manager=transaction_manager,
+    )
+
+    with pytest.raises(AppError):
+        usecase.execute("資料を要約してください", trace_id="trace-transaction")
+
+    assert dispatcher.registered_trace_id == "trace-transaction"
+    assert transaction_manager.completed_transactions == [
+        ("enter", 1),
+        ("exit", 1),
+        ("enter", 2),
+        ("exit", 2),
+    ]
 
 
 def test_append_chat_run_use_case_accepts_after_terminal_run() -> None:
@@ -132,9 +162,16 @@ def test_append_chat_run_use_case_marks_run_error_when_dispatcher_fails() -> Non
 @dataclass(slots=True)
 class RecordingDispatcher:
     registered: list[tuple[UUID, UUID]] = field(default_factory=list)
+    registered_trace_ids: list[str] = field(default_factory=list)
 
-    def register(self, chat_id: UUID, run_id: UUID) -> DispatchResult:
+    def register(
+        self,
+        chat_id: UUID,
+        run_id: UUID,
+        trace_id: str = "",
+    ) -> DispatchResult:
         self.registered.append((chat_id, run_id))
+        self.registered_trace_ids.append(trace_id)
         return DispatchResult(status="registered")
 
 
@@ -142,8 +179,31 @@ class RecordingDispatcher:
 class FailingDispatcher:
     registered_chat_id: UUID = UUID("00000000-0000-0000-0000-000000000000")
     registered_run_id: UUID | None = None
+    registered_trace_id: str = ""
 
-    def register(self, chat_id: UUID, run_id: UUID) -> DispatchResult:
+    def register(
+        self,
+        chat_id: UUID,
+        run_id: UUID,
+        trace_id: str = "",
+    ) -> DispatchResult:
         self.registered_chat_id = chat_id
         self.registered_run_id = run_id
+        self.registered_trace_id = trace_id
         return DispatchResult(status="failed", failure_reason="executor closed")
+
+
+@dataclass(slots=True)
+class RecordingTransactionManager:
+    completed_transactions: list[tuple[str, int]] = field(default_factory=list)
+    _next_id: int = 0
+
+    @contextmanager
+    def transaction(self) -> Iterator[None]:
+        self._next_id += 1
+        transaction_id = self._next_id
+        self.completed_transactions.append(("enter", transaction_id))
+        try:
+            yield
+        finally:
+            self.completed_transactions.append(("exit", transaction_id))

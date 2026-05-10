@@ -18,3 +18,11 @@ class OpenedArtifactFile:
 
     path: Path
     mime_type: str
+
+
+@dataclass(frozen=True, slots=True)
+class OpenedReferenceFile:
+    """配信可能な参照元PDFファイル。"""
+
+    path: Path
+    mime_type: str

@@ -4,7 +4,11 @@ from typing import Protocol
 from uuid import UUID
 
 from backend.application.ports.codex.dto import CodexRunResult
-from backend.application.ports.database.interface import ChatRuntimeRepositoryPort
+from backend.application.ports.database.interface import (
+    ChatRuntimeRepositoryPort,
+    TransactionManagerPort,
+)
+from backend.application.transactions import NoopTransactionManager
 from backend.infrastructure.codex.codex_runner import (
     CodexRunRequest,
 )
@@ -37,12 +41,18 @@ class CodexGenerationRunnerAdapter:
         codex_config: CodexConfig,
         datasource_dir: Path,
         timeout_seconds: int,
+        transaction_manager: TransactionManagerPort | None = None,
     ) -> None:
         self._repository = repository
         self._codex_runner = codex_runner
         self._codex_config = codex_config
         self._datasource_dir = datasource_dir
         self._timeout_seconds = timeout_seconds
+        self._transaction_manager = (
+            transaction_manager
+            if transaction_manager is not None
+            else NoopTransactionManager()
+        )
 
     def run_generation(
         self,
@@ -54,7 +64,8 @@ class CodexGenerationRunnerAdapter:
         on_intermediate_message: Callable[[str], None] | None = None,
     ) -> CodexRunResult:
         """生成用CodexRunnerを実行し、実行UseCase向けの結果へ変換する。"""
-        context = self._repository.get_chat_runtime_context(chat_id)
+        with self._transaction_manager.transaction():
+            context = self._repository.get_chat_runtime_context(chat_id)
         workdir = (
             self._codex_config.workdir
             / str(context.local_user_id)
@@ -86,10 +97,11 @@ class CodexGenerationRunnerAdapter:
                 else None,
             )
         )
-        self._repository.save_generation_conversation_id(
-            chat_id,
-            result.codex_conversation_id,
-        )
+        with self._transaction_manager.transaction():
+            self._repository.save_generation_conversation_id(
+                chat_id,
+                result.codex_conversation_id,
+            )
         return CodexRunResult(
             conversation_id=result.codex_conversation_id,
             intermediate_messages=(

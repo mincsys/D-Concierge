@@ -12,7 +12,8 @@ from fastapi.testclient import TestClient
 from pydantic import TypeAdapter
 from pypdf import PdfWriter
 
-from backend.app.factory import _run_sse_events, create_app
+from backend.app.factory import create_app
+from backend.application.chat.get_chat_detail import GetChatDetailUseCase
 from backend.application.execution.execute_chat_run import RunEvent
 from backend.application.ports.database.dto import (
     AnswerBlockData,
@@ -22,6 +23,7 @@ from backend.application.ports.database.dto import (
     HistoryItem,
 )
 from backend.application.ports.runtime.dto import DispatchResult
+from backend.application.transactions import NoopTransactionManager
 from backend.infrastructure.codex.codex_runner import (
     CancelResult,
     CodexRunRequest,
@@ -40,7 +42,8 @@ from backend.infrastructure.config.models import (
     ValidatorConfig,
 )
 from backend.infrastructure.trace_log.trace_log_writer import TraceLogWriter
-from backend.presentation.schemas import (
+from backend.presentation.rest.router import _run_sse_events
+from backend.presentation.schemas.api import (
     AppConfigResponseSchema,
     CancelChatRunResponseSchema,
     ChatDetailResponseSchema,
@@ -420,7 +423,10 @@ async def test_sse_disconnect_unsubscribes_without_waiting_for_event(
     event_source = OpenRunEventSource()
     request = DisconnectingAfterInitialStateRequest()
     stream = _run_sse_events(
-        repository,
+        GetChatDetailUseCase(
+            repository=repository,
+            transaction_manager=NoopTransactionManager(),
+        ),
         event_source,
         accepted.chat_id,
         accepted.run_id,
@@ -444,7 +450,7 @@ def test_chat_detail_returns_completed_answer_and_references(tmp_path: Path) -> 
     reference_id = repository.save_completed_answer_for_test(
         markdown="検証済み回答",
         reference_relative_path="manual.pdf",
-        artifact_relative_path="chart.svg",
+        artifact_relative_path="run-id/chart.svg",
         artifact_mime_type="image/svg+xml",
     )
     histories_response = client.get("/api/chat-histories")
@@ -475,7 +481,7 @@ def test_reference_endpoint_serves_saved_pdf_inside_datasource(tmp_path: Path) -
     reference_id = repository.save_completed_answer_for_test(
         markdown="回答",
         reference_relative_path="manual.pdf",
-        artifact_relative_path="chart.svg",
+        artifact_relative_path="run-id/chart.svg",
         artifact_mime_type="image/svg+xml",
     )
 
@@ -495,7 +501,7 @@ def test_reference_endpoint_rejects_path_traversal(tmp_path: Path) -> None:
     reference_id = repository.save_completed_answer_for_test(
         markdown="回答",
         reference_relative_path="../secret.pdf",
-        artifact_relative_path="chart.svg",
+        artifact_relative_path="run-id/chart.svg",
         artifact_mime_type="image/svg+xml",
     )
 
@@ -508,13 +514,13 @@ def test_reference_endpoint_rejects_path_traversal(tmp_path: Path) -> None:
 def test_artifact_endpoint_serves_allowed_saved_artifact(tmp_path: Path) -> None:
     """観点：IF-SB-08。確認：採用済み成果物を保存済みMIMEタイプで配信する。"""
     client, repository = _make_client_with_repository(tmp_path)
-    artifact_path = tmp_path / "codex" / "saved_artifacts" / "chart.svg"
+    artifact_path = tmp_path / "codex" / "saved_artifacts" / "run-id" / "chart.svg"
     artifact_path.parent.mkdir(parents=True)
     artifact_path.write_text("<svg />", encoding="utf-8")
     repository.save_completed_answer_for_test(
         markdown="回答",
         reference_relative_path="manual.pdf",
-        artifact_relative_path="chart.svg",
+        artifact_relative_path="run-id/chart.svg",
         artifact_mime_type="image/svg+xml",
     )
     artifact_id = repository.latest_artifact_id_for_test()
@@ -524,6 +530,27 @@ def test_artifact_endpoint_serves_allowed_saved_artifact(tmp_path: Path) -> None
     assert response.status_code == 200
     assert response.headers["content-type"] == "image/svg+xml"
     assert response.text == "<svg />"
+
+
+def test_artifact_delivery_allows_jpeg(tmp_path: Path) -> None:
+    """観点：IF-SB-08。確認：jpg/jpeg成果物をimage/jpegで配信する。"""
+    client, repository = _make_client_with_repository(tmp_path)
+    artifact_path = tmp_path / "codex" / "saved_artifacts" / "run-id" / "photo.jpg"
+    artifact_path.parent.mkdir(parents=True)
+    artifact_path.write_bytes(b"jpeg")
+    repository.save_completed_answer_for_test(
+        markdown="回答",
+        reference_relative_path="manual.pdf",
+        artifact_relative_path="run-id/photo.jpg",
+        artifact_mime_type="image/jpeg",
+    )
+    artifact_id = repository.latest_artifact_id_for_test()
+
+    response = client.get(f"/api/artifacts/{artifact_id}")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/jpeg"
+    assert response.content == b"jpeg"
 
 
 def test_api_sse_reference_and_artifact_boundaries_write_trace_logs(
@@ -537,13 +564,13 @@ def test_api_sse_reference_and_artifact_boundaries_write_trace_logs(
     pdf_path = tmp_path / "readonly" / "manual.pdf"
     pdf_path.parent.mkdir()
     pdf_path.write_bytes(b"%PDF-1.4\n")
-    artifact_path = tmp_path / "codex" / "saved_artifacts" / "chart.svg"
+    artifact_path = tmp_path / "codex" / "saved_artifacts" / "run-id" / "chart.svg"
     artifact_path.parent.mkdir(parents=True)
     artifact_path.write_text("<svg />", encoding="utf-8")
     reference_id = repository.save_completed_answer_for_test(
         markdown="回答",
         reference_relative_path="manual.pdf",
-        artifact_relative_path="chart.svg",
+        artifact_relative_path="run-id/chart.svg",
         artifact_mime_type="image/svg+xml",
     )
     artifact_id = repository.latest_artifact_id_for_test()
@@ -595,7 +622,7 @@ def test_artifact_endpoint_rejects_disallowed_mime_type(tmp_path: Path) -> None:
     repository.save_completed_answer_for_test(
         markdown="回答",
         reference_relative_path="manual.pdf",
-        artifact_relative_path="script.js",
+        artifact_relative_path="run-id/script.js",
         artifact_mime_type="application/javascript",
     )
     artifact_id = repository.latest_artifact_id_for_test()
@@ -645,7 +672,7 @@ def test_reference_endpoint_returns_404_when_pdf_file_is_missing(
     reference_id = repository.save_completed_answer_for_test(
         markdown="回答",
         reference_relative_path="missing.pdf",
-        artifact_relative_path="chart.svg",
+        artifact_relative_path="run-id/chart.svg",
         artifact_mime_type="image/svg+xml",
     )
 
@@ -673,7 +700,7 @@ def test_artifact_endpoint_returns_404_when_file_is_missing(tmp_path: Path) -> N
                         ArtifactData(
                             artifact_id=artifact_id,
                             mime_type="image/png",
-                            relative_path="missing.png",
+                            relative_path="run-id/missing.png",
                         ),
                     ),
                 ),
@@ -693,6 +720,25 @@ def test_missing_chat_detail_returns_404(tmp_path: Path) -> None:
     response = client.get("/api/chats/00000000-0000-0000-0000-000000009999")
 
     assert response.status_code == 404
+
+
+def test_spa_static_fallback_serves_index_without_catching_api(tmp_path: Path) -> None:
+    """観点：SPA静的配信。確認：非API GETだけをindex.htmlへfallbackする。"""
+    dist_dir = Path("src/backend/app/static/dist")
+    index_path = dist_dir / "index.html"
+    index_path.parent.mkdir(parents=True, exist_ok=True)
+    index_path.write_text("<main>SPA</main>", encoding="utf-8")
+    try:
+        client = _make_client(tmp_path)
+
+        page_response = client.get("/chat/history")
+        api_response = client.get("/api/unknown")
+    finally:
+        index_path.unlink(missing_ok=True)
+
+    assert page_response.status_code == 200
+    assert page_response.text == "<main>SPA</main>"
+    assert api_response.status_code == 404
 
 
 def test_repository_system_error_returns_500(tmp_path: Path) -> None:
@@ -888,8 +934,14 @@ class RecordingDispatcher:
 
     registered: list[tuple[UUID, UUID]] = field(default_factory=list)
 
-    def register(self, chat_id: UUID, run_id: UUID) -> DispatchResult:
+    def register(
+        self,
+        chat_id: UUID,
+        run_id: UUID,
+        trace_id: str = "",
+    ) -> DispatchResult:
         """登録されたrun IDを記録する。"""
+        _ = trace_id
         self.registered.append((chat_id, run_id))
         return DispatchResult(status="registered")
 

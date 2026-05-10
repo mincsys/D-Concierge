@@ -1,4 +1,5 @@
 import os
+from importlib import import_module
 from logging.config import fileConfig
 
 from alembic import context
@@ -6,12 +7,17 @@ from sqlalchemy import engine_from_config, pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.sql.schema import MetaData
 
+from backend.infrastructure.database.models.base import Base
+
+import_module("backend.infrastructure.database.models.chat")
+import_module("backend.infrastructure.database.models.answer")
+
 config = context.config
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-target_metadata: MetaData | None = None
+target_metadata: MetaData | None = Base.metadata
 
 
 def _database_url() -> str:

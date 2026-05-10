@@ -1,26 +1,25 @@
-from dataclasses import dataclass, field
+# mypy: disable-error-code="explicit-any"
 from typing import Literal
+
+from pydantic import BaseModel, Field
 
 from backend.domain.execution.run_state_policy import RunState
 
 
-@dataclass(frozen=True, slots=True)
-class AppConfigResponseSchema:
+class AppConfigResponseSchema(BaseModel):
     """アプリ設定取得APIの応答。"""
 
     welcome_message: str | None = None
-    input_suggestions: list[str] = field(default_factory=list)
+    input_suggestions: list[str] = Field(default_factory=list)
 
 
-@dataclass(frozen=True, slots=True)
-class ChatStartRequestSchema:
+class ChatStartRequestSchema(BaseModel):
     """新規チャット開始と継続指示受付APIの要求。"""
 
     user_instruction: str
 
 
-@dataclass(frozen=True, slots=True)
-class ChatStartResponseSchema:
+class ChatStartResponseSchema(BaseModel):
     """新規チャット開始と継続指示受付APIの応答。"""
 
     chat_id: str
@@ -29,8 +28,7 @@ class ChatStartResponseSchema:
     state: RunState
 
 
-@dataclass(frozen=True, slots=True)
-class CancelChatRunResponseSchema:
+class CancelChatRunResponseSchema(BaseModel):
     """キャンセル受付APIの応答。"""
 
     run_id: str
@@ -38,8 +36,7 @@ class CancelChatRunResponseSchema:
     user_message: str
 
 
-@dataclass(frozen=True, slots=True)
-class ChatHistoryItemResponseSchema:
+class ChatHistoryItemResponseSchema(BaseModel):
     """履歴一覧APIの1件分の応答。"""
 
     chat_id: str
@@ -49,16 +46,14 @@ class ChatHistoryItemResponseSchema:
     updated_at: str = ""
 
 
-@dataclass(frozen=True, slots=True)
-class PdfLocatorSchema:
+class PdfLocatorSchema(BaseModel):
     """PDF参照元の表示位置。"""
 
     page_start: int
     page_end: int
 
 
-@dataclass(frozen=True, slots=True)
-class DisplayReferenceSchema:
+class DisplayReferenceSchema(BaseModel):
     """表示用参照元メタ情報。"""
 
     source_type: Literal["pdf"]
@@ -67,44 +62,39 @@ class DisplayReferenceSchema:
     locator: PdfLocatorSchema
 
 
-@dataclass(frozen=True, slots=True)
-class IntermediateMessageResponseSchema:
+class IntermediateMessageResponseSchema(BaseModel):
     """中間メッセージ表示情報。"""
 
     text: str
 
 
-@dataclass(frozen=True, slots=True)
-class AnswerResponseSchema:
-    """回答表示情報。"""
-
-    blocks: list["AnswerBlockResponseSchema"]
-
-
-@dataclass(frozen=True, slots=True)
-class AnswerBlockResponseSchema:
+class AnswerBlockResponseSchema(BaseModel):
     """回答ブロック表示情報。"""
 
     markdown: str
-    references: list[DisplayReferenceSchema] = field(default_factory=list)
+    references: list[DisplayReferenceSchema] = Field(default_factory=list)
 
 
-@dataclass(frozen=True, slots=True)
-class ChatRunResponseSchema:
+class AnswerResponseSchema(BaseModel):
+    """回答表示情報。"""
+
+    blocks: list[AnswerBlockResponseSchema]
+
+
+class ChatRunResponseSchema(BaseModel):
     """チャット詳細内のrun応答。"""
 
     run_id: str
     state: RunState
     user_instruction: str
-    intermediate_messages: list[IntermediateMessageResponseSchema] = field(
+    intermediate_messages: list[IntermediateMessageResponseSchema] = Field(
         default_factory=list
     )
     answer: AnswerResponseSchema | None = None
     user_message: str | None = None
 
 
-@dataclass(frozen=True, slots=True)
-class ChatDetailResponseSchema:
+class ChatDetailResponseSchema(BaseModel):
     """チャット詳細APIの応答。"""
 
     chat_id: str
@@ -112,8 +102,7 @@ class ChatDetailResponseSchema:
     runs: list[ChatRunResponseSchema]
 
 
-@dataclass(frozen=True, slots=True)
-class ErrorResponseSchema:
+class ErrorResponseSchema(BaseModel):
     """APIエラー応答。"""
 
     error: str

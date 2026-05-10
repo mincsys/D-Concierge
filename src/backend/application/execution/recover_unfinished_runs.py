@@ -1,8 +1,12 @@
 from dataclasses import dataclass
 
 from backend.application.ports.database.dto import UnfinishedRun
-from backend.application.ports.database.interface import RecoveryRepositoryPort
+from backend.application.ports.database.interface import (
+    RecoveryRepositoryPort,
+    TransactionManagerPort,
+)
 from backend.application.ports.runtime.interface import RunExecutionDispatcherPort
+from backend.application.transactions import NoopTransactionManager
 from backend.shared.errors import AppError
 
 RECOVERY_ERROR_MESSAGE = "アプリ起動時に処理を再開できませんでした。"
@@ -43,33 +47,46 @@ class RecoverUnfinishedRunsUseCase:
         self,
         repository: RecoveryRepositoryPort,
         run_dispatcher: RunExecutionDispatcherPort,
+        transaction_manager: TransactionManagerPort | None = None,
     ) -> None:
         self._repository = repository
         self._run_dispatcher = run_dispatcher
+        self._transaction_manager = (
+            transaction_manager
+            if transaction_manager is not None
+            else NoopTransactionManager()
+        )
 
     def execute(self, trace_id: str) -> RecoverySummary:
         """起動時回復対象の未完了runを状態別に処理する。"""
-        _ = trace_id
         counter = _RecoveryCounter()
-        for run in self._repository.list_unfinished_runs_for_recovery():
-            self._recover_one(run, counter)
+        with self._transaction_manager.transaction():
+            runs = self._repository.list_unfinished_runs_for_recovery()
+        for run in runs:
+            self._recover_one(run, counter, trace_id)
         return counter.to_summary()
 
-    def _recover_one(self, run: UnfinishedRun, counter: _RecoveryCounter) -> None:
+    def _recover_one(
+        self,
+        run: UnfinishedRun,
+        counter: _RecoveryCounter,
+        trace_id: str,
+    ) -> None:
         try:
             match run.state:
                 case "受付":
-                    self._recover_accepted(run, counter)
+                    self._recover_accepted(run, counter, trace_id)
                 case "実行中" | "検証中":
                     self._mark_error(run)
                     counter.marked_error += 1
                 case "キャンセル要求中":
-                    self._repository.set_run_state(
-                        run.chat_id,
-                        run.run_id,
-                        "キャンセル済み",
-                        RECOVERY_CANCEL_MESSAGE,
-                    )
+                    with self._transaction_manager.transaction():
+                        self._repository.set_run_state(
+                            run.chat_id,
+                            run.run_id,
+                            "キャンセル済み",
+                            RECOVERY_CANCEL_MESSAGE,
+                        )
                     counter.canceled += 1
                 case _:
                     return
@@ -80,8 +97,9 @@ class RecoverUnfinishedRunsUseCase:
         self,
         run: UnfinishedRun,
         counter: _RecoveryCounter,
+        trace_id: str,
     ) -> None:
-        result = self._run_dispatcher.register(run.chat_id, run.run_id)
+        result = self._run_dispatcher.register(run.chat_id, run.run_id, trace_id)
         if result.status in {"registered", "already_registered"}:
             counter.reregistered += 1
             return
@@ -91,9 +109,10 @@ class RecoverUnfinishedRunsUseCase:
         counter.failed += 1
 
     def _mark_error(self, run: UnfinishedRun) -> None:
-        self._repository.set_run_state(
-            run.chat_id,
-            run.run_id,
-            "エラー",
-            RECOVERY_ERROR_MESSAGE,
-        )
+        with self._transaction_manager.transaction():
+            self._repository.set_run_state(
+                run.chat_id,
+                run.run_id,
+                "エラー",
+                RECOVERY_ERROR_MESSAGE,
+            )

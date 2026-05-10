@@ -22,11 +22,11 @@ def test_dispatcher_registers_run_to_background_executor() -> None:
     chat_id = UUID("00000000-0000-0000-0000-000000000401")
     run_id = UUID("00000000-0000-0000-0000-000000000402")
 
-    result = dispatcher.register(chat_id, run_id)
+    result = dispatcher.register(chat_id, run_id, "trace-401")
     background_executor.run_next()
 
     assert result.status == "registered"
-    assert run_executor.executed == [(chat_id, run_id)]
+    assert run_executor.executed == [(chat_id, run_id, "trace-401")]
 
 
 def test_dispatcher_rejects_duplicate_run_while_active() -> None:
@@ -41,8 +41,8 @@ def test_dispatcher_rejects_duplicate_run_while_active() -> None:
     chat_id = UUID("00000000-0000-0000-0000-000000000403")
     run_id = UUID("00000000-0000-0000-0000-000000000404")
 
-    first = dispatcher.register(chat_id, run_id)
-    second = dispatcher.register(chat_id, run_id)
+    first = dispatcher.register(chat_id, run_id, "trace-403")
+    second = dispatcher.register(chat_id, run_id, "trace-403")
 
     assert first.status == "registered"
     assert second.status == "already_registered"
@@ -61,9 +61,9 @@ def test_dispatcher_allows_reregister_after_task_finishes() -> None:
     chat_id = UUID("00000000-0000-0000-0000-000000000405")
     run_id = UUID("00000000-0000-0000-0000-000000000406")
 
-    dispatcher.register(chat_id, run_id)
+    dispatcher.register(chat_id, run_id, "trace-405")
     background_executor.run_next()
-    result = dispatcher.register(chat_id, run_id)
+    result = dispatcher.register(chat_id, run_id, "trace-405")
 
     assert result.status == "registered"
 
@@ -80,8 +80,8 @@ def test_dispatcher_returns_failed_when_background_registration_fails() -> None:
     chat_id = UUID("00000000-0000-0000-0000-000000000407")
     run_id = UUID("00000000-0000-0000-0000-000000000408")
 
-    failed = dispatcher.register(chat_id, run_id)
-    retried = dispatcher.register(chat_id, run_id)
+    failed = dispatcher.register(chat_id, run_id, "trace-407")
+    retried = dispatcher.register(chat_id, run_id, "trace-407")
 
     assert failed.status == "failed"
     assert failed.failure_reason == "登録できません。"
@@ -92,11 +92,11 @@ def test_dispatcher_returns_failed_when_background_registration_fails() -> None:
 class RecordingRunExecutor:
     """テスト用チャット実行UseCase。"""
 
-    executed: list[tuple[UUID, UUID]] = field(default_factory=list)
+    executed: list[tuple[UUID, UUID, str]] = field(default_factory=list)
 
-    def execute(self, chat_id: UUID, run_id: UUID) -> None:
+    def execute(self, chat_id: UUID, run_id: UUID, trace_id: str = "") -> None:
         """実行対象を記録する。"""
-        self.executed.append((chat_id, run_id))
+        self.executed.append((chat_id, run_id, trace_id))
 
 
 @dataclass(slots=True)

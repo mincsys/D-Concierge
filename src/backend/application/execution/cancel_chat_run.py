@@ -5,7 +5,11 @@ from uuid import UUID
 from backend.application.execution.execute_chat_run import RunEvent
 from backend.application.ports.codex.dto import CancelRequestResult
 from backend.application.ports.codex.interface import CancelRequesterPort
-from backend.application.ports.database.interface import CancelChatRunRepositoryPort
+from backend.application.ports.database.interface import (
+    CancelChatRunRepositoryPort,
+    TransactionManagerPort,
+)
+from backend.application.transactions import NoopTransactionManager
 from backend.domain.execution.run_state_policy import RunStatePolicy
 from backend.shared.errors import AppError, ErrorClass
 
@@ -37,10 +41,16 @@ class CancelChatRunUseCase:
         repository: CancelChatRunRepositoryPort,
         cancel_requester: CancelRequesterPort | None = None,
         event_publisher: CancelEventPublisher | None = None,
+        transaction_manager: TransactionManagerPort | None = None,
     ) -> None:
         self._repository = repository
         self._cancel_requester = cancel_requester
         self._event_publisher = event_publisher
+        self._transaction_manager = (
+            transaction_manager
+            if transaction_manager is not None
+            else NoopTransactionManager()
+        )
 
     def request_cancel(
         self,
@@ -50,17 +60,18 @@ class CancelChatRunUseCase:
     ) -> CancelChatRunResult:
         """キャンセル可能runをキャンセル要求として受け付ける。"""
         _ = trace_id
-        current_state = self._repository.get_run_state(chat_id, run_id)
-        if not RunStatePolicy.is_cancelable(current_state):
-            raise AppError(ErrorClass.CONFLICT, "この処理はキャンセルできません。")
+        with self._transaction_manager.transaction():
+            current_state = self._repository.get_run_state(chat_id, run_id)
+            if not RunStatePolicy.is_cancelable(current_state):
+                raise AppError(ErrorClass.CONFLICT, "この処理はキャンセルできません。")
 
-        updated = self._repository.update_run_state_if_current(
-            chat_id=chat_id,
-            run_id=run_id,
-            expected_states=(current_state,),
-            state="キャンセル要求中",
-            user_message=CANCEL_REQUESTED_MESSAGE,
-        )
+            updated = self._repository.update_run_state_if_current(
+                chat_id=chat_id,
+                run_id=run_id,
+                expected_states=(current_state,),
+                state="キャンセル要求中",
+                user_message=CANCEL_REQUESTED_MESSAGE,
+            )
         if not updated:
             raise AppError(ErrorClass.CONFLICT, "この処理はキャンセルできません。")
         self._publish(
@@ -89,13 +100,14 @@ class CancelChatRunUseCase:
         )
 
     def _complete_cancel(self, chat_id: UUID, run_id: UUID) -> None:
-        updated = self._repository.update_run_state_if_current(
-            chat_id=chat_id,
-            run_id=run_id,
-            expected_states=("キャンセル要求中",),
-            state="キャンセル済み",
-            user_message=CANCELED_MESSAGE,
-        )
+        with self._transaction_manager.transaction():
+            updated = self._repository.update_run_state_if_current(
+                chat_id=chat_id,
+                run_id=run_id,
+                expected_states=("キャンセル要求中",),
+                state="キャンセル済み",
+                user_message=CANCELED_MESSAGE,
+            )
         if not updated:
             return
         self._publish(

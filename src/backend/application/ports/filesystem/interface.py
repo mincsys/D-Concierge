@@ -4,6 +4,7 @@ from uuid import UUID
 
 from backend.application.ports.filesystem.dto import (
     OpenedArtifactFile,
+    OpenedReferenceFile,
     SavedArtifactFile,
 )
 
@@ -26,3 +27,10 @@ class ArtifactStorePort(AdoptedArtifactStorePort, Protocol):
 
     def open_saved_file(self, relative_path: str, mime_type: str) -> OpenedArtifactFile:
         """保存済み成果物領域内のファイルを配信用に開く。"""
+
+
+class ReferenceStorePort(Protocol):
+    """参照元PDFファイル読込境界。"""
+
+    def open_reference_file(self, relative_path: str) -> OpenedReferenceFile:
+        """共有データソース領域内のPDFを配信用に開く。"""

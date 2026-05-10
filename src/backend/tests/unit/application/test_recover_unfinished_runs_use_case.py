@@ -77,7 +77,13 @@ def test_recover_unfinished_runs_marks_accepted_run_error_when_dispatch_fails() 
 class RecordingDispatcher:
     registered: list[tuple[UUID, UUID]] = field(default_factory=list)
 
-    def register(self, chat_id: UUID, run_id: UUID) -> DispatchResult:
+    def register(
+        self,
+        chat_id: UUID,
+        run_id: UUID,
+        trace_id: str = "",
+    ) -> DispatchResult:
+        _ = trace_id
         self.registered.append((chat_id, run_id))
         return DispatchResult(status="registered")
 
@@ -86,6 +92,12 @@ class RecordingDispatcher:
 class FailingDispatcher:
     registered: list[tuple[UUID, UUID]] = field(default_factory=list)
 
-    def register(self, chat_id: UUID, run_id: UUID) -> DispatchResult:
+    def register(
+        self,
+        chat_id: UUID,
+        run_id: UUID,
+        trace_id: str = "",
+    ) -> DispatchResult:
+        _ = trace_id
         self.registered.append((chat_id, run_id))
         return DispatchResult(status="failed", failure_reason="executor closed")
