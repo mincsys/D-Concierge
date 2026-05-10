@@ -3,7 +3,7 @@ from concurrent.futures import Future
 from dataclasses import dataclass, field
 from uuid import UUID
 
-from backend.application.execution.dispatcher import (
+from backend.infrastructure.runtime.run_execution_dispatcher import (
     InProcessRunExecutionDispatcher,
 )
 

@@ -1,10 +1,8 @@
 from dataclasses import dataclass
-from typing import Protocol
-from uuid import UUID
 
-from backend.application.execution.dispatcher import DispatchResult
-from backend.domain.execution.run_state_policy import RunState
-from backend.infrastructure.memory.repository import UnfinishedRun
+from backend.application.ports.database.dto import UnfinishedRun
+from backend.application.ports.database.interface import RecoveryRepositoryPort
+from backend.application.ports.runtime.interface import RunExecutionDispatcherPort
 from backend.shared.errors import AppError
 
 RECOVERY_ERROR_MESSAGE = "アプリ起動時に処理を再開できませんでした。"
@@ -38,36 +36,13 @@ class _RecoveryCounter:
         )
 
 
-class RecoveryRepository(Protocol):
-    """起動時回復に必要なRepository境界。"""
-
-    def list_unfinished_runs_for_recovery(self) -> tuple[UnfinishedRun, ...]:
-        """未完了runを返す。"""
-
-    def set_run_state(
-        self,
-        chat_id: UUID,
-        run_id: UUID,
-        state: RunState,
-        user_message: str | None = None,
-    ) -> None:
-        """runの状態と利用者向けメッセージを更新する。"""
-
-
-class RunExecutionDispatcher(Protocol):
-    """受付済みrunをバックグラウンド登録する境界。"""
-
-    def register(self, chat_id: UUID, run_id: UUID) -> DispatchResult:
-        """対象runの実行を登録する。"""
-
-
 class RecoverUnfinishedRunsUseCase:
     """アプリ起動時に未完了runを再登録または終端状態へ整合する。"""
 
     def __init__(
         self,
-        repository: RecoveryRepository,
-        run_dispatcher: RunExecutionDispatcher,
+        repository: RecoveryRepositoryPort,
+        run_dispatcher: RunExecutionDispatcherPort,
     ) -> None:
         self._repository = repository
         self._run_dispatcher = run_dispatcher

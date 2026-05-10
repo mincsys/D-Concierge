@@ -5,9 +5,9 @@ import pytest
 
 from backend.application.chat.append_chat_run import AppendChatRunUseCase
 from backend.application.chat.start_chat import StartChatUseCase
-from backend.application.execution.dispatcher import DispatchResult
-from backend.infrastructure.memory.repository import InMemoryChatRepository
+from backend.application.ports.runtime.dto import DispatchResult
 from backend.shared.errors import AppError, ErrorClass
+from backend.tests.support.memory_repository import InMemoryChatRepository
 
 
 def test_start_chat_use_case_accepts_first_run_and_registers_dispatcher() -> None:

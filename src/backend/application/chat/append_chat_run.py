@@ -1,30 +1,12 @@
-from typing import Protocol
 from uuid import UUID
 
 from backend.application.chat.acceptance import (
     AcceptedChatRunResult,
-    RunExecutionDispatcher,
     accepted_chat_run_result,
     register_accepted_run,
 )
-from backend.domain.execution.run_state_policy import RunState
-from backend.infrastructure.memory.repository import AcceptedRun
-
-
-class AppendChatRunRepository(Protocol):
-    """継続指示受付に必要なRepository境界。"""
-
-    def append_run(self, chat_id: UUID, user_instruction: str) -> AcceptedRun:
-        """既存チャットへ受付runと指示を追加する。"""
-
-    def set_run_state(
-        self,
-        chat_id: UUID,
-        run_id: UUID,
-        state: RunState,
-        user_message: str | None = None,
-    ) -> None:
-        """runの状態と利用者向けメッセージを更新する。"""
+from backend.application.ports.database.interface import AppendChatRunRepositoryPort
+from backend.application.ports.runtime.interface import RunExecutionDispatcherPort
 
 
 class AppendChatRunUseCase:
@@ -32,8 +14,8 @@ class AppendChatRunUseCase:
 
     def __init__(
         self,
-        repository: AppendChatRunRepository,
-        run_dispatcher: RunExecutionDispatcher | None,
+        repository: AppendChatRunRepositoryPort,
+        run_dispatcher: RunExecutionDispatcherPort | None,
     ) -> None:
         self._repository = repository
         self._run_dispatcher = run_dispatcher

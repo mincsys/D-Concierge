@@ -9,18 +9,25 @@ from uuid import UUID, uuid4
 from backend.application.artifacts.save_adopted_artifacts import (
     SavedAnswerBlocksArtifacts,
 )
+from backend.application.ports.codex.interface import (
+    CodexGenerationRunnerPort,
+    SessionWorkdirResolverPort,
+)
+from backend.application.ports.database.dto import (
+    AnswerBlockData,
+    AnswerData,
+    ArtifactData,
+    DisplayReferenceData,
+)
+from backend.application.ports.database.interface import ChatExecutionRepositoryPort
+from backend.application.ports.trace_log.dto import TraceLogRecord
+from backend.application.ports.trace_log.interface import TraceLoggerPort
 from backend.application.validation.validate_answer import AnswerValidationResult
 from backend.domain.answer.answer_candidate import (
     ParsedAnswerCandidate,
     ParsedReference,
 )
 from backend.domain.execution.run_state_policy import RunState
-from backend.infrastructure.memory.repository import (
-    AnswerBlockData,
-    AnswerData,
-    ArtifactData,
-    DisplayReferenceData,
-)
 from backend.shared.errors import (
     AppError,
     ErrorClass,
@@ -28,7 +35,6 @@ from backend.shared.errors import (
     RunTimeoutError,
     ValidationWorkspacePreparationError,
 )
-from backend.shared.tracing import TraceLogger, TraceLogRecord
 
 GENERATION_FAILURE_MESSAGE = (
     "回答生成に失敗しました。ユーザ指示を見直して再度お試しください。"
@@ -46,15 +52,6 @@ ANSWER_REVISION_MESSAGE = "回答を修正します。"
 
 
 @dataclass(frozen=True, slots=True)
-class CodexRunResult:
-    """Codex生成結果。"""
-
-    conversation_id: str
-    intermediate_messages: tuple[str, ...]
-    final_answer_json: str
-
-
-@dataclass(frozen=True, slots=True)
 class RunEvent:
     """run ID単位で発行するSSE向けイベント。"""
 
@@ -65,62 +62,6 @@ class RunEvent:
     text: str | None = None
     answer: AnswerData | None = None
     user_message: str | None = None
-
-
-class ChatExecutionRepository(Protocol):
-    """チャット実行処理が利用するRepository境界。"""
-
-    def get_run_instruction(self, chat_id: UUID, run_id: UUID) -> str:
-        """runに対応するユーザ指示本文を返す。"""
-
-    def get_run_state(self, chat_id: UUID, run_id: UUID) -> RunState:
-        """runの現在状態を返す。"""
-
-    def set_run_state(
-        self,
-        chat_id: UUID,
-        run_id: UUID,
-        state: RunState,
-        user_message: str | None = None,
-    ) -> None:
-        """run状態を更新する。"""
-
-    def update_run_state_if_current(
-        self,
-        chat_id: UUID,
-        run_id: UUID,
-        expected_states: tuple[RunState, ...],
-        state: RunState,
-        user_message: str | None = None,
-        execution_deadline_at: datetime | None = None,
-    ) -> bool:
-        """期待状態に一致する場合だけrun状態を更新する。"""
-
-    def add_intermediate_message(self, chat_id: UUID, run_id: UUID, text: str) -> None:
-        """中間メッセージを保存する。"""
-
-    def save_completed_answer(
-        self,
-        chat_id: UUID,
-        run_id: UUID,
-        answer: AnswerData,
-    ) -> None:
-        """検証済み回答を保存する。"""
-
-
-class CodexGenerationRunner(Protocol):
-    """生成用Codex実行境界。"""
-
-    def run_generation(
-        self,
-        chat_id: UUID,
-        run_id: UUID,
-        user_instruction: str,
-        timeout_seconds: int,
-        trace_id: str,
-        on_intermediate_message: Callable[[str], None] | None = None,
-    ) -> CodexRunResult:
-        """生成用Codexを実行し、構造化結果を返す。"""
 
 
 class RunEventPublisher(Protocol):
@@ -161,26 +102,19 @@ class AdoptedArtifactSaver(Protocol):
         """回答本文内の成果物参照を保存済みURLへ置換する。"""
 
 
-class SessionWorkdirResolver(Protocol):
-    """チャット単位の生成用Codex作業領域解決境界。"""
-
-    def resolve_generation_workdir(self, chat_id: UUID) -> Path:
-        """生成用Codexのセッション作業領域を返す。"""
-
-
 class ExecuteChatRunUseCase:
     """受付済みrunの生成、固定検証、回答保存、イベント発行を調停する。"""
 
     def __init__(
         self,
-        repository: ChatExecutionRepository,
-        codex_runner: CodexGenerationRunner,
+        repository: ChatExecutionRepositoryPort,
+        codex_runner: CodexGenerationRunnerPort,
         answer_validator: AnswerValidator,
         event_publisher: RunEventPublisher,
         artifact_saver: AdoptedArtifactSaver | None = None,
         session_workdir: Path | None = None,
-        session_workdir_resolver: SessionWorkdirResolver | None = None,
-        trace_logger: TraceLogger | None = None,
+        session_workdir_resolver: SessionWorkdirResolverPort | None = None,
+        trace_logger: TraceLoggerPort | None = None,
         timeout_seconds: int = 300,
         clock: Callable[[], datetime] | None = None,
     ) -> None:

@@ -2,8 +2,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from uuid import UUID
 
+from backend.application.ports.trace_log.dto import TraceLogRecord
 from backend.infrastructure.trace_log.trace_log_writer import TraceLogWriter
-from backend.shared.tracing import TraceLogRecord
 
 
 def test_trace_log_writer_writes_jsonl_record_with_sanitized_message(

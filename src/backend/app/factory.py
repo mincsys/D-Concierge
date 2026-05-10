@@ -2,7 +2,6 @@ import asyncio
 import json
 from collections.abc import AsyncIterator, Iterator
 from contextlib import contextmanager
-from datetime import datetime
 from pathlib import Path
 from typing import Literal, Protocol, TypedDict
 from uuid import UUID, uuid4
@@ -18,11 +17,6 @@ from backend.application.artifacts.save_adopted_artifacts import (
 from backend.application.chat.append_chat_run import AppendChatRunUseCase
 from backend.application.chat.start_chat import StartChatUseCase
 from backend.application.execution.cancel_chat_run import CancelChatRunUseCase
-from backend.application.execution.dispatcher import (
-    BackgroundExecutor,
-    DispatchResult,
-    InProcessRunExecutionDispatcher,
-)
 from backend.application.execution.execute_chat_run import (
     ExecuteChatRunUseCase,
     RunEvent,
@@ -30,6 +24,19 @@ from backend.application.execution.execute_chat_run import (
 from backend.application.execution.recover_unfinished_runs import (
     RecoverUnfinishedRunsUseCase,
 )
+from backend.application.ports.database.dto import (
+    AnswerBlockData,
+    AnswerData,
+    ChatDetail,
+    DisplayReferenceData,
+    RunDetail,
+)
+from backend.application.ports.database.interface import ChatRepositoryPort
+from backend.application.ports.runtime.interface import (
+    BackgroundExecutorPort,
+    RunExecutionDispatcherPort,
+)
+from backend.application.ports.trace_log.dto import TraceLogRecord
 from backend.application.validation.validate_answer import ValidateAnswerUseCase
 from backend.domain.execution.run_state_policy import RunState
 from backend.infrastructure.codex.cancel_requester import CodexCancelRequester
@@ -55,17 +62,8 @@ from backend.infrastructure.filesystem.artifacts.file_artifact_store import (
     FileArtifactStore,
 )
 from backend.infrastructure.filesystem.path_security import PathSecurityService
-from backend.infrastructure.memory.repository import (
-    AcceptedRun,
-    AnswerBlockData,
-    AnswerData,
-    ArtifactData,
-    ChatDetail,
-    ChatRuntimeContext,
-    DisplayReferenceData,
-    HistoryItem,
-    RunDetail,
-    UnfinishedRun,
+from backend.infrastructure.runtime.run_execution_dispatcher import (
+    InProcessRunExecutionDispatcher,
 )
 from backend.infrastructure.trace_log.trace_log_writer import TraceLogWriter
 from backend.presentation.schemas import (
@@ -88,7 +86,6 @@ from backend.presentation.sse.run_event_broker import (
     RunEventSubscription,
 )
 from backend.shared.errors import AppError, ErrorClass
-from backend.shared.tracing import TraceLogRecord
 
 
 class PdfLocatorPayload(TypedDict):
@@ -155,13 +152,6 @@ type SsePayload = (
 )
 
 
-class RunDispatcher(Protocol):
-    """受付済みrunをバックグラウンド登録する境界。"""
-
-    def register(self, chat_id: UUID, run_id: UUID) -> DispatchResult:
-        """対象runの実行を登録する。"""
-
-
 class RunEventSource(Protocol):
     """runイベント購読境界。"""
 
@@ -200,99 +190,21 @@ _DEFAULT_RUN_DISPATCHER = _DefaultRunDispatcher()
 _SSE_IDLE_POLL_INTERVAL_SECONDS = 0.1
 
 
-class ChatRepository(Protocol):
-    """チャット永続化と参照を行うRepository境界。"""
-
-    def create_chat_with_first_run(self, user_instruction: str) -> AcceptedRun:
-        """新規チャット、初回run、初回指示を保存する。"""
-
-    def append_run(self, chat_id: UUID, user_instruction: str) -> AcceptedRun:
-        """既存チャットへ受付runと指示を追加する。"""
-
-    def list_histories(self) -> tuple[HistoryItem, ...]:
-        """履歴一覧を返す。"""
-
-    def list_unfinished_runs_for_recovery(self) -> tuple[UnfinishedRun, ...]:
-        """起動時回復対象の未完了runを返す。"""
-
-    def get_chat_detail(self, chat_id: UUID) -> ChatDetail:
-        """チャット詳細を返す。"""
-
-    def get_chat_runtime_context(self, chat_id: UUID) -> ChatRuntimeContext:
-        """Codex実行に必要なチャット単位コンテキストを返す。"""
-
-    def save_generation_conversation_id(
-        self, chat_id: UUID, codex_conversation_id: str
-    ) -> None:
-        """生成用Codex側resume IDを保存する。"""
-
-    def save_validation_conversation_id(
-        self, chat_id: UUID, codex_conversation_id: str
-    ) -> None:
-        """検証用Codex側resume IDを保存する。"""
-
-    def get_run_state(self, chat_id: UUID, run_id: UUID) -> RunState:
-        """runの現在状態を返す。"""
-
-    def get_run_instruction(self, chat_id: UUID, run_id: UUID) -> str:
-        """runに対応するユーザ指示本文を返す。"""
-
-    def set_run_state(
-        self,
-        chat_id: UUID,
-        run_id: UUID,
-        state: RunState,
-        user_message: str | None = None,
-    ) -> None:
-        """runの状態と利用者向けメッセージを更新する。"""
-
-    def update_run_state_if_current(
-        self,
-        chat_id: UUID,
-        run_id: UUID,
-        expected_states: tuple[RunState, ...],
-        state: RunState,
-        user_message: str | None = None,
-        execution_deadline_at: datetime | None = None,
-    ) -> bool:
-        """期待状態に一致する場合だけrun状態を更新する。"""
-
-    def cancel_run(self, chat_id: UUID, run_id: UUID) -> None:
-        """対象runをキャンセルする。"""
-
-    def add_intermediate_message(self, chat_id: UUID, run_id: UUID, text: str) -> None:
-        """runへ中間メッセージを追加する。"""
-
-    def save_completed_answer(
-        self,
-        chat_id: UUID,
-        run_id: UUID,
-        answer: AnswerData,
-    ) -> None:
-        """検証済み回答を保存する。"""
-
-    def get_reference(self, reference_id: UUID) -> DisplayReferenceData:
-        """参照元配信メタ情報を返す。"""
-
-    def get_artifact(self, artifact_id: UUID) -> ArtifactData:
-        """成果物配信メタ情報を返す。"""
-
-
 def create_app(
     config: AppConfig | None = None,
-    repository: ChatRepository | None = None,
-    run_dispatcher: RunDispatcher | None | _DefaultRunDispatcher = (
+    repository: ChatRepositoryPort | None = None,
+    run_dispatcher: RunExecutionDispatcherPort | None | _DefaultRunDispatcher = (
         _DEFAULT_RUN_DISPATCHER
     ),
     run_event_source: RunEventSource | None = None,
     codex_runner: ApplicationCodexRunner | None = None,
-    background_executor: BackgroundExecutor | None = None,
+    background_executor: BackgroundExecutorPort | None = None,
 ) -> FastAPI:
     """D-ConciergeのFastAPIアプリを生成する。"""
     app_config = (
         config if config is not None else ConfigLoader.load(Path("config.yaml"))
     )
-    chat_repository: ChatRepository = (
+    chat_repository: ChatRepositoryPort = (
         repository
         if repository is not None
         else _create_sqlalchemy_repository(app_config)
@@ -479,14 +391,14 @@ def create_app(
 
 def _create_runtime_services(
     app_config: AppConfig,
-    chat_repository: ChatRepository,
-    run_dispatcher: RunDispatcher | None | _DefaultRunDispatcher,
+    chat_repository: ChatRepositoryPort,
+    run_dispatcher: RunExecutionDispatcherPort | None | _DefaultRunDispatcher,
     run_event_source: RunEventSource | None,
     codex_runner: ApplicationCodexRunner | None,
-    background_executor: BackgroundExecutor | None,
+    background_executor: BackgroundExecutorPort | None,
     trace_logger: TraceLogWriter,
 ) -> tuple[
-    RunDispatcher | None,
+    RunExecutionDispatcherPort | None,
     RunEventSource | None,
     CodexCancelRequester | None,
     RunEventBroker | None,
@@ -542,7 +454,7 @@ def _create_runtime_services(
 
 
 async def _run_sse_events(
-    chat_repository: ChatRepository,
+    chat_repository: ChatRepositoryPort,
     run_event_source: RunEventSource | None,
     chat_id: UUID,
     run_id: UUID,
@@ -588,7 +500,7 @@ async def _run_sse_events(
 
 
 def _run_sse_snapshot(
-    chat_repository: ChatRepository, chat_id: UUID, run_id: UUID
+    chat_repository: ChatRepositoryPort, chat_id: UUID, run_id: UUID
 ) -> tuple[RunState, tuple[str, ...]]:
     detail = chat_repository.get_chat_detail(chat_id)
     for run in detail.runs:

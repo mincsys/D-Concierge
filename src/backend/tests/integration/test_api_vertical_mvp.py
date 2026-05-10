@@ -13,8 +13,15 @@ from pydantic import TypeAdapter
 from pypdf import PdfWriter
 
 from backend.app.factory import _run_sse_events, create_app
-from backend.application.execution.dispatcher import DispatchResult
 from backend.application.execution.execute_chat_run import RunEvent
+from backend.application.ports.database.dto import (
+    AnswerBlockData,
+    AnswerData,
+    ArtifactData,
+    DisplayReferenceData,
+    HistoryItem,
+)
+from backend.application.ports.runtime.dto import DispatchResult
 from backend.infrastructure.codex.codex_runner import (
     CancelResult,
     CodexRunRequest,
@@ -32,14 +39,6 @@ from backend.infrastructure.config.models import (
     UiConfig,
     ValidatorConfig,
 )
-from backend.infrastructure.memory.repository import (
-    AnswerBlockData,
-    AnswerData,
-    ArtifactData,
-    DisplayReferenceData,
-    HistoryItem,
-    InMemoryChatRepository,
-)
 from backend.infrastructure.trace_log.trace_log_writer import TraceLogWriter
 from backend.presentation.schemas import (
     AppConfigResponseSchema,
@@ -50,6 +49,7 @@ from backend.presentation.schemas import (
 )
 from backend.presentation.sse.run_event_broker import RunEventSubscription
 from backend.shared.errors import AppError, ErrorClass
+from backend.tests.support.memory_repository import InMemoryChatRepository
 
 
 def test_app_config_exposes_only_public_ui_settings(tmp_path: Path) -> None:

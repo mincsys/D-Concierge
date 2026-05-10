@@ -7,7 +7,8 @@ from uuid import UUID
 
 from pypdf import PdfReader
 
-from backend.application.validation.validate_answer import ReferenceValidationResult
+from backend.application.ports.codex.dto import ReferenceValidationResult
+from backend.application.ports.database.interface import ChatRuntimeRepositoryPort
 from backend.domain.answer.answer_candidate import (
     InvalidPageRange,
     ParsedAnswerCandidate,
@@ -36,25 +37,12 @@ from backend.infrastructure.codex.validator_codex_input import (
 )
 from backend.infrastructure.config.models import CodexConfig
 from backend.infrastructure.filesystem.path_security import PathSecurityService
-from backend.infrastructure.memory.repository import ChatRuntimeContext
 from backend.shared.errors import (
     AppError,
     ErrorClass,
     ReferencePdfReadError,
     ValidationWorkspacePreparationError,
 )
-
-
-class ChatRuntimeRepository(Protocol):
-    """検証用Codex実行に必要なチャット実行コンテキスト境界。"""
-
-    def get_chat_runtime_context(self, chat_id: UUID) -> ChatRuntimeContext:
-        """チャット単位のCodex実行コンテキストを返す。"""
-
-    def save_validation_conversation_id(
-        self, chat_id: UUID, codex_conversation_id: str
-    ) -> None:
-        """検証用Codex側resume IDを保存する。"""
 
 
 class InfrastructureCodexRunner(Protocol):
@@ -75,7 +63,7 @@ class CodexReferenceValidator:
 
     def __init__(
         self,
-        repository: ChatRuntimeRepository,
+        repository: ChatRuntimeRepositoryPort,
         codex_runner: InfrastructureCodexRunner,
         validator_config: CodexConfig,
         datasource_dir: Path,

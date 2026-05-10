@@ -3,7 +3,8 @@ from pathlib import Path
 from typing import Protocol
 from uuid import UUID
 
-from backend.application.execution.execute_chat_run import CodexRunResult
+from backend.application.ports.codex.dto import CodexRunResult
+from backend.application.ports.database.interface import ChatRuntimeRepositoryPort
 from backend.infrastructure.codex.codex_runner import (
     CodexRunRequest,
 )
@@ -17,19 +18,6 @@ from backend.infrastructure.codex.session_readonly import (
     prepare_generation_session_readonly,
 )
 from backend.infrastructure.config.models import CodexConfig
-from backend.infrastructure.memory.repository import ChatRuntimeContext
-
-
-class ChatRuntimeRepository(Protocol):
-    """Codex生成実行に必要なチャット実行コンテキスト境界。"""
-
-    def get_chat_runtime_context(self, chat_id: UUID) -> ChatRuntimeContext:
-        """チャット単位のCodex実行コンテキストを返す。"""
-
-    def save_generation_conversation_id(
-        self, chat_id: UUID, codex_conversation_id: str
-    ) -> None:
-        """生成用Codex側resume IDを保存する。"""
 
 
 class InfrastructureCodexRunner(Protocol):
@@ -44,7 +32,7 @@ class CodexGenerationRunnerAdapter:
 
     def __init__(
         self,
-        repository: ChatRuntimeRepository,
+        repository: ChatRuntimeRepositoryPort,
         codex_runner: InfrastructureCodexRunner,
         codex_config: CodexConfig,
         datasource_dir: Path,

@@ -3,10 +3,12 @@ from typing import Literal, Protocol
 from uuid import UUID
 
 from backend.application.execution.execute_chat_run import RunEvent
-from backend.domain.execution.run_state_policy import RunState, RunStatePolicy
+from backend.application.ports.codex.dto import CancelRequestResult
+from backend.application.ports.codex.interface import CancelRequesterPort
+from backend.application.ports.database.interface import CancelChatRunRepositoryPort
+from backend.domain.execution.run_state_policy import RunStatePolicy
 from backend.shared.errors import AppError, ErrorClass
 
-CancelRequestResult = Literal["sent", "already_exited", "not_registered"]
 CANCELED_MESSAGE = "処理をキャンセルしました。"
 CANCEL_REQUESTED_MESSAGE = "処理をキャンセルしています。"
 
@@ -18,33 +20,6 @@ class CancelChatRunResult:
     run_id: UUID
     state: Literal["キャンセル要求中"]
     user_message: str
-
-
-class CancelChatRunRepository(Protocol):
-    """キャンセル受付に必要なRepository境界。"""
-
-    def get_run_state(self, chat_id: UUID, run_id: UUID) -> RunState:
-        """対象runの現在状態を返す。"""
-
-    def cancel_run(self, chat_id: UUID, run_id: UUID) -> None:
-        """対象runをキャンセルする。"""
-
-    def update_run_state_if_current(
-        self,
-        chat_id: UUID,
-        run_id: UUID,
-        expected_states: tuple[RunState, ...],
-        state: RunState,
-        user_message: str | None = None,
-    ) -> bool:
-        """期待状態に一致する場合だけrun状態を更新する。"""
-
-
-class CancelRequester(Protocol):
-    """実行中Codexプロセスへの終了要求境界。"""
-
-    def request_cancel(self, run_id: UUID) -> CancelRequestResult:
-        """対象runの実行プロセスへ終了要求を送る。"""
 
 
 class CancelEventPublisher(Protocol):
@@ -59,8 +34,8 @@ class CancelChatRunUseCase:
 
     def __init__(
         self,
-        repository: CancelChatRunRepository,
-        cancel_requester: CancelRequester | None = None,
+        repository: CancelChatRunRepositoryPort,
+        cancel_requester: CancelRequesterPort | None = None,
         event_publisher: CancelEventPublisher | None = None,
     ) -> None:
         self._repository = repository

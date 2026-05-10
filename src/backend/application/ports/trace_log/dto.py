@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Protocol
 from uuid import UUID
 
 
@@ -22,10 +21,3 @@ class TraceLogRecord:
     retry_count: int | None = None
     validation_failure_reason: str | None = None
     message: str | None = None
-
-
-class TraceLogger(Protocol):
-    """トレースログ出力境界。"""
-
-    def write(self, record: TraceLogRecord) -> None:
-        """トレースログを1件出力する。"""

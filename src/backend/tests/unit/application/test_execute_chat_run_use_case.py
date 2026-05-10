@@ -9,10 +9,12 @@ from backend.application.artifacts.save_adopted_artifacts import (
     SavedAnswerBlocksArtifacts,
 )
 from backend.application.execution.execute_chat_run import (
-    CodexRunResult,
     ExecuteChatRunUseCase,
     RunEvent,
 )
+from backend.application.ports.codex.dto import CodexRunResult
+from backend.application.ports.filesystem.dto import SavedArtifactFile
+from backend.application.ports.trace_log.dto import TraceLogRecord
 from backend.application.validation.validate_answer import AnswerValidationResult
 from backend.domain.answer.answer_candidate import (
     AnswerParseError,
@@ -22,17 +24,13 @@ from backend.domain.answer.answer_candidate import (
     parse_generation_final_output,
 )
 from backend.domain.execution.run_state_policy import RunState
-from backend.infrastructure.filesystem.artifacts.file_artifact_store import (
-    SavedArtifactFile,
-)
-from backend.infrastructure.memory.repository import InMemoryChatRepository
 from backend.shared.errors import (
     AppError,
     ErrorClass,
     ReferencePdfReadError,
     RunTimeoutError,
 )
-from backend.shared.tracing import TraceLogRecord
+from backend.tests.support.memory_repository import InMemoryChatRepository
 
 
 def test_execute_chat_run_saves_verified_answer_and_publishes_events() -> None:

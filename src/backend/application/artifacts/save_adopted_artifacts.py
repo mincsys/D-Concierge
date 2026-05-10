@@ -1,13 +1,13 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol
 from uuid import UUID, uuid4
 
 from backend.application.artifacts.validate_artifact_links import extract_artifact_links
-from backend.infrastructure.filesystem.artifacts.file_artifact_store import (
+from backend.application.ports.filesystem.dto import (
     SavedArtifactFile,
 )
+from backend.application.ports.filesystem.interface import AdoptedArtifactStorePort
 
 
 @dataclass(frozen=True, slots=True)
@@ -25,20 +25,6 @@ class SavedAnswerBlocksArtifacts:
     blocks: tuple[SavedAnswerBlockArtifacts, ...]
 
 
-class ArtifactStore(Protocol):
-    """採用済み成果物ファイル保存境界。"""
-
-    def save_adopted_file(
-        self,
-        session_workdir: Path,
-        candidate_relative_path: str,
-        run_id: UUID,
-        artifact_id: UUID,
-    ) -> SavedArtifactFile:
-        """成果物候補を保存済み領域へコピーする。"""
-        raise NotImplementedError
-
-
 @dataclass(frozen=True, slots=True)
 class _Replacement:
     start: int
@@ -51,7 +37,7 @@ class SaveAdoptedArtifactsUseCase:
 
     def __init__(
         self,
-        artifact_store: ArtifactStore,
+        artifact_store: AdoptedArtifactStorePort,
         artifact_id_factory: Callable[[], UUID] = uuid4,
     ) -> None:
         self._artifact_store = artifact_store

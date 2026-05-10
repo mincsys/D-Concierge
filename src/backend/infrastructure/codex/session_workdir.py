@@ -1,21 +1,15 @@
 from pathlib import Path
-from typing import Protocol
 from uuid import UUID
 
-from backend.infrastructure.memory.repository import ChatRuntimeContext
-
-
-class ChatRuntimeRepository(Protocol):
-    """Codex作業領域解決に必要なチャット実行コンテキスト境界。"""
-
-    def get_chat_runtime_context(self, chat_id: UUID) -> ChatRuntimeContext:
-        """チャット単位のCodex実行コンテキストを返す。"""
+from backend.application.ports.database.interface import ChatRuntimeRepositoryPort
 
 
 class CodexSessionWorkdirResolver:
     """チャットの内部IDから生成用Codex作業領域を解決する。"""
 
-    def __init__(self, repository: ChatRuntimeRepository, base_workdir: Path) -> None:
+    def __init__(
+        self, repository: ChatRuntimeRepositoryPort, base_workdir: Path
+    ) -> None:
         self._repository = repository
         self._base_workdir = base_workdir
 

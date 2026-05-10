@@ -1,15 +1,15 @@
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
-from backend.infrastructure.memory.repository import (
+from backend.application.ports.database.dto import (
     SHARED_LOCAL_USER_ID,
     AnswerBlockData,
     AnswerData,
     ArtifactData,
     DisplayReferenceData,
-    InMemoryChatRepository,
 )
 from backend.shared.errors import AppError, ErrorClass
+from backend.tests.support.memory_repository import InMemoryChatRepository
 
 
 def test_memory_repository_saves_answer_references_and_artifacts() -> None:

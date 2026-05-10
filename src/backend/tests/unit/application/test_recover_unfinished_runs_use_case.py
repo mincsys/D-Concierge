@@ -1,12 +1,12 @@
 from dataclasses import dataclass, field
 from uuid import UUID
 
-from backend.application.execution.dispatcher import DispatchResult
 from backend.application.execution.recover_unfinished_runs import (
     RecoverUnfinishedRunsUseCase,
     RecoverySummary,
 )
-from backend.infrastructure.memory.repository import InMemoryChatRepository
+from backend.application.ports.runtime.dto import DispatchResult
+from backend.tests.support.memory_repository import InMemoryChatRepository
 
 
 def test_recover_unfinished_runs_reregisters_and_terminalizes_leftover_runs() -> None:

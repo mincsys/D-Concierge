@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from pypdf import PdfWriter
 
-from backend.application.validation.validate_answer import ReferenceValidationResult
+from backend.application.ports.codex.dto import ReferenceValidationResult
 from backend.domain.answer.answer_candidate import (
     ParsedAnswerBlock,
     ParsedAnswerCandidate,
@@ -20,8 +20,8 @@ from backend.infrastructure.codex.codex_runner import (
 from backend.infrastructure.codex.jsonl_event_parser import ParsedCodexEvent
 from backend.infrastructure.codex.reference_validator import CodexReferenceValidator
 from backend.infrastructure.config.models import CodexConfig
-from backend.infrastructure.memory.repository import InMemoryChatRepository
 from backend.shared.errors import AppError, ErrorClass, ReferencePdfReadError
+from backend.tests.support.memory_repository import InMemoryChatRepository
 
 
 def test_codex_reference_validator_runs_validation_and_saves_resume_id(

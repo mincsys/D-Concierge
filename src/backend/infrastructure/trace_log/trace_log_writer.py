@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TypedDict
 
-from backend.shared.tracing import TraceLogRecord
+from backend.application.ports.trace_log.dto import TraceLogRecord
 
 _ABSOLUTE_PATH_PATTERN = re.compile(r"(?<!\w)/(?:[^\s\"']+/)+[^\s\"']*")
 _MAX_TEXT_LENGTH = 160

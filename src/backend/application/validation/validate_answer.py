@@ -8,6 +8,8 @@ from backend.application.artifacts.validate_artifact_links import (
     ArtifactLinkValidationResult,
     ArtifactLinkValidator,
 )
+from backend.application.ports.codex.dto import ReferenceValidationResult
+from backend.application.ports.codex.interface import ReferenceValidatorPort
 from backend.domain.answer.answer_candidate import (
     AnswerParseError,
     ParsedAnswerCandidate,
@@ -23,14 +25,6 @@ type ValidationStatus = Literal["採用可能", "再生成指示", "失敗"]
 
 
 @dataclass(frozen=True, slots=True)
-class ReferenceValidationResult:
-    """検証用Codexによる参照元検証結果。"""
-
-    valid: bool
-    comment: str | None = None
-
-
-@dataclass(frozen=True, slots=True)
 class AnswerValidationResult:
     """回答検証UseCaseの判定結果。"""
 
@@ -38,24 +32,6 @@ class AnswerValidationResult:
     candidate: ParsedAnswerCandidate | None = None
     regeneration_instruction: str = ""
     user_message: str = ""
-
-
-class ReferenceValidator(Protocol):
-    """参照元検証境界。"""
-
-    def validate_references(
-        self,
-        candidate: ParsedAnswerCandidate,
-        user_instruction: str,
-        chat_id: UUID | None = None,
-        run_id: UUID | None = None,
-        trace_id: str = "",
-        timeout_seconds: int | None = None,
-        on_intermediate_message: Callable[[str], None] | None = None,
-        session_workdir: Path | None = None,
-        has_artifact_links: bool = False,
-    ) -> ReferenceValidationResult:
-        """回答候補の参照元が回答内容を支えるか検証する。"""
 
 
 class AnswerArtifactLinkValidator(Protocol):
@@ -74,7 +50,7 @@ class ValidateAnswerUseCase:
 
     def __init__(
         self,
-        reference_validator: ReferenceValidator,
+        reference_validator: ReferenceValidatorPort,
         max_retries: int,
         artifact_link_validator: AnswerArtifactLinkValidator | None = None,
     ) -> None:

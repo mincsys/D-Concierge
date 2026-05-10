@@ -7,6 +7,13 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import ConnectionPoolEntry, StaticPool
 
+from backend.application.ports.database.dto import (
+    SHARED_LOCAL_USER_ID,
+    AnswerBlockData,
+    AnswerData,
+    ArtifactData,
+    DisplayReferenceData,
+)
 from backend.infrastructure.database.models import (
     AnswerBlockModel,
     Base,
@@ -18,13 +25,6 @@ from backend.infrastructure.database.models import (
 )
 from backend.infrastructure.database.repositories.sqlalchemy_chat_repository import (
     SqlAlchemyChatRepository,
-)
-from backend.infrastructure.memory.repository import (
-    SHARED_LOCAL_USER_ID,
-    AnswerBlockData,
-    AnswerData,
-    ArtifactData,
-    DisplayReferenceData,
 )
 from backend.shared.errors import AppError, ErrorClass
 

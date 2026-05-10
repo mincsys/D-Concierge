@@ -1,7 +1,7 @@
 from typing import Protocol
 from uuid import UUID
 
-from backend.application.execution.cancel_chat_run import CancelRequestResult
+from backend.application.ports.codex.dto import CancelRequestResult
 
 
 class CancelableCodexRunner(Protocol):

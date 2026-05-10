@@ -1,8 +1,8 @@
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from backend.application.ports.codex.dto import ReferenceValidationResult
 from backend.application.validation.validate_answer import (
-    ReferenceValidationResult,
     ValidateAnswerUseCase,
 )
 from backend.domain.answer.answer_candidate import ParsedAnswerCandidate

@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from backend.application.execution.execute_chat_run import CodexRunResult
+from backend.application.ports.codex.dto import CodexRunResult
 from backend.infrastructure.codex.codex_runner import (
     CodexRunRequest,
 )
@@ -18,7 +18,7 @@ from backend.infrastructure.codex.jsonl_event_parser import (
     ParsedCodexEvent,
 )
 from backend.infrastructure.config.models import CodexConfig
-from backend.infrastructure.memory.repository import InMemoryChatRepository
+from backend.tests.support.memory_repository import InMemoryChatRepository
 
 
 def test_codex_generation_runner_builds_request_and_saves_resume_id(

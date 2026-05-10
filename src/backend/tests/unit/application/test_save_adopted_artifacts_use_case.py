@@ -10,7 +10,7 @@ from backend.application.artifacts.save_adopted_artifacts import (
     SavedAnswerBlockArtifacts,
     SavedAnswerBlocksArtifacts,
 )
-from backend.infrastructure.filesystem.artifacts.file_artifact_store import (
+from backend.application.ports.filesystem.dto import (
     SavedArtifactFile,
 )
 from backend.shared.errors import AppError, ErrorClass

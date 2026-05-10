@@ -3,10 +3,12 @@ from uuid import UUID
 
 import pytest
 
-from backend.infrastructure.filesystem.artifacts.file_artifact_store import (
-    FileArtifactStore,
+from backend.application.ports.filesystem.dto import (
     OpenedArtifactFile,
     SavedArtifactFile,
+)
+from backend.infrastructure.filesystem.artifacts.file_artifact_store import (
+    FileArtifactStore,
 )
 from backend.shared.errors import AppError, ErrorClass
 

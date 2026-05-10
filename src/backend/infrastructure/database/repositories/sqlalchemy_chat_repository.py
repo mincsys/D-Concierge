@@ -5,18 +5,7 @@ from uuid import UUID, uuid4
 import sqlalchemy as sa
 from sqlalchemy.orm import Session, sessionmaker
 
-from backend.domain.execution.run_state_policy import RunState, RunStatePolicy
-from backend.infrastructure.database.models import (
-    AnswerBlockModel,
-    ArtifactModel,
-    ChatModel,
-    ChatRunModel,
-    IntermediateMessageModel,
-    LocalUserModel,
-    ReferenceModel,
-    UserInstructionModel,
-)
-from backend.infrastructure.memory.repository import (
+from backend.application.ports.database.dto import (
     SHARED_LOCAL_USER_ID,
     AcceptedRun,
     AnswerBlockData,
@@ -29,6 +18,17 @@ from backend.infrastructure.memory.repository import (
     IntermediateMessageData,
     RunDetail,
     UnfinishedRun,
+)
+from backend.domain.execution.run_state_policy import RunState, RunStatePolicy
+from backend.infrastructure.database.models import (
+    AnswerBlockModel,
+    ArtifactModel,
+    ChatModel,
+    ChatRunModel,
+    IntermediateMessageModel,
+    LocalUserModel,
+    ReferenceModel,
+    UserInstructionModel,
 )
 from backend.shared.errors import AppError, ErrorClass
 

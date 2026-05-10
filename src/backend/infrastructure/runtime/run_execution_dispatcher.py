@@ -1,31 +1,12 @@
-from collections.abc import Callable
-from concurrent.futures import Future, ThreadPoolExecutor
-from dataclasses import dataclass
+from concurrent.futures import ThreadPoolExecutor
 from threading import RLock
-from typing import Literal, Protocol
 from uuid import UUID
 
-
-@dataclass(frozen=True, slots=True)
-class DispatchResult:
-    """run登録結果。"""
-
-    status: Literal["registered", "already_registered", "failed"]
-    failure_reason: str | None = None
-
-
-class ChatRunExecutor(Protocol):
-    """チャット実行ユースケース境界。"""
-
-    def execute(self, chat_id: UUID, run_id: UUID) -> None:
-        """指定runを実行する。"""
-
-
-class BackgroundExecutor(Protocol):
-    """バックグラウンド実行基盤境界。"""
-
-    def submit(self, task: Callable[[], None]) -> Future[None]:
-        """実行タスクを登録する。"""
+from backend.application.ports.runtime.dto import DispatchResult
+from backend.application.ports.runtime.interface import (
+    BackgroundExecutorPort,
+    ChatRunExecutorPort,
+)
 
 
 class InProcessRunExecutionDispatcher:
@@ -33,8 +14,8 @@ class InProcessRunExecutionDispatcher:
 
     def __init__(
         self,
-        run_executor: ChatRunExecutor,
-        background_executor: BackgroundExecutor | None = None,
+        run_executor: ChatRunExecutorPort,
+        background_executor: BackgroundExecutorPort | None = None,
     ) -> None:
         self._run_executor = run_executor
         self._background_executor = (

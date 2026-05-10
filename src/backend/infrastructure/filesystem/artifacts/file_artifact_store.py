@@ -1,8 +1,11 @@
-from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from shutil import copy2
 from uuid import UUID
 
+from backend.application.ports.filesystem.dto import (
+    OpenedArtifactFile,
+    SavedArtifactFile,
+)
 from backend.shared.errors import AppError, ErrorClass
 
 _MIME_TYPE_BY_SUFFIX = {
@@ -14,23 +17,6 @@ _MIME_TYPE_BY_SUFFIX = {
     ".csv": "text/csv",
 }
 _DEFAULT_ALLOWED_MIME_TYPES = tuple(_MIME_TYPE_BY_SUFFIX.values())
-
-
-@dataclass(frozen=True, slots=True)
-class SavedArtifactFile:
-    """保存済みCodex成果物のDB保存用メタ情報。"""
-
-    artifact_id: UUID
-    mime_type: str
-    relative_path: str
-
-
-@dataclass(frozen=True, slots=True)
-class OpenedArtifactFile:
-    """配信可能な保存済みCodex成果物ファイル。"""
-
-    path: Path
-    mime_type: str
 
 
 class FileArtifactStore:

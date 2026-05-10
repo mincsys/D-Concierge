@@ -5,12 +5,12 @@ import pytest
 
 from backend.application.execution.cancel_chat_run import (
     CancelChatRunUseCase,
-    CancelRequestResult,
 )
 from backend.application.execution.execute_chat_run import RunEvent
+from backend.application.ports.codex.dto import CancelRequestResult
 from backend.domain.execution.run_state_policy import RunState
-from backend.infrastructure.memory.repository import InMemoryChatRepository
 from backend.shared.errors import AppError, ErrorClass
+from backend.tests.support.memory_repository import InMemoryChatRepository
 
 
 def test_cancel_chat_run_use_case_completes_accepted_run_without_cancel_request() -> (

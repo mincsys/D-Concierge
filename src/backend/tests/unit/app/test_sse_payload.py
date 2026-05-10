@@ -4,7 +4,7 @@ import pytest
 
 from backend.app.factory import _run_event_payload
 from backend.application.execution.execute_chat_run import RunEvent
-from backend.infrastructure.memory.repository import AnswerData
+from backend.application.ports.database.dto import AnswerData
 from backend.shared.errors import AppError, ErrorClass
 
 
