@@ -101,7 +101,7 @@ describe("ChatPage integration", () => {
 
   it("観点：チャット画面連携。確認：開始、SSE、参照元、履歴、継続、キャンセルが画面へ反映される。", async () => {
     const user = userEvent.setup();
-    render(
+    const { container } = render(
       <Providers>
         <ChatPage />
       </Providers>,
@@ -137,7 +137,18 @@ describe("ChatPage integration", () => {
 
     expect(await screen.findByText("調査中")).toBeInTheDocument();
     expect(await screen.findByText("回答本文", {}, { timeout: 3000 })).toBeInTheDocument();
-    expect(await screen.findByText("連携図", {}, { timeout: 3000 })).toBeInTheDocument();
+    await waitFor(
+      () => {
+        expect(mermaidMocks.render).toHaveBeenCalledWith(expect.any(String), "graph TD;A-->B;");
+      },
+      { timeout: 5000 },
+    );
+    await waitFor(
+      () => {
+        expect(container.querySelector(".mermaid-preview")?.innerHTML).toContain("連携図");
+      },
+      { timeout: 5000 },
+    );
     await user.click(await screen.findByRole("button", { name: /資料 p.1-2/ }, { timeout: 3000 }));
     expect(screen.getByRole("dialog", { name: "資料" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "閉じる" }));
