@@ -4,6 +4,7 @@ from pathlib import Path, PurePosixPath
 from typing import TypedDict
 
 from backend.domain.answer.answer_candidate import ParsedAnswerCandidate
+from backend.shared.errors import ValidationWorkspacePreparationError
 
 
 class ReadonlyReferencePayload(TypedDict):
@@ -53,6 +54,40 @@ def prepare_validation_session_readonly(
         datasource_dir=datasource_dir,
         include_artifacts=False,
     )
+
+
+def prepare_validation_session_artifacts(
+    *,
+    validation_workdir: Path,
+    generation_workdir: Path,
+    has_artifact_links: bool,
+) -> None:
+    """検証用セッション作業領域へ生成用成果物を提示する。"""
+    if not has_artifact_links:
+        return
+
+    source = generation_workdir / "artifacts"
+    if not source.is_dir():
+        raise ValidationWorkspacePreparationError(
+            "生成成果物ディレクトリを検証用作業領域へ提示できません。",
+        )
+
+    validation_workdir.mkdir(parents=True, exist_ok=True)
+    destination = validation_workdir / "artifacts"
+    if destination.is_symlink() or destination.is_file():
+        destination.unlink()
+    elif destination.is_dir():
+        shutil.rmtree(destination)
+
+    try:
+        destination.symlink_to(
+            os.path.relpath(source, destination.parent),
+            target_is_directory=True,
+        )
+    except OSError as exc:
+        raise ValidationWorkspacePreparationError(
+            "生成成果物ディレクトリを検証用作業領域へ提示できません。",
+        ) from exc
 
 
 def _prepare_session_readonly(

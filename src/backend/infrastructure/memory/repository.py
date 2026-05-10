@@ -83,7 +83,6 @@ class AnswerData:
     """回答表示データ。"""
 
     blocks: tuple["AnswerBlockData", ...]
-    artifacts: tuple[ArtifactData, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -92,6 +91,7 @@ class AnswerBlockData:
 
     markdown: str
     references: tuple[DisplayReferenceData, ...] = ()
+    artifacts: tuple[ArtifactData, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -337,9 +337,9 @@ class InMemoryChatRepository:
             for block in answer.blocks:
                 for reference in block.references:
                     self._references[reference.reference_id] = reference
-            for artifact in answer.artifacts:
-                self._artifacts[artifact.artifact_id] = artifact
-                self._latest_artifact_id = artifact.artifact_id
+                for artifact in block.artifacts:
+                    self._artifacts[artifact.artifact_id] = artifact
+                    self._latest_artifact_id = artifact.artifact_id
             self._chats[chat_id].updated_at = now
 
     def cancel_run(self, chat_id: UUID, run_id: UUID) -> None:
@@ -401,9 +401,9 @@ class InMemoryChatRepository:
                     AnswerBlockData(
                         markdown=markdown,
                         references=(reference,),
+                        artifacts=(artifact,),
                     ),
                 ),
-                artifacts=(artifact,),
             )
             self._references[reference_id] = reference
             self._artifacts[artifact_id] = artifact

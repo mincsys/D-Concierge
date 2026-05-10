@@ -9,7 +9,6 @@ from sqlalchemy.pool import ConnectionPoolEntry, StaticPool
 
 from backend.infrastructure.database.models import (
     AnswerBlockModel,
-    AnswerModel,
     Base,
     ChatModel,
     ChatRunModel,
@@ -107,13 +106,13 @@ def test_sqlalchemy_repository_persists_execution_result_for_detail() -> None:
                             page_end=3,
                         ),
                     ),
-                ),
-            ),
-            artifacts=(
-                ArtifactData(
-                    artifact_id=artifact_id,
-                    mime_type="image/svg+xml",
-                    relative_path="chart.svg",
+                    artifacts=(
+                        ArtifactData(
+                            artifact_id=artifact_id,
+                            mime_type="image/svg+xml",
+                            relative_path="chart.svg",
+                        ),
+                    ),
                 ),
             ),
         ),
@@ -128,7 +127,7 @@ def test_sqlalchemy_repository_persists_execution_result_for_detail() -> None:
     assert detail.runs[0].answer is not None
     assert detail.runs[0].answer.blocks[0].markdown == "検証済み回答"
     assert detail.runs[0].answer.blocks[0].references[0].relative_path == "manual.pdf"
-    assert detail.runs[0].answer.artifacts[0].relative_path == "chart.svg"
+    assert detail.runs[0].answer.blocks[0].artifacts[0].relative_path == "chart.svg"
     assert repository.get_reference(reference_id).page_start == 2
     assert repository.get_artifact(artifact_id).mime_type == "image/svg+xml"
 
@@ -161,7 +160,6 @@ def test_sqlalchemy_repository_saves_answer_with_foreign_key_checks() -> None:
                     ),
                 ),
             ),
-            artifacts=(),
         ),
     )
 
@@ -169,6 +167,15 @@ def test_sqlalchemy_repository_saves_answer_with_foreign_key_checks() -> None:
 
     assert detail.runs[0].answer is not None
     assert detail.runs[0].answer.blocks[0].references[0].reference_id == reference_id
+
+
+def test_sqlalchemy_repository_schema_uses_answer_blocks_without_answers_table() -> (
+    None
+):
+    """観点：物理データ構造。確認：回答ブロックをrunへ直接紐づけ、回答テーブルを持たない。"""
+    assert "answers" not in Base.metadata.tables
+    assert "run_id" in AnswerBlockModel.__table__.columns
+    assert "answer_id" not in AnswerBlockModel.__table__.columns
 
 
 def test_sqlalchemy_repository_allows_append_after_terminal_run() -> None:
@@ -352,21 +359,14 @@ def test_sqlalchemy_repository_rejects_corrupted_reference_locator() -> None:
     """
     repository, session_factory = _make_repository_with_session_factory()
     accepted = repository.create_chat_with_first_run("初回")
-    answer_id = uuid4()
     reference_id = uuid4()
     with session_factory() as session:
         with session.begin():
-            session.add(
-                AnswerModel(
-                    id=answer_id,
-                    run_id=accepted.run_id,
-                )
-            )
             block_id = uuid4()
             session.add(
                 AnswerBlockModel(
                     id=block_id,
-                    answer_id=answer_id,
+                    run_id=accepted.run_id,
                     position=1,
                     markdown="回答",
                 )

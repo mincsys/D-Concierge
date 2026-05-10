@@ -10,6 +10,7 @@
 - 呼出主体: `SaveAdoptedArtifactsUseCase`、`ValidateAnswerUseCase`、`GetArtifactUseCase`。
 - 本IFはCodex作業領域内の成果物候補と、保存済み成果物領域を分離して扱う。
 - セッション内 `artifacts/` は採用前の一時領域であり、履歴表示やブラウザ配信では直接参照しない。
+- 回答本文内の成果物リンクは固定検証で `artifacts/...` または `./artifacts/...` 形式に限定される。
 
 ## 3. IF概要
 
@@ -44,6 +45,7 @@ sequenceDiagram
 
 - 回答ブロック本文で参照された成果物候補パスがCodex作業領域からの相対パスである。
 - 成果物候補パスは対象セッションの `artifacts/` 配下を指している。
+- 成果物候補の拡張子は `.svg`、`.png`、`.jpg`、`.jpeg`、`.html`、`.csv` のいずれかである。
 - 保存先run IDとartifact IDが採番済みである。
 - 許可するMIMEタイプと拡張子が設定済みである。
 
@@ -89,6 +91,17 @@ sequenceDiagram
 | 成果物候補 | 対象セッションの `artifacts/` 配下へ正規化できる相対パスだけを許可する。 |
 | 保存済み成果物 | `codex.saved_artifacts_dir/<run_id>/<artifact_id>.<拡張子>` 配下へ正規化できる保存参照だけを許可する。 |
 | 共有データソース | 参照元として扱い、Codex成果物保存対象にはしない。 |
+
+### 6.4. 許可拡張子とMIMEタイプ
+
+| 拡張子 | MIMEタイプ | 用途 |
+| --- | --- | --- |
+| `.svg` | `image/svg+xml` | 画像表示または通常リンク |
+| `.png` | `image/png` | 画像表示または通常リンク |
+| `.jpg` | `image/jpeg` | 画像表示または通常リンク |
+| `.jpeg` | `image/jpeg` | 画像表示または通常リンク |
+| `.html` | `text/html` | 通常リンク |
+| `.csv` | `text/csv` | 通常リンク |
 
 ## 7. 例外処理
 

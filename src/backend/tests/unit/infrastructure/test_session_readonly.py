@@ -6,8 +6,10 @@ from pytest import MonkeyPatch
 
 from backend.infrastructure.codex.session_readonly import (
     prepare_generation_session_readonly,
+    prepare_validation_session_artifacts,
     prepare_validation_session_readonly,
 )
+from backend.shared.errors import ValidationWorkspacePreparationError
 
 type ReadonlyPreparer = Callable[[Path, Path], None]
 
@@ -100,3 +102,67 @@ def test_prepare_session_readonly_copies_when_symlink_fails(
     assert (readonly_dir / "manuals").is_dir()
     assert not (readonly_dir / "manuals").is_symlink()
     assert (readonly_dir / "manuals" / "page.md").read_text(encoding="utf-8") == "本文"
+
+
+def test_prepare_validation_session_artifacts_links_generation_artifacts(
+    tmp_path: Path,
+) -> None:
+    """観点：検証用Codex作業領域。確認：生成成果物を検証用artifactsへsymlinkする。"""
+    generation_workdir = tmp_path / "generation"
+    generation_artifacts = generation_workdir / "artifacts"
+    generation_artifacts.mkdir(parents=True)
+    (generation_artifacts / "chart.svg").write_text("<svg />", encoding="utf-8")
+    validation_workdir = tmp_path / "validation"
+
+    prepare_validation_session_artifacts(
+        validation_workdir=validation_workdir,
+        generation_workdir=generation_workdir,
+        has_artifact_links=True,
+    )
+
+    validation_artifacts = validation_workdir / "artifacts"
+    assert validation_artifacts.is_symlink()
+    assert (validation_artifacts / "chart.svg").read_text(encoding="utf-8") == "<svg />"
+
+
+def test_prepare_validation_session_artifacts_does_not_create_without_links(
+    tmp_path: Path,
+) -> None:
+    """観点：検証用Codex作業領域。確認：成果物リンクがなければartifactsを作成しない。"""
+    validation_workdir = tmp_path / "validation"
+
+    prepare_validation_session_artifacts(
+        validation_workdir=validation_workdir,
+        generation_workdir=tmp_path / "generation",
+        has_artifact_links=False,
+    )
+
+    assert not (validation_workdir / "artifacts").exists()
+
+
+def test_prepare_validation_session_artifacts_raises_when_symlink_fails(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    """観点：検証用Codex作業領域。確認：artifactsのsymlink失敗はコピーせずシステムエラーにする。"""
+    generation_artifacts = tmp_path / "generation" / "artifacts"
+    generation_artifacts.mkdir(parents=True)
+
+    def raise_os_error(
+        self: Path,
+        target: str,
+        target_is_directory: bool = False,
+    ) -> None:
+        _ = (self, target, target_is_directory)
+        raise OSError("symlink disabled")
+
+    monkeypatch.setattr(Path, "symlink_to", raise_os_error)
+
+    with pytest.raises(ValidationWorkspacePreparationError):
+        prepare_validation_session_artifacts(
+            validation_workdir=tmp_path / "validation",
+            generation_workdir=tmp_path / "generation",
+            has_artifact_links=True,
+        )
+
+    assert not (tmp_path / "validation" / "artifacts").exists()

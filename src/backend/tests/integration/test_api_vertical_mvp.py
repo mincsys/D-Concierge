@@ -666,12 +666,16 @@ def test_artifact_endpoint_returns_404_when_file_is_missing(tmp_path: Path) -> N
         accepted.chat_id,
         accepted.run_id,
         AnswerData(
-            blocks=(AnswerBlockData(markdown="回答"),),
-            artifacts=(
-                ArtifactData(
-                    artifact_id=artifact_id,
-                    mime_type="image/png",
-                    relative_path="missing.png",
+            blocks=(
+                AnswerBlockData(
+                    markdown="回答",
+                    artifacts=(
+                        ArtifactData(
+                            artifact_id=artifact_id,
+                            mime_type="image/png",
+                            relative_path="missing.png",
+                        ),
+                    ),
                 ),
             ),
         ),

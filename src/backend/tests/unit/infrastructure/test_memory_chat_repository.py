@@ -39,13 +39,13 @@ def test_memory_repository_saves_answer_references_and_artifacts() -> None:
                             page_end=2,
                         ),
                     ),
-                ),
-            ),
-            artifacts=(
-                ArtifactData(
-                    artifact_id=artifact_id,
-                    mime_type="text/html",
-                    relative_path="report.html",
+                    artifacts=(
+                        ArtifactData(
+                            artifact_id=artifact_id,
+                            mime_type="text/html",
+                            relative_path="report.html",
+                        ),
+                    ),
                 ),
             ),
         ),

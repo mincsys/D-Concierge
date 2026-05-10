@@ -26,6 +26,7 @@ from backend.shared.errors import (
     ErrorClass,
     ReferencePdfReadError,
     RunTimeoutError,
+    ValidationWorkspacePreparationError,
 )
 from backend.shared.tracing import TraceLogger, TraceLogRecord
 
@@ -141,6 +142,7 @@ class AnswerValidator(Protocol):
         trace_id: str,
         timeout_seconds: int,
         on_intermediate_message: Callable[[str], None] | None = None,
+        session_workdir: Path | None = None,
     ) -> AnswerValidationResult:
         """回答候補を検証し、採用可否を返す。"""
 
@@ -225,6 +227,36 @@ class ExecuteChatRunUseCase:
                 )
             )
         except ReferencePdfReadError as exc:
+            if self._is_canceled(chat_id, run_id):
+                self._finish_canceled(chat_id, run_id)
+                self._write_trace(
+                    TraceLogRecord(
+                        trace_id=trace_id,
+                        event_name="execution_canceled",
+                        stage="execution",
+                        chat_id=chat_id,
+                        run_id=run_id,
+                        run_state="キャンセル済み",
+                        cancel_state="canceled",
+                    )
+                )
+                return
+            self._finish_error(chat_id, run_id, exc.user_message)
+            self._write_trace(
+                TraceLogRecord(
+                    trace_id=trace_id,
+                    event_name="execution_failed",
+                    stage="validation",
+                    chat_id=chat_id,
+                    run_id=run_id,
+                    error_class=exc.error_class.value,
+                    exception_type=type(exc).__name__,
+                    run_state="エラー",
+                    validation_failure_reason=exc.diagnostic_message,
+                    message=exc.user_message,
+                )
+            )
+        except ValidationWorkspacePreparationError as exc:
             if self._is_canceled(chat_id, run_id):
                 self._finish_canceled(chat_id, run_id)
                 self._write_trace(
@@ -370,6 +402,7 @@ class ExecuteChatRunUseCase:
             self._record_intermediate_message(
                 chat_id, run_id, VALIDATION_STARTED_MESSAGE
             )
+            session_workdir = self._resolve_session_workdir(chat_id)
             validation = self._answer_validator.validate(
                 result.final_answer_json,
                 retry_count,
@@ -380,6 +413,7 @@ class ExecuteChatRunUseCase:
                 on_intermediate_message=lambda message: (
                     self._record_intermediate_message(chat_id, run_id, message)
                 ),
+                session_workdir=session_workdir,
             )
             if self._is_canceled(chat_id, run_id):
                 self._finish_canceled(chat_id, run_id)
@@ -460,7 +494,9 @@ class ExecuteChatRunUseCase:
         trace_id: str,
     ) -> None:
         markdowns = tuple(block.markdown for block in candidate.blocks)
-        artifacts: tuple[ArtifactData, ...] = ()
+        block_artifacts: tuple[tuple[ArtifactData, ...], ...] = tuple(
+            () for _block in candidate.blocks
+        )
         if self._artifact_saver is not None:
             session_workdir = self._resolve_session_workdir(chat_id)
             if session_workdir is None:
@@ -472,14 +508,17 @@ class ExecuteChatRunUseCase:
                 session_workdir=session_workdir,
                 trace_id=trace_id,
             )
-            markdowns = saved.markdowns
-            artifacts = tuple(
-                ArtifactData(
-                    artifact_id=artifact.artifact_id,
-                    mime_type=artifact.mime_type,
-                    relative_path=artifact.relative_path,
+            markdowns = tuple(block.markdown for block in saved.blocks)
+            block_artifacts = tuple(
+                tuple(
+                    ArtifactData(
+                        artifact_id=artifact.artifact_id,
+                        mime_type=artifact.mime_type,
+                        relative_path=artifact.relative_path,
+                    )
+                    for artifact in block.artifacts
                 )
-                for artifact in saved.artifacts
+                for block in saved.blocks
             )
 
         answer = AnswerData(
@@ -497,10 +536,12 @@ class ExecuteChatRunUseCase:
                         )
                         for reference in _merge_references(block.references)
                     ),
+                    artifacts=artifacts,
                 )
-                for markdown, block in zip(markdowns, candidate.blocks, strict=True)
+                for markdown, block, artifacts in zip(
+                    markdowns, candidate.blocks, block_artifacts, strict=True
+                )
             ),
-            artifacts=artifacts,
         )
         self._repository.save_completed_answer(chat_id, run_id, answer)
         self._repository.set_run_state(chat_id, run_id, "完了")

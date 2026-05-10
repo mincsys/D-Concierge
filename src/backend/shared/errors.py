@@ -46,5 +46,24 @@ class ReferencePdfReadError(AppError):
         )
 
 
+class ValidationWorkspacePreparationError(AppError):
+    """検証用Codex作業領域の準備に失敗したことを示すシステムエラー。"""
+
+    def __init__(self, message: str, cause: Exception | None = None) -> None:
+        super().__init__(ErrorClass.SYSTEM, "処理中にエラーが発生しました。")
+        self.message = message
+        self.cause_type = type(cause).__name__ if cause is not None else ""
+        self.cause_message = str(cause) if cause is not None else ""
+
+    @property
+    def diagnostic_message(self) -> str:
+        """トレースログ向けの診断メッセージを返す。"""
+        if self.cause_type == "":
+            return self.message
+        if self.cause_message == "":
+            return f"{self.message} ({self.cause_type})"
+        return f"{self.message} ({self.cause_type}: {self.cause_message})"
+
+
 class RunTimeoutError(Exception):
     """チャット実行または外部実行がタイムアウトしたことを示す。"""

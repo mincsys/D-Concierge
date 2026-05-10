@@ -106,26 +106,18 @@ def upgrade() -> None:
     )
 
     op.create_table(
-        "answers",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("run_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.ForeignKeyConstraint(["run_id"], ["chat_runs.id"], ondelete="CASCADE"),
-        sa.UniqueConstraint("run_id", name="uq_answers_run_id"),
-    )
-
-    op.create_table(
         "answer_blocks",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("answer_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("run_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("position", sa.Integer(), nullable=False),
         sa.Column("markdown", sa.Text(), nullable=False),
         sa.CheckConstraint("position > 0", name="ck_answer_blocks_position_positive"),
         sa.CheckConstraint(
             "length(trim(markdown)) > 0", name="ck_answer_blocks_markdown_not_blank"
         ),
-        sa.ForeignKeyConstraint(["answer_id"], ["answers.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["run_id"], ["chat_runs.id"], ondelete="CASCADE"),
         sa.UniqueConstraint(
-            "answer_id", "position", name="uq_answer_blocks_answer_id_position"
+            "run_id", "position", name="uq_answer_blocks_run_id_position"
         ),
     )
 
@@ -161,11 +153,13 @@ def upgrade() -> None:
     op.create_table(
         "artifacts",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("answer_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("answer_block_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("mime_type", sa.String(length=100), nullable=False),
         sa.Column("storage_path", sa.Text(), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-        sa.ForeignKeyConstraint(["answer_id"], ["answers.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["answer_block_id"], ["answer_blocks.id"], ondelete="CASCADE"
+        ),
         sa.UniqueConstraint("storage_path", name="uq_artifacts_storage_path"),
     )
 
@@ -174,7 +168,6 @@ def downgrade() -> None:
     op.drop_table("artifacts")
     op.drop_table("references")
     op.drop_table("answer_blocks")
-    op.drop_table("answers")
     op.drop_index(
         "ix_intermediate_messages_run_id_created_at_id",
         table_name="intermediate_messages",

@@ -41,6 +41,36 @@ def test_file_artifact_store_copies_candidate_into_saved_area(
     )
 
 
+@pytest.mark.parametrize(
+    ("candidate_name", "expected_mime_type"),
+    [
+        ("photo.jpg", "image/jpeg"),
+        ("photo.jpeg", "image/jpeg"),
+    ],
+)
+def test_file_artifact_store_allows_jpeg_images(
+    tmp_path: Path,
+    candidate_name: str,
+    expected_mime_type: str,
+) -> None:
+    """観点：成果物ファイルIF。確認：jpg/jpeg画像を保存対象にできる。"""
+    session_workdir = tmp_path / "sessions" / "user" / "session"
+    (session_workdir / "artifacts").mkdir(parents=True)
+    (session_workdir / "artifacts" / candidate_name).write_bytes(b"jpeg")
+    run_id = UUID("00000000-0000-0000-0000-000000000606")
+    artifact_id = UUID("00000000-0000-0000-0000-000000000616")
+    store = FileArtifactStore(saved_artifacts_dir=tmp_path / "saved_artifacts")
+
+    saved = store.save_adopted_file(
+        session_workdir=session_workdir,
+        candidate_relative_path=f"artifacts/{candidate_name}",
+        run_id=run_id,
+        artifact_id=artifact_id,
+    )
+
+    assert saved.mime_type == expected_mime_type
+
+
 def test_file_artifact_store_opens_saved_file(tmp_path: Path) -> None:
     """観点：成果物配信。確認：保存済み領域内のメタ情報だけを配信用に開く。"""
     saved_root = tmp_path / "saved_artifacts"

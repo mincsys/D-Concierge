@@ -9,6 +9,7 @@
 - 本クラスは `クラス一覧.md` で詳細設計対象としたクラスである。
 - 保存済みCodex成果物領域は `codex.saved_artifacts_dir/<run_id>/<artifact_id>.<拡張子>` 形式を使用する。
 - 採用前の成果物候補は対象セッションの `artifacts/` 配下にだけ存在するものとして扱う。
+- 許可する成果物拡張子は `.svg`、`.png`、`.jpg`、`.jpeg`、`.html`、`.csv` とする。
 
 ## 3. 責務
 

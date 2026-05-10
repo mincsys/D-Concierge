@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
@@ -7,7 +8,6 @@ from sqlalchemy.orm import Session, sessionmaker
 from backend.domain.execution.run_state_policy import RunState, RunStatePolicy
 from backend.infrastructure.database.models import (
     AnswerBlockModel,
-    AnswerModel,
     ArtifactModel,
     ChatModel,
     ChatRunModel,
@@ -271,23 +271,15 @@ class SqlAlchemyChatRepository:
     ) -> None:
         """実行対象runへ検証済み回答と表示用メタ情報を保存する。"""
         now = datetime.now(UTC)
-        answer_id = uuid4()
         with self._session_factory() as session:
             with session.begin():
                 self._get_run(session, chat_id, run_id)
-                session.add(
-                    AnswerModel(
-                        id=answer_id,
-                        run_id=run_id,
-                    )
-                )
-                session.flush()
                 for block_position, block in enumerate(answer.blocks, start=1):
                     block_id = uuid4()
                     session.add(
                         AnswerBlockModel(
                             id=block_id,
-                            answer_id=answer_id,
+                            run_id=run_id,
                             position=block_position,
                             markdown=block.markdown,
                         )
@@ -311,16 +303,16 @@ class SqlAlchemyChatRepository:
                                 },
                             )
                         )
-                for artifact in answer.artifacts:
-                    session.add(
-                        ArtifactModel(
-                            id=artifact.artifact_id,
-                            answer_id=answer_id,
-                            mime_type=artifact.mime_type,
-                            storage_path=artifact.relative_path,
-                            created_at=now,
+                    for artifact in block.artifacts:
+                        session.add(
+                            ArtifactModel(
+                                id=artifact.artifact_id,
+                                answer_block_id=block_id,
+                                mime_type=artifact.mime_type,
+                                storage_path=artifact.relative_path,
+                                created_at=now,
+                            )
                         )
-                    )
                 chat = self._get_chat(session, chat_id)
                 chat.updated_at = now
 
@@ -396,9 +388,11 @@ class SqlAlchemyChatRepository:
             .where(IntermediateMessageModel.run_id == run.id)
             .order_by(IntermediateMessageModel.created_at, IntermediateMessageModel.id)
         ).all()
-        answer = session.scalar(
-            sa.select(AnswerModel).where(AnswerModel.run_id == run.id)
-        )
+        blocks = session.scalars(
+            sa.select(AnswerBlockModel)
+            .where(AnswerBlockModel.run_id == run.id)
+            .order_by(AnswerBlockModel.position, AnswerBlockModel.id)
+        ).all()
         return RunDetail(
             run_id=run.id,
             state=run.state,
@@ -406,34 +400,18 @@ class SqlAlchemyChatRepository:
             intermediate_messages=tuple(
                 IntermediateMessageData(text=message.body) for message in messages
             ),
-            answer=(
-                self._to_answer_data(session, answer) if answer is not None else None
-            ),
+            answer=self._to_answer_data(session, blocks) if blocks else None,
             user_message=run.user_message,
         )
 
-    def _to_answer_data(self, session: Session, answer: AnswerModel) -> AnswerData:
-        blocks = session.scalars(
-            sa.select(AnswerBlockModel)
-            .where(AnswerBlockModel.answer_id == answer.id)
-            .order_by(AnswerBlockModel.position, AnswerBlockModel.id)
-        ).all()
-        artifacts = session.scalars(
-            sa.select(ArtifactModel)
-            .where(ArtifactModel.answer_id == answer.id)
-            .order_by(ArtifactModel.id)
-        ).all()
+    def _to_answer_data(
+        self,
+        session: Session,
+        blocks: Sequence[AnswerBlockModel],
+    ) -> AnswerData:
         return AnswerData(
             blocks=tuple(
                 self._to_answer_block_data(session, block) for block in blocks
-            ),
-            artifacts=tuple(
-                ArtifactData(
-                    artifact_id=artifact.id,
-                    mime_type=artifact.mime_type,
-                    relative_path=artifact.storage_path,
-                )
-                for artifact in artifacts
             ),
         )
 
@@ -447,10 +425,23 @@ class SqlAlchemyChatRepository:
             .where(ReferenceModel.answer_block_id == block.id)
             .order_by(ReferenceModel.position, ReferenceModel.id)
         ).all()
+        artifacts = session.scalars(
+            sa.select(ArtifactModel)
+            .where(ArtifactModel.answer_block_id == block.id)
+            .order_by(ArtifactModel.created_at, ArtifactModel.id)
+        ).all()
         return AnswerBlockData(
             markdown=block.markdown,
             references=tuple(
                 self._to_reference_data(reference) for reference in references
+            ),
+            artifacts=tuple(
+                ArtifactData(
+                    artifact_id=artifact.id,
+                    mime_type=artifact.mime_type,
+                    relative_path=artifact.storage_path,
+                )
+                for artifact in artifacts
             ),
         )
 

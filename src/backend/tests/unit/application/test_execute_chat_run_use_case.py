@@ -5,6 +5,7 @@ from pathlib import Path
 from uuid import UUID
 
 from backend.application.artifacts.save_adopted_artifacts import (
+    SavedAnswerBlockArtifacts,
     SavedAnswerBlocksArtifacts,
 )
 from backend.application.execution.execute_chat_run import (
@@ -466,14 +467,18 @@ def test_execute_chat_run_saves_adopted_artifacts() -> None:
     artifact_id = UUID("00000000-0000-0000-0000-000000000801")
     artifact_saver = RecordingArtifactSaver(
         saved=SavedAnswerBlocksArtifacts(
-            markdowns=(f"![図](/api/artifacts/{artifact_id})",),
-            artifacts=(
-                SavedArtifactFile(
-                    artifact_id=artifact_id,
-                    mime_type="image/png",
-                    relative_path=f"{accepted.run_id}/{artifact_id}.png",
+            blocks=(
+                SavedAnswerBlockArtifacts(
+                    markdown=f"![図](/api/artifacts/{artifact_id})",
+                    artifacts=(
+                        SavedArtifactFile(
+                            artifact_id=artifact_id,
+                            mime_type="image/png",
+                            relative_path=f"{accepted.run_id}/{artifact_id}.png",
+                        ),
+                    ),
                 ),
-            ),
+            )
         )
     )
     use_case = ExecuteChatRunUseCase(
@@ -505,7 +510,7 @@ def test_execute_chat_run_saves_adopted_artifacts() -> None:
         detail.runs[0].answer.blocks[0].markdown
         == f"![図](/api/artifacts/{artifact_id})"
     )
-    assert detail.runs[0].answer.artifacts[0].artifact_id == artifact_id
+    assert detail.runs[0].answer.blocks[0].artifacts[0].artifact_id == artifact_id
     assert artifact_saver.calls == [
         (
             ("![図](artifacts/chart.png)",),
@@ -541,7 +546,9 @@ def test_execute_chat_run_marks_error_when_artifact_workdir_is_missing() -> None
         answer_validator=ParsingAnswerValidator(),
         event_publisher=RecordingPublisher(),
         artifact_saver=RecordingArtifactSaver(
-            saved=SavedAnswerBlocksArtifacts(markdowns=("未使用",), artifacts=())
+            saved=SavedAnswerBlocksArtifacts(
+                blocks=(SavedAnswerBlockArtifacts(markdown="未使用", artifacts=()),)
+            )
         ),
     )
 
@@ -1290,6 +1297,7 @@ class AdoptionWithoutCandidateValidator:
         trace_id: str,
         timeout_seconds: int,
         on_intermediate_message: Callable[[str], None] | None = None,
+        session_workdir: Path | None = None,
     ) -> AnswerValidationResult:
         """採用可能ステータスだけを返す。"""
         _ = (
@@ -1300,6 +1308,7 @@ class AdoptionWithoutCandidateValidator:
             trace_id,
             timeout_seconds,
             on_intermediate_message,
+            session_workdir,
         )
         return AnswerValidationResult(status="採用可能")
 
@@ -1322,6 +1331,7 @@ class CancelingValidationValidator:
         trace_id: str,
         timeout_seconds: int,
         on_intermediate_message: Callable[[str], None] | None = None,
+        session_workdir: Path | None = None,
     ) -> AnswerValidationResult:
         """キャンセル要求中へ更新してから固定結果を返す。"""
         _ = (
@@ -1332,6 +1342,7 @@ class CancelingValidationValidator:
             trace_id,
             timeout_seconds,
             on_intermediate_message,
+            session_workdir,
         )
         self.repository.update_run_state_if_current(
             chat_id=self.chat_id,
@@ -1358,8 +1369,16 @@ class ParsingAnswerValidator:
         trace_id: str,
         timeout_seconds: int,
         on_intermediate_message: Callable[[str], None] | None = None,
+        session_workdir: Path | None = None,
     ) -> AnswerValidationResult:
-        _ = (retry_count, chat_id, run_id, trace_id, on_intermediate_message)
+        _ = (
+            retry_count,
+            chat_id,
+            run_id,
+            trace_id,
+            on_intermediate_message,
+            session_workdir,
+        )
         self.timeout_seconds.append(timeout_seconds)
         try:
             candidate = parse_generation_final_output(raw_answer_json)
@@ -1387,6 +1406,7 @@ class QueuedAnswerValidator:
         trace_id: str,
         timeout_seconds: int,
         on_intermediate_message: Callable[[str], None] | None = None,
+        session_workdir: Path | None = None,
     ) -> AnswerValidationResult:
         _ = (
             raw_answer_json,
@@ -1395,6 +1415,7 @@ class QueuedAnswerValidator:
             trace_id,
             timeout_seconds,
             on_intermediate_message,
+            session_workdir,
         )
         self.retry_counts.append(retry_count)
         return self.results[len(self.retry_counts) - 1]
@@ -1415,6 +1436,7 @@ class FailingValidationValidator:
         trace_id: str,
         timeout_seconds: int,
         on_intermediate_message: Callable[[str], None] | None = None,
+        session_workdir: Path | None = None,
     ) -> AnswerValidationResult:
         """固定例外を送出する。"""
         _ = (
@@ -1425,6 +1447,7 @@ class FailingValidationValidator:
             trace_id,
             timeout_seconds,
             on_intermediate_message,
+            session_workdir,
         )
         raise self.error
 
@@ -1442,9 +1465,10 @@ class ValidationStreamingAnswerValidator:
         trace_id: str,
         timeout_seconds: int,
         on_intermediate_message: Callable[[str], None] | None = None,
+        session_workdir: Path | None = None,
     ) -> AnswerValidationResult:
         """検証完了前に中間メッセージを通知する。"""
-        _ = (retry_count, chat_id, run_id, trace_id, timeout_seconds)
+        _ = (retry_count, chat_id, run_id, trace_id, timeout_seconds, session_workdir)
         if on_intermediate_message is None:
             raise AssertionError("検証中間メッセージ通知コールバックがありません。")
         on_intermediate_message("参照元PDFを検証しています。")

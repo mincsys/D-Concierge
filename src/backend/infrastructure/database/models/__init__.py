@@ -100,29 +100,15 @@ class IntermediateMessageModel(Base):
     )
 
 
-class AnswerModel(Base):
-    """`answers` テーブルのORMモデル。"""
-
-    __tablename__ = "answers"
-
-    id: Mapped[UUID] = mapped_column(sa.Uuid(as_uuid=True), primary_key=True)
-    run_id: Mapped[UUID] = mapped_column(
-        sa.Uuid(as_uuid=True),
-        sa.ForeignKey("chat_runs.id", ondelete="CASCADE"),
-        nullable=False,
-        unique=True,
-    )
-
-
 class AnswerBlockModel(Base):
     """`answer_blocks` テーブルのORMモデル。"""
 
     __tablename__ = "answer_blocks"
 
     id: Mapped[UUID] = mapped_column(sa.Uuid(as_uuid=True), primary_key=True)
-    answer_id: Mapped[UUID] = mapped_column(
+    run_id: Mapped[UUID] = mapped_column(
         sa.Uuid(as_uuid=True),
-        sa.ForeignKey("answers.id", ondelete="CASCADE"),
+        sa.ForeignKey("chat_runs.id", ondelete="CASCADE"),
         nullable=False,
     )
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False)
@@ -152,9 +138,9 @@ class ArtifactModel(Base):
     __tablename__ = "artifacts"
 
     id: Mapped[UUID] = mapped_column(sa.Uuid(as_uuid=True), primary_key=True)
-    answer_id: Mapped[UUID] = mapped_column(
+    answer_block_id: Mapped[UUID] = mapped_column(
         sa.Uuid(as_uuid=True),
-        sa.ForeignKey("answers.id", ondelete="CASCADE"),
+        sa.ForeignKey("answer_blocks.id", ondelete="CASCADE"),
         nullable=False,
     )
     mime_type: Mapped[str] = mapped_column(sa.String(100), nullable=False)

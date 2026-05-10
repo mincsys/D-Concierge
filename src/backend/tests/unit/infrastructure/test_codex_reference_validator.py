@@ -139,6 +139,52 @@ def test_codex_reference_validator_prepares_readonly_validation_context(
     assert (codex_runner.requests[0].workdir / "tmp").is_dir()
 
 
+def test_codex_reference_validator_links_generation_artifacts_when_needed(
+    tmp_path: Path,
+) -> None:
+    """観点：検証用Codex連携。確認：成果物リンクがある回答では生成成果物を検証用workdirへ提示する。"""
+    repository = InMemoryChatRepository()
+    accepted = repository.create_chat_with_first_run("資料を要約")
+    context = repository.get_chat_runtime_context(accepted.chat_id)
+    datasource_dir = tmp_path / "readonly"
+    datasource_dir.mkdir()
+    _write_pdf(datasource_dir / "manual.pdf", page_count=2)
+    generation_workdir = (
+        tmp_path
+        / "codex/sessions"
+        / str(context.local_user_id)
+        / str(context.session_id)
+    )
+    generation_artifacts = generation_workdir / "artifacts"
+    generation_artifacts.mkdir(parents=True)
+    (generation_artifacts / "chart.svg").write_text("<svg />", encoding="utf-8")
+    codex_runner = RecordingCodexRunner(
+        result=InfrastructureCodexRunResult(
+            events=(),
+            final_message='{"payload":{"kind":"final","valid":true,"comment":""}}',
+            codex_conversation_id="thread",
+        )
+    )
+    validator = _reference_validator(
+        repository=repository,
+        codex_runner=codex_runner,
+        datasource_dir=datasource_dir,
+        tmp_path=tmp_path,
+    )
+
+    validator.validate_references(
+        _candidate_with_pdf(),
+        chat_id=accepted.chat_id,
+        run_id=accepted.run_id,
+        session_workdir=generation_workdir,
+        has_artifact_links=True,
+    )
+
+    validation_artifacts = codex_runner.requests[0].workdir / "artifacts"
+    assert validation_artifacts.is_symlink()
+    assert (validation_artifacts / "chart.svg").read_text(encoding="utf-8") == "<svg />"
+
+
 def test_codex_reference_validator_streams_intermediate_messages(
     tmp_path: Path,
 ) -> None:

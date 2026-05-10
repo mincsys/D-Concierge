@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from backend.application.validation.validate_answer import (
     ReferenceValidationResult,
@@ -171,9 +172,11 @@ class RecordingReferenceValidator:
         trace_id: str = "",
         timeout_seconds: int | None = None,
         on_intermediate_message: object | None = None,
+        session_workdir: Path | None = None,
+        has_artifact_links: bool = False,
     ) -> ReferenceValidationResult:
         """検証対象を記録して固定結果を返す。"""
-        _ = (chat_id, run_id, trace_id)
+        _ = (chat_id, run_id, trace_id, session_workdir, has_artifact_links)
         self.validated_candidates.append(candidate)
         self.timeout_seconds.append(timeout_seconds)
         if self.emitted_message is not None and callable(on_intermediate_message):

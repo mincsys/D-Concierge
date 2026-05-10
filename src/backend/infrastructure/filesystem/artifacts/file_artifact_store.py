@@ -8,6 +8,8 @@ from backend.shared.errors import AppError, ErrorClass
 _MIME_TYPE_BY_SUFFIX = {
     ".svg": "image/svg+xml",
     ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
     ".html": "text/html",
     ".csv": "text/csv",
 }

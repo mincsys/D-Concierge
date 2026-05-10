@@ -29,12 +29,18 @@ from backend.infrastructure.codex.intermediate_messages import (
 from backend.infrastructure.codex.jsonl_event_parser import JsonValue
 from backend.infrastructure.codex.session_readonly import (
     build_readonly_answer_candidate_payload,
+    prepare_validation_session_artifacts,
     prepare_validation_session_readonly,
 )
 from backend.infrastructure.config.models import CodexConfig
 from backend.infrastructure.filesystem.path_security import PathSecurityService
 from backend.infrastructure.memory.repository import ChatRuntimeContext
-from backend.shared.errors import AppError, ErrorClass, ReferencePdfReadError
+from backend.shared.errors import (
+    AppError,
+    ErrorClass,
+    ReferencePdfReadError,
+    ValidationWorkspacePreparationError,
+)
 
 
 class ChatRuntimeRepository(Protocol):
@@ -87,6 +93,8 @@ class CodexReferenceValidator:
         trace_id: str = "",
         timeout_seconds: int | None = None,
         on_intermediate_message: Callable[[str], None] | None = None,
+        session_workdir: Path | None = None,
+        has_artifact_links: bool = False,
     ) -> ReferenceValidationResult:
         """検証用codex execで回答候補の参照元妥当性を検証する。"""
         if chat_id is None or run_id is None:
@@ -109,6 +117,16 @@ class CodexReferenceValidator:
             workdir=workdir,
             datasource_dir=self._datasource_dir,
         )
+        if has_artifact_links:
+            if session_workdir is None:
+                raise ValidationWorkspacePreparationError(
+                    "生成成果物ディレクトリを検証用作業領域へ提示できません。",
+                )
+            prepare_validation_session_artifacts(
+                validation_workdir=workdir,
+                generation_workdir=session_workdir,
+                has_artifact_links=True,
+            )
         intermediate_streamer = CodexIntermediateMessageStreamer(
             on_intermediate_message
         )
