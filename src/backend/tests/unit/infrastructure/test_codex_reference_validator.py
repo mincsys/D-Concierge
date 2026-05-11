@@ -11,18 +11,21 @@ from backend.domain.answer.answer_candidate import (
     ParsedAnswerCandidate,
     ParsedReference,
 )
+from backend.infrastructure.codex.codex_event_kind import CodexEventKind
 from backend.infrastructure.codex.codex_runner import (
     CodexRunRequest,
 )
 from backend.infrastructure.codex.codex_runner import (
     CodexRunResult as InfrastructureCodexRunResult,
 )
-from backend.infrastructure.codex.jsonl_event_parser import ParsedCodexEvent
+from backend.infrastructure.codex.jsonl_event_parser import (
+    ParsedCodexEvent,
+)
 from backend.infrastructure.codex.reference_validator import CodexReferenceValidator
 from backend.infrastructure.config.models import CodexConfig
+from backend.shared.error_class import ErrorClass
 from backend.shared.errors import (
     AppError,
-    ErrorClass,
     ReferencePdfReadError,
     ValidationResultFormatError,
 )
@@ -40,16 +43,18 @@ def test_codex_reference_validator_runs_validation_and_saves_resume_id(
         result=InfrastructureCodexRunResult(
             events=(
                 ParsedCodexEvent(
-                    kind="thread_started",
+                    kind=CodexEventKind.THREAD_STARTED,
                     event_type="thread.started",
                     thread_id="next-val-thread",
                 ),
                 ParsedCodexEvent(
-                    kind="agent_message",
+                    kind=CodexEventKind.AGENT_MESSAGE,
                     event_type="item.completed",
                     text='{"payload":{"kind":"final","valid":false,"comment":"根拠が不足しています。"}}',
                 ),
-                ParsedCodexEvent(kind="turn_completed", event_type="turn.completed"),
+                ParsedCodexEvent(
+                    kind=CodexEventKind.TURN_COMPLETED, event_type="turn.completed"
+                ),
             ),
             final_message='{"payload":{"kind":"final","valid":false,"comment":"根拠が不足しています。"}}',
             codex_conversation_id="next-val-thread",
@@ -224,22 +229,26 @@ def test_codex_reference_validator_streams_intermediate_messages(
         result=InfrastructureCodexRunResult(
             events=(
                 ParsedCodexEvent(
-                    kind="thread_started",
+                    kind=CodexEventKind.THREAD_STARTED,
                     event_type="thread.started",
                     thread_id="validator-thread",
                 ),
                 ParsedCodexEvent(
-                    kind="agent_message",
+                    kind=CodexEventKind.AGENT_MESSAGE,
                     event_type="item.completed",
                     text='{"payload":{"kind":"progress","text":"参照元PDFを確認しています。"}}',
                 ),
-                ParsedCodexEvent(kind="unknown", event_type="item.completed"),
                 ParsedCodexEvent(
-                    kind="agent_message",
+                    kind=CodexEventKind.UNKNOWN, event_type="item.completed"
+                ),
+                ParsedCodexEvent(
+                    kind=CodexEventKind.AGENT_MESSAGE,
                     event_type="item.completed",
                     text='{"payload":{"kind":"final","valid":false,"comment":"根拠が不足しています。"}}',
                 ),
-                ParsedCodexEvent(kind="turn_completed", event_type="turn.completed"),
+                ParsedCodexEvent(
+                    kind=CodexEventKind.TURN_COMPLETED, event_type="turn.completed"
+                ),
             ),
             final_message='{"payload":{"kind":"final","valid":false,"comment":"根拠が不足しています。"}}',
             codex_conversation_id="validator-thread",
@@ -291,22 +300,22 @@ def test_codex_reference_validator_streams_progress_only(
         result=InfrastructureCodexRunResult(
             events=(
                 ParsedCodexEvent(
-                    kind="thread_started",
+                    kind=CodexEventKind.THREAD_STARTED,
                     event_type="thread.started",
                     thread_id="validator-thread",
                 ),
                 ParsedCodexEvent(
-                    kind="agent_message",
+                    kind=CodexEventKind.AGENT_MESSAGE,
                     event_type="item.completed",
                     text='{"payload":{"kind":"progress","text":"参照元を確認しています。"}}',
                 ),
                 ParsedCodexEvent(
-                    kind="agent_message",
+                    kind=CodexEventKind.AGENT_MESSAGE,
                     event_type="item.completed",
                     text='{"payload":{"kind":"final","valid":true,"comment":"検証しました。"}}',
                 ),
                 ParsedCodexEvent(
-                    kind="turn_completed",
+                    kind=CodexEventKind.TURN_COMPLETED,
                     event_type="turn.completed",
                 ),
             ),

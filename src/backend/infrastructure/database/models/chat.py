@@ -4,7 +4,6 @@ from uuid import UUID
 import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column
 
-from backend.domain.execution.run_state_policy import RunState
 from backend.infrastructure.database.models.base import Base
 
 
@@ -54,7 +53,7 @@ class ChatRunModel(Base):
         nullable=False,
         index=True,
     )
-    state: Mapped[RunState] = mapped_column(sa.String(20), nullable=False)
+    state: Mapped[str] = mapped_column(sa.String(20), nullable=False)
     started_at: Mapped[datetime] = mapped_column(
         sa.DateTime(timezone=True), nullable=False
     )

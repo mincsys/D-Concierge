@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from backend.application.ports.codex.dto import CodexRunResult
+from backend.infrastructure.codex.codex_event_kind import CodexEventKind
 from backend.infrastructure.codex.codex_runner import (
     CodexRunRequest,
 )
@@ -35,21 +36,23 @@ def test_codex_generation_runner_builds_request_and_saves_resume_id(
         result=InfrastructureCodexRunResult(
             events=(
                 ParsedCodexEvent(
-                    kind="thread_started",
+                    kind=CodexEventKind.THREAD_STARTED,
                     event_type="thread.started",
                     thread_id="next-thread",
                 ),
                 ParsedCodexEvent(
-                    kind="agent_message",
+                    kind=CodexEventKind.AGENT_MESSAGE,
                     event_type="item.completed",
                     text='{"payload":{"kind":"progress","text":"資料を検索しています。"}}',
                 ),
                 ParsedCodexEvent(
-                    kind="agent_message",
+                    kind=CodexEventKind.AGENT_MESSAGE,
                     event_type="item.completed",
                     text='{"payload":{"kind":"final","answers":[{"text":"回答","references":[]}]}}',
                 ),
-                ParsedCodexEvent(kind="turn_completed", event_type="turn.completed"),
+                ParsedCodexEvent(
+                    kind=CodexEventKind.TURN_COMPLETED, event_type="turn.completed"
+                ),
             ),
             final_message='{"payload":{"kind":"final","answers":[{"text":"回答","references":[]}]}}',
             codex_conversation_id="next-thread",
@@ -160,22 +163,26 @@ def test_codex_generation_runner_streams_intermediate_messages(
         result=InfrastructureCodexRunResult(
             events=(
                 ParsedCodexEvent(
-                    kind="thread_started",
+                    kind=CodexEventKind.THREAD_STARTED,
                     event_type="thread.started",
                     thread_id="thread",
                 ),
                 ParsedCodexEvent(
-                    kind="agent_message",
+                    kind=CodexEventKind.AGENT_MESSAGE,
                     event_type="item.completed",
                     text='{"payload":{"kind":"progress","text":"資料を確認しています。"}}',
                 ),
-                ParsedCodexEvent(kind="unknown", event_type="item.completed"),
                 ParsedCodexEvent(
-                    kind="agent_message",
+                    kind=CodexEventKind.UNKNOWN, event_type="item.completed"
+                ),
+                ParsedCodexEvent(
+                    kind=CodexEventKind.AGENT_MESSAGE,
                     event_type="item.completed",
                     text='{"payload":{"kind":"final","answers":[{"text":"回答","references":[]}]}}',
                 ),
-                ParsedCodexEvent(kind="turn_completed", event_type="turn.completed"),
+                ParsedCodexEvent(
+                    kind=CodexEventKind.TURN_COMPLETED, event_type="turn.completed"
+                ),
             ),
             final_message='{"payload":{"kind":"final","answers":[{"text":"回答","references":[]}]}}',
             codex_conversation_id="thread",
@@ -221,7 +228,7 @@ def test_intermediate_message_streamer_emits_agent_message_text_immediately() ->
 
     streamer.accept(
         ParsedCodexEvent(
-            kind="agent_message",
+            kind=CodexEventKind.AGENT_MESSAGE,
             event_type="item.completed",
             text='{"payload":{"kind":"progress","text":"参照元を確認しています。"}}',
         )
@@ -240,7 +247,7 @@ def test_generation_streamer_handles_payload_progress_and_final_json() -> None:
 
     streamer.accept(
         ParsedCodexEvent(
-            kind="agent_message",
+            kind=CodexEventKind.AGENT_MESSAGE,
             event_type="item.completed",
             text=(
                 '{"payload":{"kind":"progress","text":"関連文書を確認しています。"}}'
@@ -249,7 +256,7 @@ def test_generation_streamer_handles_payload_progress_and_final_json() -> None:
     )
     streamer.accept(
         ParsedCodexEvent(
-            kind="agent_message",
+            kind=CodexEventKind.AGENT_MESSAGE,
             event_type="item.completed",
             text=(
                 '{"payload":{"kind":"final","answers":'
@@ -258,7 +265,9 @@ def test_generation_streamer_handles_payload_progress_and_final_json() -> None:
         )
     )
     streamer.accept(
-        ParsedCodexEvent(kind="turn_completed", event_type="turn.completed")
+        ParsedCodexEvent(
+            kind=CodexEventKind.TURN_COMPLETED, event_type="turn.completed"
+        )
     )
 
     assert messages == ["関連文書を確認しています。"]
@@ -274,19 +283,21 @@ def test_intermediate_message_streamer_ignores_non_progress_events() -> None:
 
     streamer.accept(
         ParsedCodexEvent(
-            kind="agent_message",
+            kind=CodexEventKind.AGENT_MESSAGE,
             event_type="item.completed",
             text="参照元を確認しています。",
         )
     )
     streamer.accept(
         ParsedCodexEvent(
-            kind="agent_message",
+            kind=CodexEventKind.AGENT_MESSAGE,
             event_type="item.completed",
             text='{"payload":{"kind":"final","answers":[{"text":"回答","references":[]}]}}',
         )
     )
-    streamer.accept(ParsedCodexEvent(kind="unknown", event_type="item.completed"))
+    streamer.accept(
+        ParsedCodexEvent(kind=CodexEventKind.UNKNOWN, event_type="item.completed")
+    )
 
     assert messages == []
 
@@ -300,12 +311,14 @@ def test_intermediate_message_streamer_allows_no_emit_callback() -> None:
 
     streamer.accept(
         ParsedCodexEvent(
-            kind="agent_message",
+            kind=CodexEventKind.AGENT_MESSAGE,
             event_type="item.completed",
             text="通知されないメッセージ",
         )
     )
-    streamer.accept(ParsedCodexEvent(kind="unknown", event_type="item.completed"))
+    streamer.accept(
+        ParsedCodexEvent(kind=CodexEventKind.UNKNOWN, event_type="item.completed")
+    )
 
 
 @dataclass(slots=True)

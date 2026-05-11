@@ -22,6 +22,7 @@ from backend.domain.answer.answer_candidate import (
     invalid_reference_path_message,
     parsed_candidate_references,
 )
+from backend.domain.answer.output_kind import CodexOutputKind
 from backend.infrastructure.codex.codex_runner import (
     CodexRunRequest,
 )
@@ -41,9 +42,9 @@ from backend.infrastructure.codex.validator_codex_input import (
 )
 from backend.infrastructure.config.models import CodexConfig
 from backend.infrastructure.filesystem.path_security import PathSecurityService
+from backend.shared.error_class import ErrorClass
 from backend.shared.errors import (
     AppError,
-    ErrorClass,
     ReferencePdfReadError,
     ValidationResultFormatError,
     ValidationWorkspacePreparationError,
@@ -191,7 +192,10 @@ def _parse_validation_result(raw_json: str) -> _ParsedValidationResult:
         raise ValidationResultFormatError("検証結果の形式が不正です。")
 
     payload = loaded.get("payload")
-    if not isinstance(payload, dict) or payload.get("kind") != "final":
+    if (
+        not isinstance(payload, dict)
+        or payload.get("kind") != CodexOutputKind.FINAL.value
+    ):
         raise ValidationResultFormatError("検証結果の形式が不正です。")
     valid_value = payload.get("valid")
     comment_value = payload.get("comment")

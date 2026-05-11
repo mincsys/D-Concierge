@@ -13,7 +13,7 @@ from backend.application.ports.database.dto import (
     HistoryItem,
     UnfinishedRun,
 )
-from backend.domain.execution.run_state_policy import RunState
+from backend.domain.execution.run_state import RunState
 
 
 class TransactionManagerPort(Protocol):

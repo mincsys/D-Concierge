@@ -2,6 +2,7 @@ from concurrent.futures import ThreadPoolExecutor
 from threading import RLock
 from uuid import UUID
 
+from backend.application.ports.runtime.dispatch_status import DispatchStatus
 from backend.application.ports.runtime.dto import DispatchResult
 from backend.application.ports.runtime.interface import (
     BackgroundExecutorPort,
@@ -30,7 +31,7 @@ class InProcessRunExecutionDispatcher:
         """受付済みrunをバックグラウンド実行へ登録する。"""
         with self._lock:
             if run_id in self._active_run_ids:
-                return DispatchResult(status="already_registered")
+                return DispatchResult(status=DispatchStatus.ALREADY_REGISTERED)
             self._active_run_ids.add(run_id)
 
         try:
@@ -39,8 +40,8 @@ class InProcessRunExecutionDispatcher:
             )
         except RuntimeError as exc:
             self._release(run_id)
-            return DispatchResult(status="failed", failure_reason=str(exc))
-        return DispatchResult(status="registered")
+            return DispatchResult(status=DispatchStatus.FAILED, failure_reason=str(exc))
+        return DispatchResult(status=DispatchStatus.REGISTERED)
 
     def _execute_and_release(self, chat_id: UUID, run_id: UUID, trace_id: str) -> None:
         try:

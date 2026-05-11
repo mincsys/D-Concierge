@@ -1,15 +1,4 @@
-from enum import StrEnum
-
-
-class ErrorClass(StrEnum):
-    """アプリケーション全体で扱うエラー分類。"""
-
-    INPUT = "input"
-    NOT_FOUND = "not_found"
-    CONFLICT = "conflict"
-    CONFIGURATION = "configuration"
-    FORBIDDEN = "forbidden"
-    SYSTEM = "system"
+from backend.shared.error_class import ErrorClass
 
 
 class AppError(Exception):

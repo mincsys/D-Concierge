@@ -1,9 +1,8 @@
 import re
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
-from typing import Literal
 
-type ArtifactLinkKind = Literal["image", "link"]
+from backend.application.artifacts.artifact_link_kind import ArtifactLinkKind
 
 _IMAGE_SUFFIXES = frozenset((".svg", ".png", ".jpg", ".jpeg"))
 _LINK_SUFFIXES = frozenset((".svg", ".png", ".jpg", ".jpeg", ".html", ".csv"))
@@ -95,7 +94,9 @@ def extract_artifact_links(markdown: str) -> tuple[ArtifactLink, ...]:
                 end=match.end("target"),
                 raw_target=match.group("target"),
                 normalized_target=_normalize_artifact_target(match.group("target")),
-                kind="image" if match.group("image") else "link",
+                kind=ArtifactLinkKind.IMAGE
+                if match.group("image")
+                else ArtifactLinkKind.LINK,
             )
         )
     for match in _HTML_LINK_PATTERN.finditer(markdown):
@@ -105,7 +106,9 @@ def extract_artifact_links(markdown: str) -> tuple[ArtifactLink, ...]:
                 end=match.end("target"),
                 raw_target=match.group("target"),
                 normalized_target=_normalize_artifact_target(match.group("target")),
-                kind="image" if match.group("attr").lower() == "src" else "link",
+                kind=ArtifactLinkKind.IMAGE
+                if match.group("attr").lower() == "src"
+                else ArtifactLinkKind.LINK,
             )
         )
     return _without_overlaps(
@@ -133,7 +136,7 @@ def _without_overlaps(links: tuple[ArtifactLink, ...]) -> tuple[ArtifactLink, ..
 
 def _is_allowed_suffix(target: str, kind: ArtifactLinkKind) -> bool:
     suffix = PurePosixPath(target).suffix.lower()
-    if kind == "image":
+    if kind is ArtifactLinkKind.IMAGE:
         return suffix in _IMAGE_SUFFIXES
     return suffix in _LINK_SUFFIXES
 

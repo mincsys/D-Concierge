@@ -8,7 +8,10 @@ from backend.application.ports.database.dto import (
     ArtifactData,
     DisplayReferenceData,
 )
-from backend.shared.errors import AppError, ErrorClass
+from backend.domain.execution.run_state import RunState
+from backend.domain.references.source_type import SourceType
+from backend.shared.error_class import ErrorClass
+from backend.shared.errors import AppError
 from backend.tests.support.memory_repository import InMemoryChatRepository
 
 
@@ -32,7 +35,7 @@ def test_memory_repository_saves_answer_references_and_artifacts() -> None:
                     references=(
                         DisplayReferenceData(
                             reference_id=reference_id,
-                            source_type="pdf",
+                            source_type=SourceType.PDF,
                             label="資料",
                             relative_path="manual.pdf",
                             page_start=1,
@@ -60,7 +63,7 @@ def test_memory_repository_rejects_cancel_for_terminal_run() -> None:
     """観点：メモリRepository IF。確認：終端済みrunのキャンセルを競合にする。"""
     repository = InMemoryChatRepository()
     accepted = repository.create_chat_with_first_run("資料を要約")
-    repository.set_run_state(accepted.chat_id, accepted.run_id, "完了")
+    repository.set_run_state(accepted.chat_id, accepted.run_id, RunState.COMPLETED)
 
     try:
         repository.cancel_run(accepted.chat_id, accepted.run_id)
@@ -123,17 +126,17 @@ def test_memory_repository_rejects_missing_chat_and_run() -> None:
 def test_memory_repository_lists_unfinished_runs_for_recovery() -> None:
     """観点：起動時回復Repository IF。確認：未完了runだけを回復対象として返す。"""
     repository = InMemoryChatRepository()
-    accepted = repository.create_chat_with_first_run("受付")
-    running = repository.create_chat_with_first_run("実行中")
-    terminal = repository.create_chat_with_first_run("完了")
-    repository.set_run_state(running.chat_id, running.run_id, "実行中")
-    repository.set_run_state(terminal.chat_id, terminal.run_id, "完了")
+    accepted = repository.create_chat_with_first_run("accepted run")
+    running = repository.create_chat_with_first_run("running run")
+    terminal = repository.create_chat_with_first_run("completed run")
+    repository.set_run_state(running.chat_id, running.run_id, RunState.RUNNING)
+    repository.set_run_state(terminal.chat_id, terminal.run_id, RunState.COMPLETED)
 
     unfinished = repository.list_unfinished_runs_for_recovery()
 
     assert [(run.chat_id, run.run_id, run.state) for run in unfinished] == [
-        (accepted.chat_id, accepted.run_id, "受付"),
-        (running.chat_id, running.run_id, "実行中"),
+        (accepted.chat_id, accepted.run_id, RunState.ACCEPTED),
+        (running.chat_id, running.run_id, RunState.RUNNING),
     ]
 
 
@@ -172,21 +175,21 @@ def test_memory_repository_updates_state_conditionally_and_saves_deadline() -> N
     updated = repository.update_run_state_if_current(
         chat_id=accepted.chat_id,
         run_id=accepted.run_id,
-        expected_states=("受付",),
-        state="実行中",
+        expected_states=(RunState.ACCEPTED,),
+        state=RunState.RUNNING,
         execution_deadline_at=deadline,
     )
     stale = repository.update_run_state_if_current(
         chat_id=accepted.chat_id,
         run_id=accepted.run_id,
-        expected_states=("受付",),
-        state="エラー",
+        expected_states=(RunState.ACCEPTED,),
+        state=RunState.ERROR,
     )
 
     assert updated is True
     assert stale is False
     detail = repository.get_chat_detail(accepted.chat_id)
-    assert detail.runs[0].state == "実行中"
+    assert detail.runs[0].state is RunState.RUNNING
     assert (
         repository.run_execution_deadline_for_test(accepted.chat_id, accepted.run_id)
         == deadline

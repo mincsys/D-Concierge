@@ -2,7 +2,8 @@ from pathlib import Path
 
 from backend.application.ports.filesystem.dto import OpenedReferenceFile
 from backend.infrastructure.filesystem.path_security import PathSecurityService
-from backend.shared.errors import AppError, ErrorClass
+from backend.shared.error_class import ErrorClass
+from backend.shared.errors import AppError
 
 
 class FileReferenceStore:

@@ -2,6 +2,9 @@ import json
 from dataclasses import dataclass
 from pathlib import PurePosixPath
 
+from backend.domain.answer.output_kind import CodexOutputKind
+from backend.domain.references.source_type import SourceType
+
 type JsonScalar = str | int | float | bool | None
 type JsonValue = JsonScalar | list["JsonValue"] | dict[str, "JsonValue"]
 
@@ -106,7 +109,10 @@ def parse_generation_final_output(raw_json: str) -> ParsedAnswerCandidate:
     """生成用Codexの最終出力envelopeを内部回答候補へ変換する。"""
     loaded = _load_object(raw_json)
     payload_value = loaded.get("payload")
-    if not isinstance(payload_value, dict) or payload_value.get("kind") != "final":
+    if (
+        not isinstance(payload_value, dict)
+        or payload_value.get("kind") != CodexOutputKind.FINAL.value
+    ):
         raise AnswerParseError("回答候補の形式が不正です。")
     answers_value = payload_value.get("answers")
     if not isinstance(answers_value, list):
@@ -156,7 +162,7 @@ def _parse_references(references_value: list[JsonValue]) -> list[ParsedReference
         if not isinstance(reference_value, dict):
             raise AnswerParseError("参照元要素の形式が不正です。")
         source_type = reference_value.get("source_type")
-        if source_type != "pdf":
+        if source_type != SourceType.PDF.value:
             raise AnswerParseError("未対応の参照元種別です。")
         locator_value = reference_value.get("locator")
         if not isinstance(locator_value, dict):

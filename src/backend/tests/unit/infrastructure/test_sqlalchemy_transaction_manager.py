@@ -9,7 +9,8 @@ from backend.infrastructure.database.repositories.sqlalchemy_chat_repository imp
 from backend.infrastructure.database.session.transaction_manager import (
     SqlAlchemyTransactionManager,
 )
-from backend.shared.errors import AppError, ErrorClass
+from backend.shared.error_class import ErrorClass
+from backend.shared.errors import AppError
 
 
 def test_sqlalchemy_repository_requires_active_transaction() -> None:

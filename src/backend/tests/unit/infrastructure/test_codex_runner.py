@@ -8,6 +8,8 @@ from uuid import UUID
 
 import pytest
 
+from backend.application.ports.codex.cancel_request_result import CancelRequestResult
+from backend.infrastructure.codex.codex_event_kind import CodexEventKind
 from backend.infrastructure.codex.codex_runner import (
     CodexProcess,
     CodexProcessOutput,
@@ -16,8 +18,11 @@ from backend.infrastructure.codex.codex_runner import (
     CodexRunRequest,
     SubprocessCodexProcessFactory,
 )
-from backend.infrastructure.codex.jsonl_event_parser import ParsedCodexEvent
-from backend.shared.errors import AppError, ErrorClass, RunTimeoutError
+from backend.infrastructure.codex.jsonl_event_parser import (
+    ParsedCodexEvent,
+)
+from backend.shared.error_class import ErrorClass
+from backend.shared.errors import AppError, RunTimeoutError
 
 
 def test_codex_runner_starts_generation_and_parses_final_message(
@@ -51,9 +56,9 @@ def test_codex_runner_starts_generation_and_parses_final_message(
     assert result.codex_conversation_id == "thread-001"
     assert result.final_message == '{"markdown":"回答","references":[]}'
     assert [event.kind for event in result.events] == [
-        "thread_started",
-        "agent_message",
-        "turn_completed",
+        CodexEventKind.THREAD_STARTED,
+        CodexEventKind.AGENT_MESSAGE,
+        CodexEventKind.TURN_COMPLETED,
     ]
     assert factory.command == (
         "codex",
@@ -213,7 +218,7 @@ def test_codex_runner_notifies_jsonl_events_before_process_completion(
         ),
     )
     runner = CodexRunner(process_factory=RecordingProcessFactory(process))
-    notified_events: list[str] = []
+    notified_events: list[CodexEventKind] = []
 
     with ThreadPoolExecutor(max_workers=1) as executor:
         future = executor.submit(
@@ -224,11 +229,15 @@ def test_codex_runner_notifies_jsonl_events_before_process_completion(
             ),
         )
         process.first_line_notified.wait(timeout=1)
-        assert notified_events == ["thread_started"]
+        assert notified_events == [CodexEventKind.THREAD_STARTED]
         process.release()
 
     assert future.result().final_message == "結果"
-    assert notified_events == ["thread_started", "agent_message", "turn_completed"]
+    assert notified_events == [
+        CodexEventKind.THREAD_STARTED,
+        CodexEventKind.AGENT_MESSAGE,
+        CodexEventKind.TURN_COMPLETED,
+    ]
 
 
 def test_codex_runner_cancels_registered_process(tmp_path: Path) -> None:
@@ -258,10 +267,13 @@ def test_codex_runner_cancels_registered_process(tmp_path: Path) -> None:
         process.started.wait(timeout=1)
         cancel_result = runner.cancel(run_id=run_id, trace_id="trace-405")
 
-    assert cancel_result == "sent"
+    assert cancel_result is CancelRequestResult.SENT
     assert process.terminated
     assert future.result().final_message == "結果"
-    assert runner.cancel(run_id=run_id, trace_id="trace-406") == "not_registered"
+    assert (
+        runner.cancel(run_id=run_id, trace_id="trace-406")
+        is CancelRequestResult.NOT_REGISTERED
+    )
 
 
 def test_subprocess_codex_process_streams_stdout_and_collects_stderr(
@@ -352,7 +364,7 @@ def test_codex_runner_returns_already_exited_for_registered_exited_process(
 
     result = runner.cancel(run_id=run_id, trace_id="trace-407")
 
-    assert result == "already_exited"
+    assert result is CancelRequestResult.ALREADY_EXITED
 
 
 @dataclass(slots=True)

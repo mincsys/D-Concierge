@@ -21,7 +21,12 @@ from backend.application.ports.database.dto import (
     UnfinishedRun,
 )
 from backend.application.ports.runtime.interface import ClockPort, IdGeneratorPort
-from backend.domain.execution.run_state_policy import RunState, RunStatePolicy
+from backend.domain.execution.run_state import RunState
+from backend.domain.execution.run_state_policy import (
+    UNFINISHED_STATES,
+    RunStatePolicy,
+)
+from backend.domain.references.source_type import SourceType
 from backend.infrastructure.database.models.answer import (
     AnswerBlockModel,
     ArtifactModel,
@@ -36,7 +41,8 @@ from backend.infrastructure.database.models.chat import (
 )
 from backend.infrastructure.runtime.system_clock import SystemClock
 from backend.infrastructure.runtime.uuid_generator import UuidGenerator
-from backend.shared.errors import AppError, ErrorClass
+from backend.shared.error_class import ErrorClass
+from backend.shared.errors import AppError
 
 
 class SqlAlchemySessionProvider(Protocol):
@@ -87,7 +93,7 @@ class SqlAlchemyChatRepository:
             ChatRunModel(
                 id=run_id,
                 chat_id=chat_id,
-                state="受付",
+                state=RunState.ACCEPTED.value,
                 started_at=now,
             )
         )
@@ -99,7 +105,7 @@ class SqlAlchemyChatRepository:
                 body=instruction,
             )
         )
-        return AcceptedRun(chat_id=chat_id, run_id=run_id, state="受付")
+        return AcceptedRun(chat_id=chat_id, run_id=run_id, state=RunState.ACCEPTED)
 
     def append_run(self, chat_id: UUID, user_instruction: str) -> AcceptedRun:
         """既存チャットへ受付runと指示を追加する。"""
@@ -112,7 +118,7 @@ class SqlAlchemyChatRepository:
             sa.select(ChatRunModel).where(
                 ChatRunModel.chat_id == chat_id,
                 ChatRunModel.state.in_(
-                    ("受付", "実行中", "検証中", "キャンセル要求中")
+                    tuple(state.value for state in UNFINISHED_STATES)
                 ),
             )
         )
@@ -126,7 +132,7 @@ class SqlAlchemyChatRepository:
             ChatRunModel(
                 id=run_id,
                 chat_id=chat_id,
-                state="受付",
+                state=RunState.ACCEPTED.value,
                 started_at=now,
             )
         )
@@ -138,7 +144,7 @@ class SqlAlchemyChatRepository:
                 body=instruction,
             )
         )
-        return AcceptedRun(chat_id=chat_id, run_id=run_id, state="受付")
+        return AcceptedRun(chat_id=chat_id, run_id=run_id, state=RunState.ACCEPTED)
 
     def list_histories(self) -> tuple[HistoryItem, ...]:
         """チャット履歴を更新日時降順で返す。"""
@@ -157,12 +163,14 @@ class SqlAlchemyChatRepository:
         runs = session.scalars(
             sa.select(ChatRunModel)
             .where(
-                ChatRunModel.state.in_(("受付", "実行中", "検証中", "キャンセル要求中"))
+                ChatRunModel.state.in_(
+                    tuple(state.value for state in UNFINISHED_STATES)
+                )
             )
             .order_by(ChatRunModel.started_at, ChatRunModel.id)
         ).all()
         return tuple(
-            UnfinishedRun(chat_id=run.chat_id, run_id=run.id, state=run.state)
+            UnfinishedRun(chat_id=run.chat_id, run_id=run.id, state=_run_state(run))
             for run in runs
         )
 
@@ -213,7 +221,7 @@ class SqlAlchemyChatRepository:
         """SSE初期通知用に現在状態を返す。"""
         session = self._session()
         run = self._get_run(session, chat_id, run_id)
-        return run.state
+        return _run_state(run)
 
     def get_run_instruction(self, chat_id: UUID, run_id: UUID) -> str:
         """実行対象runのユーザ指示を返す。"""
@@ -232,7 +240,7 @@ class SqlAlchemyChatRepository:
         now = self._clock.now()
         session = self._session()
         run = self._get_run(session, chat_id, run_id)
-        run.state = state
+        run.state = state.value
         run.user_message = user_message
         if RunStatePolicy.is_terminal(state):
             run.ended_at = now
@@ -252,9 +260,9 @@ class SqlAlchemyChatRepository:
         now = self._clock.now()
         session = self._session()
         run = self._get_run(session, chat_id, run_id)
-        if run.state not in expected_states:
+        if _run_state(run) not in expected_states:
             return False
-        run.state = state
+        run.state = state.value
         run.user_message = user_message
         if execution_deadline_at is not None:
             run.execution_deadline_at = execution_deadline_at
@@ -310,7 +318,7 @@ class SqlAlchemyChatRepository:
                         id=reference.reference_id,
                         answer_block_id=block_id,
                         position=reference_position,
-                        source_type=reference.source_type,
+                        source_type=reference.source_type.value,
                         label=reference.label,
                         locator={
                             "path": reference.relative_path,
@@ -337,9 +345,9 @@ class SqlAlchemyChatRepository:
         now = self._clock.now()
         session = self._session()
         run = self._get_run(session, chat_id, run_id)
-        if not RunStatePolicy.is_cancelable(run.state):
+        if not RunStatePolicy.is_cancelable(_run_state(run)):
             raise AppError(ErrorClass.CONFLICT, "この処理はキャンセルできません。")
-        run.state = "キャンセル済み"
+        run.state = RunState.CANCELED.value
         run.user_message = "処理をキャンセルしました。"
         chat = self._get_chat(session, chat_id)
         chat.updated_at = now
@@ -361,7 +369,7 @@ class SqlAlchemyChatRepository:
             raise AppError(ErrorClass.SYSTEM, "参照元データが不整合です。")
         return DisplayReferenceData(
             reference_id=reference.id,
-            source_type=reference.source_type,
+            source_type=_source_type(reference.source_type),
             label=reference.label,
             relative_path=path_value,
             page_start=page_start_value,
@@ -390,7 +398,9 @@ class SqlAlchemyChatRepository:
             chat_id=chat.id,
             title=chat.title,
             latest_run_id=latest_run.id if latest_run is not None else None,
-            latest_state=latest_run.state if latest_run is not None else "受付",
+            latest_state=(
+                _run_state(latest_run) if latest_run is not None else RunState.ACCEPTED
+            ),
             updated_at=chat.updated_at,
         )
 
@@ -408,7 +418,7 @@ class SqlAlchemyChatRepository:
         ).all()
         return RunDetail(
             run_id=run.id,
-            state=run.state,
+            state=_run_state(run),
             user_instruction=instruction.body,
             intermediate_messages=tuple(
                 IntermediateMessageData(text=message.body) for message in messages
@@ -470,7 +480,7 @@ class SqlAlchemyChatRepository:
             raise AppError(ErrorClass.SYSTEM, "参照元データが不整合です。")
         return DisplayReferenceData(
             reference_id=reference.id,
-            source_type=reference.source_type,
+            source_type=_source_type(reference.source_type),
             label=reference.label,
             relative_path=path_value,
             page_start=page_start_value,
@@ -520,3 +530,17 @@ def _normalize_instruction(user_instruction: str) -> str:
 def _make_title(user_instruction: str) -> str:
     normalized = " ".join(user_instruction.split())
     return normalized[:50]
+
+
+def _run_state(run: ChatRunModel) -> RunState:
+    try:
+        return RunState(run.state)
+    except ValueError as exc:
+        raise AppError(ErrorClass.SYSTEM, "履歴データが不整合です。") from exc
+
+
+def _source_type(value: str) -> SourceType:
+    try:
+        return SourceType(value)
+    except ValueError as exc:
+        raise AppError(ErrorClass.SYSTEM, "参照元データが不整合です。") from exc

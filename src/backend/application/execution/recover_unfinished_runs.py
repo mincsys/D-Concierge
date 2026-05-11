@@ -5,11 +5,14 @@ from backend.application.ports.database.interface import (
     RecoveryRepositoryPort,
     TransactionManagerPort,
 )
+from backend.application.ports.runtime.dispatch_status import DispatchStatus
 from backend.application.ports.runtime.interface import RunExecutionDispatcherPort
 from backend.application.ports.trace_log.dto import TraceLogRecord
 from backend.application.ports.trace_log.interface import TraceLoggerPort
 from backend.application.transactions import NoopTransactionManager
-from backend.shared.errors import AppError, ErrorClass
+from backend.domain.execution.run_state import RunState
+from backend.shared.error_class import ErrorClass
+from backend.shared.errors import AppError
 from backend.shared.tracing.exception import exception_stacktrace
 
 RECOVERY_ERROR_MESSAGE = "アプリ起動時に処理を再開できませんでした。"
@@ -79,17 +82,17 @@ class RecoverUnfinishedRunsUseCase:
     ) -> None:
         try:
             match run.state:
-                case "受付":
+                case RunState.ACCEPTED:
                     self._recover_accepted(run, counter, trace_id)
-                case "実行中" | "検証中":
+                case RunState.RUNNING | RunState.VALIDATING:
                     self._mark_error(run)
                     counter.marked_error += 1
-                case "キャンセル要求中":
+                case RunState.CANCEL_REQUESTED:
                     with self._transaction_manager.transaction():
                         self._repository.set_run_state(
                             run.chat_id,
                             run.run_id,
-                            "キャンセル済み",
+                            RunState.CANCELED,
                             RECOVERY_CANCEL_MESSAGE,
                         )
                     counter.canceled += 1
@@ -106,7 +109,7 @@ class RecoverUnfinishedRunsUseCase:
                     run_id=run.run_id,
                     error_class=exc.error_class.value,
                     exception_type=type(exc).__name__,
-                    run_state="エラー",
+                    run_state=RunState.ERROR.value,
                     stacktrace=exception_stacktrace(exc),
                     message=exc.user_message,
                 )
@@ -119,7 +122,10 @@ class RecoverUnfinishedRunsUseCase:
         trace_id: str,
     ) -> None:
         result = self._run_dispatcher.register(run.chat_id, run.run_id, trace_id)
-        if result.status in {"registered", "already_registered"}:
+        if result.status in {
+            DispatchStatus.REGISTERED,
+            DispatchStatus.ALREADY_REGISTERED,
+        }:
             counter.reregistered += 1
             return
 
@@ -134,7 +140,7 @@ class RecoverUnfinishedRunsUseCase:
                 chat_id=run.chat_id,
                 run_id=run.run_id,
                 error_class=ErrorClass.SYSTEM.value,
-                run_state="エラー",
+                run_state=RunState.ERROR.value,
                 process_result=result.failure_reason,
                 message=RECOVERY_ERROR_MESSAGE,
             )
@@ -145,7 +151,7 @@ class RecoverUnfinishedRunsUseCase:
             self._repository.set_run_state(
                 run.chat_id,
                 run.run_id,
-                "エラー",
+                RunState.ERROR,
                 RECOVERY_ERROR_MESSAGE,
             )
 

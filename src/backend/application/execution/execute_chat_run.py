@@ -3,12 +3,13 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from math import ceil
 from pathlib import Path
-from typing import Literal, Protocol
+from typing import Protocol
 from uuid import UUID
 
 from backend.application.artifacts.save_adopted_artifacts import (
     SavedAnswerBlocksArtifacts,
 )
+from backend.application.execution.run_event_type import RunEventType
 from backend.application.ports.codex.interface import (
     CodexGenerationRunnerPort,
     SessionWorkdirResolverPort,
@@ -27,17 +28,21 @@ from backend.application.ports.runtime.interface import ClockPort, IdGeneratorPo
 from backend.application.ports.trace_log.dto import TraceLogRecord
 from backend.application.ports.trace_log.interface import TraceLoggerPort
 from backend.application.transactions import NoopTransactionManager
-from backend.application.validation.validate_answer import AnswerValidationResult
+from backend.application.validation.validate_answer import (
+    AnswerValidationResult,
+)
+from backend.application.validation.validation_status import ValidationStatus
 from backend.domain.answer.answer_candidate import (
     ParsedAnswerCandidate,
     ParsedReference,
 )
-from backend.domain.execution.run_state_policy import RunState
+from backend.domain.execution.run_state import RunState
+from backend.domain.references.source_type import SourceType
 from backend.infrastructure.runtime.system_clock import SystemClock
 from backend.infrastructure.runtime.uuid_generator import UuidGenerator
+from backend.shared.error_class import ErrorClass
 from backend.shared.errors import (
     AppError,
-    ErrorClass,
     ReferencePdfReadError,
     RunTimeoutError,
     ValidationResultFormatError,
@@ -62,7 +67,7 @@ ANSWER_REVISION_MESSAGE = "回答を修正します。"
 class RunEvent:
     """run ID単位で発行するSSE向けイベント。"""
 
-    event: Literal["state", "message", "answer", "error", "canceled"]
+    event: RunEventType
     chat_id: UUID
     run_id: UUID
     state: RunState | None = None
@@ -168,7 +173,7 @@ class ExecuteChatRunUseCase:
                     chat_id=chat_id,
                     run_id=run_id,
                     exception_type=type(exc).__name__,
-                    run_state="タイムアウト",
+                    run_state=RunState.TIMED_OUT.value,
                     execution_deadline_at=execution_deadline_at,
                     timeout_state="codex_exec_timeout",
                     stacktrace=exception_stacktrace(exc),
@@ -189,7 +194,7 @@ class ExecuteChatRunUseCase:
                     run_id=run_id,
                     error_class=exc.error_class.value,
                     exception_type=type(exc).__name__,
-                    run_state="エラー",
+                    run_state=RunState.ERROR.value,
                     validation_failure_reason=exc.diagnostic_message,
                     stacktrace=exception_stacktrace(exc),
                     message=exc.user_message,
@@ -209,7 +214,7 @@ class ExecuteChatRunUseCase:
                     run_id=run_id,
                     error_class=exc.error_class.value,
                     exception_type=type(exc).__name__,
-                    run_state="エラー",
+                    run_state=RunState.ERROR.value,
                     validation_failure_reason=exc.diagnostic_message,
                     stacktrace=exception_stacktrace(exc),
                     message=exc.user_message,
@@ -229,7 +234,7 @@ class ExecuteChatRunUseCase:
                     run_id=run_id,
                     error_class=exc.error_class.value,
                     exception_type=type(exc).__name__,
-                    run_state="エラー",
+                    run_state=RunState.ERROR.value,
                     validation_failure_reason=exc.diagnostic_message,
                     stacktrace=exception_stacktrace(exc),
                     message=exc.user_message,
@@ -249,7 +254,7 @@ class ExecuteChatRunUseCase:
                     run_id=run_id,
                     error_class=exc.error_class.value,
                     exception_type=type(exc).__name__,
-                    run_state="エラー",
+                    run_state=RunState.ERROR.value,
                     stacktrace=exception_stacktrace(exc),
                     message=exc.user_message,
                 )
@@ -268,7 +273,7 @@ class ExecuteChatRunUseCase:
                     run_id=run_id,
                     error_class=ErrorClass.SYSTEM.value,
                     exception_type=type(exc).__name__,
-                    run_state="エラー",
+                    run_state=RunState.ERROR.value,
                     stacktrace=exception_stacktrace(exc),
                     message=exception_message(exc),
                 )
@@ -294,8 +299,10 @@ class ExecuteChatRunUseCase:
             self._change_state(
                 chat_id,
                 run_id,
-                "実行中",
-                expected_states=("受付",) if retry_count == 0 else ("検証中",),
+                RunState.RUNNING,
+                expected_states=(
+                    (RunState.ACCEPTED,) if retry_count == 0 else (RunState.VALIDATING,)
+                ),
                 execution_deadline_at=(
                     execution_deadline_at if retry_count == 0 else None
                 ),
@@ -326,8 +333,8 @@ class ExecuteChatRunUseCase:
             self._change_state(
                 chat_id,
                 run_id,
-                "検証中",
-                expected_states=("実行中",),
+                RunState.VALIDATING,
+                expected_states=(RunState.RUNNING,),
             )
             self._record_intermediate_message(
                 chat_id, run_id, VALIDATION_STARTED_MESSAGE
@@ -351,7 +358,7 @@ class ExecuteChatRunUseCase:
                 return
 
             match validation.status:
-                case "採用可能":
+                case ValidationStatus.ACCEPTED:
                     if validation.candidate is None:
                         self._finish_error(
                             chat_id, run_id, "回答を検証できませんでした。"
@@ -367,12 +374,12 @@ class ExecuteChatRunUseCase:
                         trace_id,
                     )
                     return
-                case "再生成指示":
+                case ValidationStatus.REGENERATE:
                     retry_count += 1
                     prompt = (
                         f"{user_instruction}\n\n{validation.regeneration_instruction}"
                     )
-                case "失敗":
+                case ValidationStatus.FAILED:
                     self._write_trace(
                         TraceLogRecord(
                             trace_id=trace_id,
@@ -381,7 +388,7 @@ class ExecuteChatRunUseCase:
                             chat_id=chat_id,
                             run_id=run_id,
                             error_class=ErrorClass.SYSTEM.value,
-                            run_state="エラー",
+                            run_state=RunState.ERROR.value,
                             retry_count=retry_count,
                             validation_failure_reason=(
                                 validation.regeneration_instruction
@@ -423,7 +430,12 @@ class ExecuteChatRunUseCase:
                 raise AppError(ErrorClass.CONFLICT, "この処理はキャンセルされました。")
             raise AppError(ErrorClass.CONFLICT, "実行状態が変更されています。")
         self._event_publisher.publish(
-            RunEvent(event="state", chat_id=chat_id, run_id=run_id, state=state)
+            RunEvent(
+                event=RunEventType.STATE,
+                chat_id=chat_id,
+                run_id=run_id,
+                state=state,
+            )
         )
 
     def _record_intermediate_message(
@@ -433,7 +445,7 @@ class ExecuteChatRunUseCase:
             self._repository.add_intermediate_message(chat_id, run_id, message)
         self._event_publisher.publish(
             RunEvent(
-                event="message",
+                event=RunEventType.MESSAGE,
                 chat_id=chat_id,
                 run_id=run_id,
                 text=message,
@@ -482,7 +494,7 @@ class ExecuteChatRunUseCase:
                     references=tuple(
                         DisplayReferenceData(
                             reference_id=self._id_generator.new_uuid(),
-                            source_type="pdf",
+                            source_type=SourceType.PDF,
                             label=reference.label,
                             relative_path=reference.relative_path,
                             page_start=reference.page_start,
@@ -499,13 +511,13 @@ class ExecuteChatRunUseCase:
         )
         with self._transaction_manager.transaction():
             self._repository.save_completed_answer(chat_id, run_id, answer)
-            self._repository.set_run_state(chat_id, run_id, "完了")
+            self._repository.set_run_state(chat_id, run_id, RunState.COMPLETED)
         self._event_publisher.publish(
             RunEvent(
-                event="answer",
+                event=RunEventType.ANSWER,
                 chat_id=chat_id,
                 run_id=run_id,
-                state="完了",
+                state=RunState.COMPLETED,
                 answer=answer,
             )
         )
@@ -523,8 +535,12 @@ class ExecuteChatRunUseCase:
             updated = self._repository.update_run_state_if_current(
                 chat_id=chat_id,
                 run_id=run_id,
-                expected_states=("受付", "実行中", "検証中"),
-                state="エラー",
+                expected_states=(
+                    RunState.ACCEPTED,
+                    RunState.RUNNING,
+                    RunState.VALIDATING,
+                ),
+                state=RunState.ERROR,
                 user_message=user_message,
             )
         if not updated:
@@ -533,10 +549,10 @@ class ExecuteChatRunUseCase:
             return
         self._event_publisher.publish(
             RunEvent(
-                event="error",
+                event=RunEventType.ERROR,
                 chat_id=chat_id,
                 run_id=run_id,
-                state="エラー",
+                state=RunState.ERROR,
                 user_message=user_message,
             )
         )
@@ -546,8 +562,12 @@ class ExecuteChatRunUseCase:
             updated = self._repository.update_run_state_if_current(
                 chat_id=chat_id,
                 run_id=run_id,
-                expected_states=("受付", "実行中", "検証中"),
-                state="タイムアウト",
+                expected_states=(
+                    RunState.ACCEPTED,
+                    RunState.RUNNING,
+                    RunState.VALIDATING,
+                ),
+                state=RunState.TIMED_OUT,
                 user_message=TIMEOUT_FAILURE_MESSAGE,
             )
         if not updated:
@@ -556,10 +576,10 @@ class ExecuteChatRunUseCase:
             return
         self._event_publisher.publish(
             RunEvent(
-                event="error",
+                event=RunEventType.ERROR,
                 chat_id=chat_id,
                 run_id=run_id,
-                state="タイムアウト",
+                state=RunState.TIMED_OUT,
                 user_message=TIMEOUT_FAILURE_MESSAGE,
             )
         )
@@ -569,16 +589,21 @@ class ExecuteChatRunUseCase:
             self._repository.update_run_state_if_current(
                 chat_id=chat_id,
                 run_id=run_id,
-                expected_states=("受付", "実行中", "検証中", "キャンセル要求中"),
-                state="キャンセル済み",
+                expected_states=(
+                    RunState.ACCEPTED,
+                    RunState.RUNNING,
+                    RunState.VALIDATING,
+                    RunState.CANCEL_REQUESTED,
+                ),
+                state=RunState.CANCELED,
                 user_message=CANCELED_MESSAGE,
             )
         self._event_publisher.publish(
             RunEvent(
-                event="canceled",
+                event=RunEventType.CANCELED,
                 chat_id=chat_id,
                 run_id=run_id,
-                state="キャンセル済み",
+                state=RunState.CANCELED,
                 user_message=CANCELED_MESSAGE,
             )
         )
@@ -586,8 +611,8 @@ class ExecuteChatRunUseCase:
     def _is_canceled(self, chat_id: UUID, run_id: UUID) -> bool:
         with self._transaction_manager.transaction():
             return self._repository.get_run_state(chat_id, run_id) in {
-                "キャンセル要求中",
-                "キャンセル済み",
+                RunState.CANCEL_REQUESTED,
+                RunState.CANCELED,
             }
 
     def _remaining_seconds(self, execution_deadline_at: datetime) -> int:

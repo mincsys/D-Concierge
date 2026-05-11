@@ -3,6 +3,7 @@ from concurrent.futures import Future
 from dataclasses import dataclass, field
 from uuid import UUID
 
+from backend.application.ports.runtime.dispatch_status import DispatchStatus
 from backend.infrastructure.runtime.run_execution_dispatcher import (
     InProcessRunExecutionDispatcher,
 )
@@ -25,7 +26,7 @@ def test_dispatcher_registers_run_to_background_executor() -> None:
     result = dispatcher.register(chat_id, run_id, "trace-401")
     background_executor.run_next()
 
-    assert result.status == "registered"
+    assert result.status is DispatchStatus.REGISTERED
     assert run_executor.executed == [(chat_id, run_id, "trace-401")]
 
 
@@ -44,8 +45,8 @@ def test_dispatcher_rejects_duplicate_run_while_active() -> None:
     first = dispatcher.register(chat_id, run_id, "trace-403")
     second = dispatcher.register(chat_id, run_id, "trace-403")
 
-    assert first.status == "registered"
-    assert second.status == "already_registered"
+    assert first.status is DispatchStatus.REGISTERED
+    assert second.status is DispatchStatus.ALREADY_REGISTERED
 
 
 def test_dispatcher_allows_reregister_after_task_finishes() -> None:
@@ -65,7 +66,7 @@ def test_dispatcher_allows_reregister_after_task_finishes() -> None:
     background_executor.run_next()
     result = dispatcher.register(chat_id, run_id, "trace-405")
 
-    assert result.status == "registered"
+    assert result.status is DispatchStatus.REGISTERED
 
 
 def test_dispatcher_returns_failed_when_background_registration_fails() -> None:
@@ -83,9 +84,9 @@ def test_dispatcher_returns_failed_when_background_registration_fails() -> None:
     failed = dispatcher.register(chat_id, run_id, "trace-407")
     retried = dispatcher.register(chat_id, run_id, "trace-407")
 
-    assert failed.status == "failed"
+    assert failed.status is DispatchStatus.FAILED
     assert failed.failure_reason == "登録できません。"
-    assert retried.status == "failed"
+    assert retried.status is DispatchStatus.FAILED
 
 
 @dataclass(slots=True)

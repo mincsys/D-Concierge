@@ -1,7 +1,4 @@
 from dataclasses import dataclass
-from typing import Literal
-
-CancelRequestResult = Literal["sent", "already_exited", "not_registered"]
 
 
 @dataclass(frozen=True, slots=True)

@@ -18,8 +18,11 @@ from backend.application.ports.database.dto import (
     RunDetail,
     UnfinishedRun,
 )
-from backend.domain.execution.run_state_policy import RunState, RunStatePolicy
-from backend.shared.errors import AppError, ErrorClass
+from backend.domain.execution.run_state import RunState
+from backend.domain.execution.run_state_policy import RunStatePolicy
+from backend.domain.references.source_type import SourceType
+from backend.shared.error_class import ErrorClass
+from backend.shared.errors import AppError
 
 
 @dataclass(slots=True)
@@ -76,14 +79,14 @@ class InMemoryChatRepository:
         run = _RunRecord(
             id=run_id,
             chat_id=chat_id,
-            state="受付",
+            state=RunState.ACCEPTED,
             started_at=now,
             user_instruction=instruction,
         )
         with self._lock:
             self._chats[chat_id] = chat
             self._runs[run_id] = run
-        return AcceptedRun(chat_id=chat_id, run_id=run_id, state="受付")
+        return AcceptedRun(chat_id=chat_id, run_id=run_id, state=RunState.ACCEPTED)
 
     def append_run(self, chat_id: UUID, user_instruction: str) -> AcceptedRun:
         """既存チャットへ受付runと指示を追加する。"""
@@ -100,14 +103,14 @@ class InMemoryChatRepository:
             run = _RunRecord(
                 id=run_id,
                 chat_id=chat_id,
-                state="受付",
+                state=RunState.ACCEPTED,
                 started_at=now,
                 user_instruction=instruction,
             )
             chat.run_ids.append(run_id)
             chat.updated_at = now
             self._runs[run_id] = run
-        return AcceptedRun(chat_id=chat_id, run_id=run_id, state="受付")
+        return AcceptedRun(chat_id=chat_id, run_id=run_id, state=RunState.ACCEPTED)
 
     def list_histories(self) -> tuple[HistoryItem, ...]:
         """チャット履歴を更新日時降順で返す。"""
@@ -256,9 +259,9 @@ class InMemoryChatRepository:
             run = self._get_run_locked(chat_id, run_id)
             if not RunStatePolicy.is_cancelable(run.state):
                 raise AppError(ErrorClass.CONFLICT, "この処理はキャンセルできません。")
-            run.state = "キャンセル要求中"
+            run.state = RunState.CANCEL_REQUESTED
             run.user_message = "処理をキャンセルしています。"
-            run.state = "キャンセル済み"
+            run.state = RunState.CANCELED
             run.user_message = "処理をキャンセルしました。"
             self._chats[chat_id].updated_at = now
 
@@ -291,7 +294,7 @@ class InMemoryChatRepository:
             artifact_id = uuid4()
             reference = DisplayReferenceData(
                 reference_id=reference_id,
-                source_type="pdf",
+                source_type=SourceType.PDF,
                 label="資料",
                 relative_path=reference_relative_path,
                 page_start=1,
@@ -302,7 +305,7 @@ class InMemoryChatRepository:
                 mime_type=artifact_mime_type,
                 relative_path=artifact_relative_path,
             )
-            run.state = "完了"
+            run.state = RunState.COMPLETED
             run.answer = AnswerData(
                 blocks=(
                     AnswerBlockData(

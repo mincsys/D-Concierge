@@ -4,7 +4,8 @@ from contextvars import ContextVar
 
 from sqlalchemy.orm import Session, sessionmaker
 
-from backend.shared.errors import AppError, ErrorClass
+from backend.shared.error_class import ErrorClass
+from backend.shared.errors import AppError
 
 _NO_ACTIVE_TRANSACTION_MESSAGE = "DBトランザクションが開始されていません。"
 

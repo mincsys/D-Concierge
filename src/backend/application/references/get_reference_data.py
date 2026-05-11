@@ -7,7 +7,9 @@ from backend.application.ports.database.interface import (
 from backend.application.ports.filesystem.dto import OpenedReferenceFile
 from backend.application.ports.filesystem.interface import ReferenceStorePort
 from backend.application.transactions import NoopTransactionManager
-from backend.shared.errors import AppError, ErrorClass
+from backend.domain.references.source_type import SourceType
+from backend.shared.error_class import ErrorClass
+from backend.shared.errors import AppError
 
 
 class GetReferenceDataUseCase:
@@ -31,6 +33,6 @@ class GetReferenceDataUseCase:
         """参照元IDからPDFファイルを開く。"""
         with self._transaction_manager.transaction():
             reference = self._repository.get_reference(reference_id)
-        if reference.source_type != "pdf":
+        if reference.source_type is not SourceType.PDF:
             raise AppError(ErrorClass.FORBIDDEN, "対象の参照元は表示できません。")
         return self._reference_store.open_reference_file(reference.relative_path)

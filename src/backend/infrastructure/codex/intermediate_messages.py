@@ -1,7 +1,12 @@
 import json
 from collections.abc import Callable
 
-from backend.infrastructure.codex.jsonl_event_parser import JsonValue, ParsedCodexEvent
+from backend.domain.answer.output_kind import CodexOutputKind
+from backend.infrastructure.codex.codex_event_kind import CodexEventKind
+from backend.infrastructure.codex.jsonl_event_parser import (
+    JsonValue,
+    ParsedCodexEvent,
+)
 
 
 class CodexIntermediateMessageStreamer:
@@ -15,7 +20,11 @@ class CodexIntermediateMessageStreamer:
 
     def accept(self, event: ParsedCodexEvent) -> None:
         """agent_message.textを中間メッセージ候補として通知する。"""
-        if self._emit is None or event.kind != "agent_message" or event.text is None:
+        if (
+            self._emit is None
+            or event.kind is not CodexEventKind.AGENT_MESSAGE
+            or event.text is None
+        ):
             return
         for extracted_message in _progress_messages(event.text):
             self._emit(extracted_message)
@@ -28,7 +37,7 @@ def _progress_messages(message: str) -> tuple[str, ...]:
     payload = loaded.get("payload")
     if not isinstance(payload, dict):
         return ()
-    if payload.get("kind") != "progress":
+    if payload.get("kind") != CodexOutputKind.PROGRESS.value:
         return ()
     text = payload.get("text")
     if not isinstance(text, str) or text.strip() == "":

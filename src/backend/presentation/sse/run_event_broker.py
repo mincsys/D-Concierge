@@ -4,8 +4,11 @@ from threading import RLock
 from uuid import UUID
 
 from backend.application.execution.execute_chat_run import RunEvent
+from backend.application.execution.run_event_type import RunEventType
 
-TERMINAL_EVENTS = frozenset(("answer", "error", "canceled"))
+TERMINAL_EVENTS = frozenset(
+    (RunEventType.ANSWER, RunEventType.ERROR, RunEventType.CANCELED)
+)
 
 
 @dataclass(slots=True)

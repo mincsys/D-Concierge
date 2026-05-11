@@ -7,8 +7,11 @@ import pytest
 
 from backend.application.chat.append_chat_run import AppendChatRunUseCase
 from backend.application.chat.start_chat import StartChatUseCase
+from backend.application.ports.runtime.dispatch_status import DispatchStatus
 from backend.application.ports.runtime.dto import DispatchResult
-from backend.shared.errors import AppError, ErrorClass
+from backend.domain.execution.run_state import RunState
+from backend.shared.error_class import ErrorClass
+from backend.shared.errors import AppError
 from backend.tests.support.memory_repository import InMemoryChatRepository
 
 
@@ -20,7 +23,7 @@ def test_start_chat_use_case_accepts_first_run_and_registers_dispatcher() -> Non
 
     result = usecase.execute("  資料を要約してください  ", trace_id="trace-101")
 
-    assert result.state == "受付"
+    assert result.state is RunState.ACCEPTED
     assert result.sse_url == f"/api/chats/{result.chat_id}/runs/{result.run_id}/sse"
     assert dispatcher.registered == [(result.chat_id, result.run_id)]
     detail = repository.get_chat_detail(result.chat_id)
@@ -54,7 +57,7 @@ def test_start_chat_use_case_marks_run_error_when_dispatcher_fails() -> None:
     assert dispatcher.registered_run_id is not None
     detail = repository.get_chat_detail(dispatcher.registered_chat_id)
     assert detail.runs[0].run_id == dispatcher.registered_run_id
-    assert detail.runs[0].state == "エラー"
+    assert detail.runs[0].state is RunState.ERROR
     assert detail.runs[0].user_message == "チャット実行処理を開始できませんでした。"
 
 
@@ -90,7 +93,7 @@ def test_append_chat_run_use_case_accepts_after_terminal_run() -> None:
     """観点：AppendChatRunUseCase。確認：終端済みrunだけのチャットへ継続runを追加する。"""
     repository = InMemoryChatRepository()
     first = repository.create_chat_with_first_run("初回")
-    repository.set_run_state(first.chat_id, first.run_id, "完了")
+    repository.set_run_state(first.chat_id, first.run_id, RunState.COMPLETED)
     dispatcher = RecordingDispatcher()
     usecase = AppendChatRunUseCase(repository=repository, run_dispatcher=dispatcher)
 
@@ -101,7 +104,7 @@ def test_append_chat_run_use_case_accepts_after_terminal_run() -> None:
     )
 
     assert result.chat_id == first.chat_id
-    assert result.state == "受付"
+    assert result.state is RunState.ACCEPTED
     assert dispatcher.registered == [(first.chat_id, result.run_id)]
     detail = repository.get_chat_detail(first.chat_id)
     assert [run.user_instruction for run in detail.runs] == [
@@ -139,7 +142,7 @@ def test_append_chat_run_use_case_marks_run_error_when_dispatcher_fails() -> Non
     """観点：AppendChatRunUseCase。確認：dispatcher登録失敗時は追加runをエラーに更新する。"""
     repository = InMemoryChatRepository()
     first = repository.create_chat_with_first_run("初回")
-    repository.set_run_state(first.chat_id, first.run_id, "完了")
+    repository.set_run_state(first.chat_id, first.run_id, RunState.COMPLETED)
     dispatcher = FailingDispatcher()
     usecase = AppendChatRunUseCase(repository=repository, run_dispatcher=dispatcher)
 
@@ -155,7 +158,7 @@ def test_append_chat_run_use_case_marks_run_error_when_dispatcher_fails() -> Non
     detail = repository.get_chat_detail(first.chat_id)
     appended_run = detail.runs[-1]
     assert appended_run.run_id == dispatcher.registered_run_id
-    assert appended_run.state == "エラー"
+    assert appended_run.state is RunState.ERROR
     assert appended_run.user_message == "チャット実行処理を開始できませんでした。"
 
 
@@ -172,7 +175,7 @@ class RecordingDispatcher:
     ) -> DispatchResult:
         self.registered.append((chat_id, run_id))
         self.registered_trace_ids.append(trace_id)
-        return DispatchResult(status="registered")
+        return DispatchResult(status=DispatchStatus.REGISTERED)
 
 
 @dataclass(slots=True)
@@ -190,7 +193,10 @@ class FailingDispatcher:
         self.registered_chat_id = chat_id
         self.registered_run_id = run_id
         self.registered_trace_id = trace_id
-        return DispatchResult(status="failed", failure_reason="executor closed")
+        return DispatchResult(
+            status=DispatchStatus.FAILED,
+            failure_reason="executor closed",
+        )
 
 
 @dataclass(slots=True)

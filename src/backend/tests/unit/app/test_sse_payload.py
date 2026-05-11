@@ -3,9 +3,12 @@ from uuid import UUID
 import pytest
 
 from backend.application.execution.execute_chat_run import RunEvent
+from backend.application.execution.run_event_type import RunEventType
 from backend.application.ports.database.dto import AnswerData
+from backend.domain.execution.run_state import RunState
 from backend.presentation.rest.router import _run_event_payload
-from backend.shared.errors import AppError, ErrorClass
+from backend.shared.error_class import ErrorClass
+from backend.shared.errors import AppError
 
 
 def test_sse_payload_converts_canceled_event() -> None:
@@ -15,10 +18,10 @@ def test_sse_payload_converts_canceled_event() -> None:
     """
     payload = _run_event_payload(
         RunEvent(
-            event="canceled",
+            event=RunEventType.CANCELED,
             chat_id=UUID("00000000-0000-0000-0000-000000000701"),
             run_id=UUID("00000000-0000-0000-0000-000000000702"),
-            state="キャンセル済み",
+            state=RunState.CANCELED,
             user_message="処理をキャンセルしました。",
         )
     )
@@ -34,18 +37,18 @@ def test_sse_payload_converts_canceled_event() -> None:
     "event",
     [
         RunEvent(
-            event="state",
+            event=RunEventType.STATE,
             chat_id=UUID("00000000-0000-0000-0000-000000000703"),
             run_id=UUID("00000000-0000-0000-0000-000000000704"),
         ),
         RunEvent(
-            event="answer",
+            event=RunEventType.ANSWER,
             chat_id=UUID("00000000-0000-0000-0000-000000000705"),
             run_id=UUID("00000000-0000-0000-0000-000000000706"),
-            state="完了",
+            state=RunState.COMPLETED,
         ),
         RunEvent(
-            event="answer",
+            event=RunEventType.ANSWER,
             chat_id=UUID("00000000-0000-0000-0000-000000000707"),
             run_id=UUID("00000000-0000-0000-0000-000000000708"),
             answer=AnswerData(blocks=()),

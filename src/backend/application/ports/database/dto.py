@@ -4,7 +4,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
 
-from backend.domain.execution.run_state_policy import RunState
+from backend.domain.execution.run_state import RunState
+from backend.domain.references.source_type import SourceType
 
 SHARED_LOCAL_USER_ID = UUID("00000000-0000-0000-0000-000000000001")
 
@@ -61,7 +62,7 @@ class DisplayReferenceData:
     """表示用参照元メタ情報。"""
 
     reference_id: UUID
-    source_type: str
+    source_type: SourceType
     label: str
     relative_path: str
     page_start: int

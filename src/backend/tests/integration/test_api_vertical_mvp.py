@@ -16,6 +16,8 @@ from pypdf import PdfWriter
 from backend.app.factory import create_app
 from backend.application.chat.get_chat_detail import GetChatDetailUseCase
 from backend.application.execution.execute_chat_run import RunEvent
+from backend.application.execution.run_event_type import RunEventType
+from backend.application.ports.codex.cancel_request_result import CancelRequestResult
 from backend.application.ports.database.dto import (
     AnswerBlockData,
     AnswerData,
@@ -23,8 +25,12 @@ from backend.application.ports.database.dto import (
     DisplayReferenceData,
     HistoryItem,
 )
+from backend.application.ports.runtime.dispatch_status import DispatchStatus
 from backend.application.ports.runtime.dto import DispatchResult
 from backend.application.transactions import NoopTransactionManager
+from backend.domain.execution.run_state import RunState
+from backend.domain.references.source_type import SourceType
+from backend.infrastructure.codex.codex_event_kind import CodexEventKind
 from backend.infrastructure.codex.codex_runner import (
     CancelResult,
     CodexRunRequest,
@@ -32,7 +38,9 @@ from backend.infrastructure.codex.codex_runner import (
 from backend.infrastructure.codex.codex_runner import (
     CodexRunResult as InfrastructureCodexRunResult,
 )
-from backend.infrastructure.codex.jsonl_event_parser import ParsedCodexEvent
+from backend.infrastructure.codex.jsonl_event_parser import (
+    ParsedCodexEvent,
+)
 from backend.infrastructure.config.models import (
     AppConfig,
     AppRuntimeConfig,
@@ -53,7 +61,8 @@ from backend.presentation.schemas.api import (
     ChatStartResponseSchema,
 )
 from backend.presentation.sse.run_event_broker import RunEventSubscription
-from backend.shared.errors import AppError, ErrorClass
+from backend.shared.error_class import ErrorClass
+from backend.shared.errors import AppError
 from backend.tests.support.memory_repository import InMemoryChatRepository
 
 
@@ -261,16 +270,16 @@ def test_sse_streams_published_message_and_answer_events(tmp_path: Path) -> None
     event_source = PreloadedRunEventSource(
         events=(
             RunEvent(
-                event="message",
+                event=RunEventType.MESSAGE,
                 chat_id=accepted.chat_id,
                 run_id=accepted.run_id,
                 text="資料を検索しています。",
             ),
             RunEvent(
-                event="answer",
+                event=RunEventType.ANSWER,
                 chat_id=accepted.chat_id,
                 run_id=accepted.run_id,
-                state="完了",
+                state=RunState.COMPLETED,
                 answer=AnswerData(
                     blocks=(
                         AnswerBlockData(
@@ -278,7 +287,7 @@ def test_sse_streams_published_message_and_answer_events(tmp_path: Path) -> None
                             references=(
                                 DisplayReferenceData(
                                     reference_id=reference_id,
-                                    source_type="pdf",
+                                    source_type=SourceType.PDF,
                                     label="資料",
                                     relative_path="manual.pdf",
                                     page_start=2,
@@ -353,16 +362,16 @@ def test_sse_streams_state_and_error_events(tmp_path: Path) -> None:
     event_source = PreloadedRunEventSource(
         events=(
             RunEvent(
-                event="state",
+                event=RunEventType.STATE,
                 chat_id=accepted.chat_id,
                 run_id=accepted.run_id,
-                state="実行中",
+                state=RunState.RUNNING,
             ),
             RunEvent(
-                event="error",
+                event=RunEventType.ERROR,
                 chat_id=accepted.chat_id,
                 run_id=accepted.run_id,
-                state="エラー",
+                state=RunState.ERROR,
                 user_message="回答の生成に失敗しました。再度お試しください。",
             ),
         )
@@ -646,38 +655,6 @@ def test_artifact_endpoint_rejects_disallowed_mime_type(tmp_path: Path) -> None:
     assert response.status_code == 403
 
 
-def test_reference_endpoint_rejects_non_pdf_reference(tmp_path: Path) -> None:
-    """観点：IF-SB-09異常系。確認：PDF以外の参照元をHTTP 403で拒否する。"""
-    client, repository = _make_client_with_repository(tmp_path)
-    reference_id = UUID("00000000-0000-0000-0000-000000000301")
-    accepted = repository.create_chat_with_first_run("参照元確認")
-    repository.save_completed_answer(
-        accepted.chat_id,
-        accepted.run_id,
-        AnswerData(
-            blocks=(
-                AnswerBlockData(
-                    markdown="回答",
-                    references=(
-                        DisplayReferenceData(
-                            reference_id=reference_id,
-                            source_type="web",
-                            label="Web資料",
-                            relative_path="manual.pdf",
-                            page_start=1,
-                            page_end=1,
-                        ),
-                    ),
-                ),
-            ),
-        ),
-    )
-
-    response = client.get(f"/api/references/{reference_id}")
-
-    assert response.status_code == 403
-
-
 def test_reference_endpoint_returns_404_when_pdf_file_is_missing(
     tmp_path: Path,
 ) -> None:
@@ -819,15 +796,17 @@ def test_startup_recovery_reregisters_and_terminalizes_unfinished_runs(
 ) -> None:
     """観点：起動時実行回復。確認：未完了runを再登録または終端状態へ整合する。"""
     repository = InMemoryChatRepository()
-    accepted = repository.create_chat_with_first_run("受付")
-    running = repository.create_chat_with_first_run("実行中")
-    validating = repository.create_chat_with_first_run("検証中")
-    canceling = repository.create_chat_with_first_run("キャンセル要求中")
-    completed = repository.create_chat_with_first_run("完了")
-    repository.set_run_state(running.chat_id, running.run_id, "実行中")
-    repository.set_run_state(validating.chat_id, validating.run_id, "検証中")
-    repository.set_run_state(canceling.chat_id, canceling.run_id, "キャンセル要求中")
-    repository.set_run_state(completed.chat_id, completed.run_id, "完了")
+    accepted = repository.create_chat_with_first_run("accepted run")
+    running = repository.create_chat_with_first_run("running run")
+    validating = repository.create_chat_with_first_run("validating run")
+    canceling = repository.create_chat_with_first_run("cancel requested run")
+    completed = repository.create_chat_with_first_run("completed run")
+    repository.set_run_state(running.chat_id, running.run_id, RunState.RUNNING)
+    repository.set_run_state(validating.chat_id, validating.run_id, RunState.VALIDATING)
+    repository.set_run_state(
+        canceling.chat_id, canceling.run_id, RunState.CANCEL_REQUESTED
+    )
+    repository.set_run_state(completed.chat_id, completed.run_id, RunState.COMPLETED)
     dispatcher = RecordingDispatcher()
 
     create_app(
@@ -837,13 +816,20 @@ def test_startup_recovery_reregisters_and_terminalizes_unfinished_runs(
     )
 
     assert dispatcher.registered == [(accepted.chat_id, accepted.run_id)]
-    assert repository.get_chat_detail(accepted.chat_id).runs[0].state == "受付"
-    assert repository.get_chat_detail(running.chat_id).runs[0].state == "エラー"
-    assert repository.get_chat_detail(validating.chat_id).runs[0].state == "エラー"
-    assert repository.get_chat_detail(canceling.chat_id).runs[0].state == (
-        "キャンセル済み"
+    assert (
+        repository.get_chat_detail(accepted.chat_id).runs[0].state is RunState.ACCEPTED
     )
-    assert repository.get_chat_detail(completed.chat_id).runs[0].state == "完了"
+    assert repository.get_chat_detail(running.chat_id).runs[0].state is RunState.ERROR
+    assert (
+        repository.get_chat_detail(validating.chat_id).runs[0].state is RunState.ERROR
+    )
+    assert (
+        repository.get_chat_detail(canceling.chat_id).runs[0].state is RunState.CANCELED
+    )
+    assert (
+        repository.get_chat_detail(completed.chat_id).runs[0].state
+        is RunState.COMPLETED
+    )
 
 
 def test_create_app_cleans_expired_trace_logs(tmp_path: Path) -> None:
@@ -880,17 +866,17 @@ def test_default_runtime_executes_start_chat_through_codex_adapters(
         generation_result=InfrastructureCodexRunResult(
             events=(
                 ParsedCodexEvent(
-                    kind="thread_started",
+                    kind=CodexEventKind.THREAD_STARTED,
                     event_type="thread.started",
                     thread_id="generation-thread",
                 ),
                 ParsedCodexEvent(
-                    kind="agent_message",
+                    kind=CodexEventKind.AGENT_MESSAGE,
                     event_type="item.completed",
                     text='{"payload":{"kind":"progress","text":"PDFを確認しています。"}}',
                 ),
                 ParsedCodexEvent(
-                    kind="agent_message",
+                    kind=CodexEventKind.AGENT_MESSAGE,
                     event_type="item.completed",
                     text=(
                         '{"payload":{"kind":"final","answers":[{"text":"回答です。","references":[{'
@@ -898,7 +884,9 @@ def test_default_runtime_executes_start_chat_through_codex_adapters(
                         '"start_page":1,"end_page":2}}]}]}}'
                     ),
                 ),
-                ParsedCodexEvent(kind="turn_completed", event_type="turn.completed"),
+                ParsedCodexEvent(
+                    kind=CodexEventKind.TURN_COMPLETED, event_type="turn.completed"
+                ),
             ),
             final_message=(
                 '{"payload":{"kind":"final","answers":[{"text":"回答です。","references":[{'
@@ -910,22 +898,26 @@ def test_default_runtime_executes_start_chat_through_codex_adapters(
         validation_result=InfrastructureCodexRunResult(
             events=(
                 ParsedCodexEvent(
-                    kind="thread_started",
+                    kind=CodexEventKind.THREAD_STARTED,
                     event_type="thread.started",
                     thread_id="validation-thread",
                 ),
                 ParsedCodexEvent(
-                    kind="agent_message",
+                    kind=CodexEventKind.AGENT_MESSAGE,
                     event_type="item.completed",
                     text='{"payload":{"kind":"progress","text":"参照元PDFを検証しています。"}}',
                 ),
-                ParsedCodexEvent(kind="unknown", event_type="item.completed"),
                 ParsedCodexEvent(
-                    kind="agent_message",
+                    kind=CodexEventKind.UNKNOWN, event_type="item.completed"
+                ),
+                ParsedCodexEvent(
+                    kind=CodexEventKind.AGENT_MESSAGE,
                     event_type="item.completed",
                     text='{"payload":{"kind":"final","valid":true,"comment":""}}',
                 ),
-                ParsedCodexEvent(kind="turn_completed", event_type="turn.completed"),
+                ParsedCodexEvent(
+                    kind=CodexEventKind.TURN_COMPLETED, event_type="turn.completed"
+                ),
             ),
             final_message='{"payload":{"kind":"final","valid":true,"comment":""}}',
             codex_conversation_id="validation-thread",
@@ -996,7 +988,7 @@ class RecordingDispatcher:
         """登録されたrun IDを記録する。"""
         _ = trace_id
         self.registered.append((chat_id, run_id))
-        return DispatchResult(status="registered")
+        return DispatchResult(status=DispatchStatus.REGISTERED)
 
 
 class BrokenHistoryRepository(InMemoryChatRepository):
@@ -1125,7 +1117,7 @@ class RecordingApplicationCodexRunner:
         """キャンセル要求を記録する。"""
         _ = trace_id
         self.cancel_requests.append(run_id)
-        return "sent"
+        return CancelRequestResult.SENT
 
 
 def _make_client(tmp_path: Path) -> TestClient:

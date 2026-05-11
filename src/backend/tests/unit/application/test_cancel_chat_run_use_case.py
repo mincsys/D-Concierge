@@ -7,9 +7,11 @@ from backend.application.execution.cancel_chat_run import (
     CancelChatRunUseCase,
 )
 from backend.application.execution.execute_chat_run import RunEvent
-from backend.application.ports.codex.dto import CancelRequestResult
-from backend.domain.execution.run_state_policy import RunState
-from backend.shared.errors import AppError, ErrorClass
+from backend.application.execution.run_event_type import RunEventType
+from backend.application.ports.codex.cancel_request_result import CancelRequestResult
+from backend.domain.execution.run_state import RunState
+from backend.shared.error_class import ErrorClass
+from backend.shared.errors import AppError
 from backend.tests.support.memory_repository import InMemoryChatRepository
 
 
@@ -34,21 +36,24 @@ def test_cancel_chat_run_use_case_completes_accepted_run_without_cancel_request(
     )
 
     assert result.run_id == accepted.run_id
-    assert result.state == "キャンセル要求中"
+    assert result.state is RunState.CANCEL_REQUESTED
     assert result.user_message == "処理をキャンセルしています。"
     assert requester.requested == []
     detail = repository.get_chat_detail(accepted.chat_id)
-    assert detail.runs[0].state == "キャンセル済み"
+    assert detail.runs[0].state is RunState.CANCELED
     assert detail.runs[0].user_message == "処理をキャンセルしました。"
-    assert [event.event for event in publisher.events] == ["state", "canceled"]
-    assert publisher.events[-1].state == "キャンセル済み"
+    assert [event.event for event in publisher.events] == [
+        RunEventType.STATE,
+        RunEventType.CANCELED,
+    ]
+    assert publisher.events[-1].state is RunState.CANCELED
 
 
 def test_cancel_chat_run_use_case_rejects_terminal_run() -> None:
     """観点：CancelChatRunUseCase。確認：終端済みrunへのキャンセルを競合として扱う。"""
     repository = InMemoryChatRepository()
     accepted = repository.create_chat_with_first_run("初回")
-    repository.set_run_state(accepted.chat_id, accepted.run_id, "完了")
+    repository.set_run_state(accepted.chat_id, accepted.run_id, RunState.COMPLETED)
     requester = RecordingCancelRequester()
     usecase = CancelChatRunUseCase(repository=repository, cancel_requester=requester)
 
@@ -94,7 +99,7 @@ def test_cancel_chat_run_use_case_allows_missing_event_publisher() -> None:
 
     assert result.run_id == accepted.run_id
     assert repository.get_chat_detail(accepted.chat_id).runs[0].state == (
-        "キャンセル済み"
+        RunState.CANCELED
     )
 
 
@@ -105,7 +110,7 @@ def test_cancel_chat_run_use_case_requests_cancel_for_running_run() -> None:
     """
     repository = InMemoryChatRepository()
     accepted = repository.create_chat_with_first_run("初回")
-    repository.set_run_state(accepted.chat_id, accepted.run_id, "実行中")
+    repository.set_run_state(accepted.chat_id, accepted.run_id, RunState.RUNNING)
     requester = RecordingCancelRequester()
     publisher = RecordingPublisher()
     usecase = CancelChatRunUseCase(
@@ -122,9 +127,9 @@ def test_cancel_chat_run_use_case_requests_cancel_for_running_run() -> None:
 
     assert requester.requested == [accepted.run_id]
     detail = repository.get_chat_detail(accepted.chat_id)
-    assert detail.runs[0].state == "キャンセル要求中"
+    assert detail.runs[0].state is RunState.CANCEL_REQUESTED
     assert detail.runs[0].user_message == "処理をキャンセルしています。"
-    assert [event.event for event in publisher.events] == ["state"]
+    assert [event.event for event in publisher.events] == [RunEventType.STATE]
 
 
 def test_cancel_chat_run_use_case_requests_cancel_for_validating_run() -> None:
@@ -134,7 +139,7 @@ def test_cancel_chat_run_use_case_requests_cancel_for_validating_run() -> None:
     """
     repository = InMemoryChatRepository()
     accepted = repository.create_chat_with_first_run("初回")
-    repository.set_run_state(accepted.chat_id, accepted.run_id, "検証中")
+    repository.set_run_state(accepted.chat_id, accepted.run_id, RunState.VALIDATING)
     requester = RecordingCancelRequester()
     publisher = RecordingPublisher()
     usecase = CancelChatRunUseCase(
@@ -151,8 +156,8 @@ def test_cancel_chat_run_use_case_requests_cancel_for_validating_run() -> None:
 
     assert requester.requested == [accepted.run_id]
     detail = repository.get_chat_detail(accepted.chat_id)
-    assert detail.runs[0].state == "キャンセル要求中"
-    assert [event.event for event in publisher.events] == ["state"]
+    assert detail.runs[0].state is RunState.CANCEL_REQUESTED
+    assert [event.event for event in publisher.events] == [RunEventType.STATE]
 
 
 def test_cancel_chat_run_use_case_completes_cancel_when_process_already_exited() -> (
@@ -161,8 +166,8 @@ def test_cancel_chat_run_use_case_completes_cancel_when_process_already_exited()
     """観点：二段階キャンセル。確認：プロセス終了済みならキャンセル済みへ整合する。"""
     repository = InMemoryChatRepository()
     accepted = repository.create_chat_with_first_run("初回")
-    repository.set_run_state(accepted.chat_id, accepted.run_id, "検証中")
-    requester = RecordingCancelRequester(result="already_exited")
+    repository.set_run_state(accepted.chat_id, accepted.run_id, RunState.VALIDATING)
+    requester = RecordingCancelRequester(result=CancelRequestResult.ALREADY_EXITED)
     publisher = RecordingPublisher()
     usecase = CancelChatRunUseCase(
         repository=repository,
@@ -177,8 +182,11 @@ def test_cancel_chat_run_use_case_completes_cancel_when_process_already_exited()
     )
 
     detail = repository.get_chat_detail(accepted.chat_id)
-    assert detail.runs[0].state == "キャンセル済み"
-    assert [event.event for event in publisher.events] == ["state", "canceled"]
+    assert detail.runs[0].state is RunState.CANCELED
+    assert [event.event for event in publisher.events] == [
+        RunEventType.STATE,
+        RunEventType.CANCELED,
+    ]
 
 
 def test_cancel_chat_run_use_case_completes_running_run_without_cancel_requester() -> (
@@ -190,7 +198,7 @@ def test_cancel_chat_run_use_case_completes_running_run_without_cancel_requester
     """
     repository = InMemoryChatRepository()
     accepted = repository.create_chat_with_first_run("初回")
-    repository.set_run_state(accepted.chat_id, accepted.run_id, "実行中")
+    repository.set_run_state(accepted.chat_id, accepted.run_id, RunState.RUNNING)
     publisher = RecordingPublisher()
     usecase = CancelChatRunUseCase(
         repository=repository,
@@ -204,8 +212,11 @@ def test_cancel_chat_run_use_case_completes_running_run_without_cancel_requester
     )
 
     detail = repository.get_chat_detail(accepted.chat_id)
-    assert detail.runs[0].state == "キャンセル済み"
-    assert [event.event for event in publisher.events] == ["state", "canceled"]
+    assert detail.runs[0].state is RunState.CANCELED
+    assert [event.event for event in publisher.events] == [
+        RunEventType.STATE,
+        RunEventType.CANCELED,
+    ]
 
 
 def test_cancel_chat_run_use_case_ignores_stale_cancel_completion() -> None:
@@ -226,15 +237,15 @@ def test_cancel_chat_run_use_case_ignores_stale_cancel_completion() -> None:
         trace_id="trace-207",
     )
 
-    assert result.state == "キャンセル要求中"
-    assert [event.event for event in publisher.events] == ["state"]
+    assert result.state is RunState.CANCEL_REQUESTED
+    assert [event.event for event in publisher.events] == [RunEventType.STATE]
     assert repository.update_calls == 2
 
 
 @dataclass(slots=True)
 class RecordingCancelRequester:
     requested: list[UUID] = field(default_factory=list)
-    result: CancelRequestResult = "sent"
+    result: CancelRequestResult = CancelRequestResult.SENT
 
     def request_cancel(self, run_id: UUID) -> CancelRequestResult:
         self.requested.append(run_id)
@@ -255,7 +266,7 @@ class StaleCancelRepository:
     def get_run_state(self, chat_id: UUID, run_id: UUID) -> RunState:
         """キャンセル可能状態を返す。"""
         _ = (chat_id, run_id)
-        return "実行中"
+        return RunState.RUNNING
 
     def cancel_run(self, chat_id: UUID, run_id: UUID) -> None:
         """互換用メソッド。"""
@@ -283,7 +294,7 @@ class StaleCompletionRepository:
     def get_run_state(self, chat_id: UUID, run_id: UUID) -> RunState:
         """受付状態を返す。"""
         _ = (chat_id, run_id)
-        return "受付"
+        return RunState.ACCEPTED
 
     def cancel_run(self, chat_id: UUID, run_id: UUID) -> None:
         """互換用メソッド。"""
@@ -300,4 +311,4 @@ class StaleCompletionRepository:
         """キャンセル要求中だけ成立させ、キャンセル済み確定は不成立にする。"""
         _ = (chat_id, run_id, expected_states, user_message)
         self.update_calls += 1
-        return state == "キャンセル要求中"
+        return state is RunState.CANCEL_REQUESTED

@@ -10,6 +10,7 @@
 - 呼出主体: `StartChatUseCase`、`AppendChatRunUseCase`、アプリ起動時の回復処理。
 - 呼出先: アプリ内バックグラウンド実行基盤。
 - MVPでは外部の永続ジョブキューを導入せず、アプリ内dispatcherで受付済みrunを `ExecuteChatRunUseCase.execute` へ登録する。
+- dispatcher登録結果は内部では通常Enumの `DispatchStatus` として扱う。
 
 ## 3. IF概要
 
@@ -67,7 +68,7 @@ sequenceDiagram
 
 | 項目 | 内容 |
 | --- | --- |
-| `dispatch_result` | `registered`、`already_registered`、`failed` のいずれか |
+| `dispatch_result` | 内部では `DispatchStatus`。値は `registered`、`already_registered`、`failed` のいずれか |
 | `failure_reason` | 登録失敗時の調査用要約 |
 
 ## 7. 起動時回復

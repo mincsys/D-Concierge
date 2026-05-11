@@ -1,6 +1,7 @@
 from pathlib import Path
 
-from backend.shared.errors import AppError, ErrorClass
+from backend.shared.error_class import ErrorClass
+from backend.shared.errors import AppError
 
 
 class PathSecurityService:

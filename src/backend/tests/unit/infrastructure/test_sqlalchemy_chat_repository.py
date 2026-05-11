@@ -19,7 +19,8 @@ from backend.application.ports.database.dto import (
     HistoryItem,
     UnfinishedRun,
 )
-from backend.domain.execution.run_state_policy import RunState
+from backend.domain.execution.run_state import RunState
+from backend.domain.references.source_type import SourceType
 from backend.infrastructure.database.models.answer import (
     AnswerBlockModel,
     ReferenceModel,
@@ -37,7 +38,8 @@ from backend.infrastructure.database.repositories.sqlalchemy_chat_repository imp
 from backend.infrastructure.database.session.transaction_manager import (
     SqlAlchemyTransactionManager,
 )
-from backend.shared.errors import AppError, ErrorClass
+from backend.shared.error_class import ErrorClass
+from backend.shared.errors import AppError
 
 
 def test_sqlalchemy_repository_persists_chat_run_and_detail() -> None:
@@ -53,7 +55,7 @@ def test_sqlalchemy_repository_persists_chat_run_and_detail() -> None:
     assert detail.chat_id == accepted.chat_id
     assert detail.title == "初回指示"
     assert detail.runs[0].run_id == accepted.run_id
-    assert detail.runs[0].state == "受付"
+    assert detail.runs[0].state is RunState.ACCEPTED
     assert detail.runs[0].user_instruction == "初回指示"
 
 
@@ -79,7 +81,7 @@ def test_sqlalchemy_repository_lists_histories_by_updated_desc() -> None:
     histories = repository.list_histories()
 
     assert [item.chat_id for item in histories] == [second.chat_id, first.chat_id]
-    assert histories[0].latest_state == "受付"
+    assert histories[0].latest_state is RunState.ACCEPTED
 
 
 def test_sqlalchemy_repository_persists_execution_result_for_detail() -> None:
@@ -96,7 +98,7 @@ def test_sqlalchemy_repository_persists_execution_result_for_detail() -> None:
         repository.get_run_instruction(accepted.chat_id, accepted.run_id)
         == "資料を要約"
     )
-    repository.set_run_state(accepted.chat_id, accepted.run_id, "実行中")
+    repository.set_run_state(accepted.chat_id, accepted.run_id, RunState.RUNNING)
     repository.add_intermediate_message(
         accepted.chat_id, accepted.run_id, "資料を検索しています。"
     )
@@ -110,7 +112,7 @@ def test_sqlalchemy_repository_persists_execution_result_for_detail() -> None:
                     references=(
                         DisplayReferenceData(
                             reference_id=reference_id,
-                            source_type="pdf",
+                            source_type=SourceType.PDF,
                             label="資料",
                             relative_path="manual.pdf",
                             page_start=2,
@@ -128,12 +130,15 @@ def test_sqlalchemy_repository_persists_execution_result_for_detail() -> None:
             ),
         ),
     )
-    repository.set_run_state(accepted.chat_id, accepted.run_id, "完了")
+    repository.set_run_state(accepted.chat_id, accepted.run_id, RunState.COMPLETED)
 
     detail = repository.get_chat_detail(accepted.chat_id)
 
-    assert repository.get_run_state(accepted.chat_id, accepted.run_id) == "完了"
-    assert detail.runs[0].state == "完了"
+    assert (
+        repository.get_run_state(accepted.chat_id, accepted.run_id)
+        is RunState.COMPLETED
+    )
+    assert detail.runs[0].state is RunState.COMPLETED
     assert detail.runs[0].intermediate_messages[0].text == "資料を検索しています。"
     assert detail.runs[0].answer is not None
     assert detail.runs[0].answer.blocks[0].markdown == "検証済み回答"
@@ -162,7 +167,7 @@ def test_sqlalchemy_repository_saves_answer_with_foreign_key_checks() -> None:
                     references=(
                         DisplayReferenceData(
                             reference_id=reference_id,
-                            source_type="pdf",
+                            source_type=SourceType.PDF,
                             label="資料",
                             relative_path="manual.pdf",
                             page_start=2,
@@ -196,19 +201,19 @@ def test_sqlalchemy_repository_allows_append_after_terminal_run() -> None:
     """
     repository = _make_repository()
     accepted = repository.create_chat_with_first_run("初回")
-    repository.set_run_state(accepted.chat_id, accepted.run_id, "完了")
+    repository.set_run_state(accepted.chat_id, accepted.run_id, RunState.COMPLETED)
 
     appended = repository.append_run(accepted.chat_id, "追加")
 
     assert appended.chat_id == accepted.chat_id
-    assert appended.state == "受付"
+    assert appended.state is RunState.ACCEPTED
 
 
 def test_sqlalchemy_repository_rejects_cancel_for_terminal_run() -> None:
     """観点：キャンセルRepository IF。確認：終端済みrunのキャンセルを競合にする。"""
     repository = _make_repository()
     accepted = repository.create_chat_with_first_run("初回")
-    repository.set_run_state(accepted.chat_id, accepted.run_id, "完了")
+    repository.set_run_state(accepted.chat_id, accepted.run_id, RunState.COMPLETED)
 
     try:
         repository.cancel_run(accepted.chat_id, accepted.run_id)
@@ -226,7 +231,7 @@ def test_sqlalchemy_repository_cancels_accepted_run() -> None:
     repository.cancel_run(accepted.chat_id, accepted.run_id)
 
     detail = repository.get_chat_detail(accepted.chat_id)
-    assert detail.runs[0].state == "キャンセル済み"
+    assert detail.runs[0].state is RunState.CANCELED
     assert detail.runs[0].user_message == "処理をキャンセルしました。"
 
 
@@ -242,15 +247,15 @@ def test_sqlalchemy_repository_updates_state_conditionally_and_saves_deadline() 
     updated = repository.update_run_state_if_current(
         chat_id=accepted.chat_id,
         run_id=accepted.run_id,
-        expected_states=("受付",),
-        state="実行中",
+        expected_states=(RunState.ACCEPTED,),
+        state=RunState.RUNNING,
         execution_deadline_at=deadline,
     )
     stale = repository.update_run_state_if_current(
         chat_id=accepted.chat_id,
         run_id=accepted.run_id,
-        expected_states=("受付",),
-        state="エラー",
+        expected_states=(RunState.ACCEPTED,),
+        state=RunState.ERROR,
     )
 
     with session_factory() as session:
@@ -259,7 +264,7 @@ def test_sqlalchemy_repository_updates_state_conditionally_and_saves_deadline() 
     assert updated is True
     assert stale is False
     assert run is not None
-    assert run.state == "実行中"
+    assert run.state == RunState.RUNNING.value
     assert run.execution_deadline_at is not None
     assert run.execution_deadline_at.replace(tzinfo=UTC) == deadline
 
@@ -289,20 +294,24 @@ def test_sqlalchemy_repository_rejects_missing_records() -> None:
 def test_sqlalchemy_repository_lists_unfinished_runs_for_recovery() -> None:
     """観点：起動時回復Repository IF。確認：未完了runだけを回復対象として取得する。"""
     repository = _make_repository()
-    accepted = repository.create_chat_with_first_run("受付")
-    running = repository.create_chat_with_first_run("実行中")
-    canceling = repository.create_chat_with_first_run("キャンセル要求中")
-    terminal = repository.create_chat_with_first_run("完了")
-    repository.set_run_state(running.chat_id, running.run_id, "実行中")
-    repository.set_run_state(canceling.chat_id, canceling.run_id, "キャンセル要求中")
-    repository.set_run_state(terminal.chat_id, terminal.run_id, "完了")
+    accepted = repository.create_chat_with_first_run("accepted run")
+    running = repository.create_chat_with_first_run("running run")
+    canceling = repository.create_chat_with_first_run("cancel requested run")
+    terminal = repository.create_chat_with_first_run("completed run")
+    repository.set_run_state(running.chat_id, running.run_id, RunState.RUNNING)
+    repository.set_run_state(
+        canceling.chat_id,
+        canceling.run_id,
+        RunState.CANCEL_REQUESTED,
+    )
+    repository.set_run_state(terminal.chat_id, terminal.run_id, RunState.COMPLETED)
 
     unfinished = repository.list_unfinished_runs_for_recovery()
 
     assert [(run.chat_id, run.run_id, run.state) for run in unfinished] == [
-        (accepted.chat_id, accepted.run_id, "受付"),
-        (running.chat_id, running.run_id, "実行中"),
-        (canceling.chat_id, canceling.run_id, "キャンセル要求中"),
+        (accepted.chat_id, accepted.run_id, RunState.ACCEPTED),
+        (running.chat_id, running.run_id, RunState.RUNNING),
+        (canceling.chat_id, canceling.run_id, RunState.CANCEL_REQUESTED),
     ]
 
 
@@ -387,7 +396,7 @@ def test_sqlalchemy_repository_rejects_corrupted_reference_locator() -> None:
                     id=reference_id,
                     answer_block_id=block_id,
                     position=1,
-                    source_type="pdf",
+                    source_type=SourceType.PDF.value,
                     label="資料",
                     locator={"path": "manual.pdf"},
                 )

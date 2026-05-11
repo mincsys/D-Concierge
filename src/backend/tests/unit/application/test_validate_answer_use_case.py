@@ -2,9 +2,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from backend.application.ports.codex.dto import ReferenceValidationResult
-from backend.application.validation.validate_answer import (
-    ValidateAnswerUseCase,
-)
+from backend.application.validation.validate_answer import ValidateAnswerUseCase
+from backend.application.validation.validation_status import ValidationStatus
 from backend.domain.answer.answer_candidate import ParsedAnswerCandidate
 
 
@@ -27,7 +26,7 @@ def test_validate_answer_accepts_fixed_and_reference_valid_candidate() -> None:
         user_instruction="資料を要約",
     )
 
-    assert result.status == "採用可能"
+    assert result.status is ValidationStatus.ACCEPTED
     assert result.candidate is not None
     assert result.candidate.blocks[0].markdown == "要点はAです。"
     assert validator.validated_candidates[0].blocks[0].references[0].page_start == 2
@@ -56,7 +55,7 @@ def test_validate_answer_forwards_reference_intermediate_callback() -> None:
         on_intermediate_message=messages.append,
     )
 
-    assert result.status == "採用可能"
+    assert result.status is ValidationStatus.ACCEPTED
     assert messages == ["参照元を確認しています。"]
 
 
@@ -79,7 +78,7 @@ def test_validate_answer_returns_regeneration_for_fixed_validation_failure() -> 
         user_instruction="資料を要約",
     )
 
-    assert result.status == "再生成指示"
+    assert result.status is ValidationStatus.REGENERATE
     assert "固定検証" in result.regeneration_instruction
     assert validator.validated_candidates == []
 
@@ -107,7 +106,7 @@ def test_validate_answer_returns_specific_regeneration_for_invalid_paths() -> No
         user_instruction="資料を要約",
     )
 
-    assert result.status == "再生成指示"
+    assert result.status is ValidationStatus.REGENERATE
     assert result.regeneration_instruction == (
         "参照元のパスが不正なため、この回答は採用できません。\n"
         "以下のパス指定が間違っています。\n"
@@ -141,7 +140,7 @@ def test_validate_answer_returns_regeneration_for_reference_failure() -> None:
         user_instruction="資料を要約",
     )
 
-    assert result.status == "再生成指示"
+    assert result.status is ValidationStatus.REGENERATE
     assert result.regeneration_instruction == "2ページの根拠が不足しています。"
 
 
@@ -163,7 +162,7 @@ def test_validate_answer_fails_when_retry_limit_reached() -> None:
         user_instruction="資料を要約",
     )
 
-    assert result.status == "失敗"
+    assert result.status is ValidationStatus.FAILED
     assert result.user_message == "回答生成に失敗しました。再度お試しください。"
     assert result.candidate is None
 

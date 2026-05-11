@@ -1,5 +1,6 @@
 from backend.presentation.schemas.api import ErrorResponseSchema
-from backend.shared.errors import AppError, ErrorClass
+from backend.shared.error_class import ErrorClass
+from backend.shared.errors import AppError
 
 
 def error_response_payload(error: AppError) -> ErrorResponseSchema:

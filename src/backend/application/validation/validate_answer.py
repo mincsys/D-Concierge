@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, Protocol
+from typing import Protocol
 from uuid import UUID
 
 from backend.application.artifacts.validate_artifact_links import (
@@ -10,6 +10,7 @@ from backend.application.artifacts.validate_artifact_links import (
 )
 from backend.application.ports.codex.dto import ReferenceValidationResult
 from backend.application.ports.codex.interface import ReferenceValidatorPort
+from backend.application.validation.validation_status import ValidationStatus
 from backend.domain.answer.answer_candidate import (
     AnswerParseError,
     ParsedAnswerCandidate,
@@ -17,8 +18,6 @@ from backend.domain.answer.answer_candidate import (
 )
 
 VALIDATION_FAILURE_MESSAGE = "回答生成に失敗しました。再度お試しください。"
-
-type ValidationStatus = Literal["採用可能", "再生成指示", "失敗"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -102,7 +101,10 @@ class ValidateAnswerUseCase:
             has_artifact_links=artifact_link_validation.has_artifact_links,
         )
         if validation.valid:
-            return AnswerValidationResult(status="採用可能", candidate=candidate)
+            return AnswerValidationResult(
+                status=ValidationStatus.ACCEPTED,
+                candidate=candidate,
+            )
 
         return self._regeneration_or_failure(
             retry_count=retry_count,
@@ -116,11 +118,11 @@ class ValidateAnswerUseCase:
     ) -> AnswerValidationResult:
         if retry_count < self._max_retries:
             return AnswerValidationResult(
-                status="再生成指示",
+                status=ValidationStatus.REGENERATE,
                 regeneration_instruction=reason,
             )
         return AnswerValidationResult(
-            status="失敗",
+            status=ValidationStatus.FAILED,
             user_message=VALIDATION_FAILURE_MESSAGE,
         )
 

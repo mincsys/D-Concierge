@@ -3,7 +3,8 @@ from pathlib import Path
 import pytest
 
 from backend.infrastructure.filesystem.path_security import PathSecurityService
-from backend.shared.errors import AppError, ErrorClass
+from backend.shared.error_class import ErrorClass
+from backend.shared.errors import AppError
 
 
 def test_path_security_resolves_relative_file_under_allowed_root(

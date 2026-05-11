@@ -11,7 +11,7 @@ from backend.infrastructure.config.loader import ConfigLoader
 from backend.infrastructure.config.models import TraceLogConfig
 from backend.infrastructure.runtime.system_clock import SystemClock
 from backend.infrastructure.trace_log.trace_log_writer import TraceLogWriter
-from backend.shared.errors import ErrorClass
+from backend.shared.error_class import ErrorClass
 from backend.shared.tracing.exception import exception_message, exception_stacktrace
 
 _CONFIG_PATH = Path("config.yaml")

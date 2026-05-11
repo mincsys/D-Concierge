@@ -6,7 +6,8 @@ from backend.application.ports.filesystem.dto import (
     OpenedArtifactFile,
     SavedArtifactFile,
 )
-from backend.shared.errors import AppError, ErrorClass
+from backend.shared.error_class import ErrorClass
+from backend.shared.errors import AppError
 
 _MIME_TYPE_BY_SUFFIX = {
     ".svg": "image/svg+xml",

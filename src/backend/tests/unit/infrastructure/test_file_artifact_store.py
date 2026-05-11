@@ -10,7 +10,8 @@ from backend.application.ports.filesystem.dto import (
 from backend.infrastructure.filesystem.artifacts.file_artifact_store import (
     FileArtifactStore,
 )
-from backend.shared.errors import AppError, ErrorClass
+from backend.shared.error_class import ErrorClass
+from backend.shared.errors import AppError
 
 
 def test_file_artifact_store_copies_candidate_into_saved_area(

@@ -9,6 +9,7 @@
 - 呼出方式: PythonのProtocol相当の同期または非同期メソッド呼出。
 - 呼出主体: チャット、履歴、実行、検証、成果物、参照元の各ユースケース。
 - 実装はSQLAlchemyを用いるが、application層はSQLAlchemyモデルを直接扱わない。
+- application層へ返す実行状態と参照元種別は通常Enumとして扱い、DBカラムでは物理データ設計どおり文字列として保存する。
 
 ## 3. IF概要
 
@@ -111,6 +112,7 @@ sequenceDiagram
 | 未完了run一意制約違反 | トランザクションをrollbackし、競合分類の `AppError` へ変換する |
 | その他のDB制約違反 | トランザクションをrollbackし、データ不整合分類の `AppError` へ変換する |
 | DB接続失敗 | rollbackし、システムエラー分類として上位へ返す |
+| DB上の状態値または参照元種別が未定義 | データ不整合分類の `AppError` へ変換する |
 
 ## 8. 留意事項
 

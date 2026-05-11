@@ -5,7 +5,8 @@ import pytest
 from pytest import MonkeyPatch
 
 from backend.infrastructure.config.loader import ConfigLoader
-from backend.shared.errors import AppError, ErrorClass
+from backend.shared.error_class import ErrorClass
+from backend.shared.errors import AppError
 
 VALID_CONFIG = """
 app:

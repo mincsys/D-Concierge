@@ -1,5 +1,6 @@
 import pytest
 
+from backend.infrastructure.codex.codex_event_kind import CodexEventKind
 from backend.infrastructure.codex.jsonl_event_parser import (
     JsonlEventParser,
     JsonlParseError,
@@ -15,7 +16,7 @@ def test_jsonl_event_parser_extracts_thread_started_id() -> None:
         '{"type":"thread.started","thread_id":"codex-thread-1"}'
     )
 
-    assert event.kind == "thread_started"
+    assert event.kind is CodexEventKind.THREAD_STARTED
     assert event.event_type == "thread.started"
     assert event.thread_id == "codex-thread-1"
 
@@ -29,7 +30,7 @@ def test_jsonl_event_parser_keeps_agent_message_as_pending_candidate() -> None:
         '{"type":"item.completed","item":{"type":"agent_message","text":"回答候補"}}'
     )
 
-    assert event.kind == "agent_message"
+    assert event.kind is CodexEventKind.AGENT_MESSAGE
     assert event.text == "回答候補"
 
 
@@ -42,24 +43,27 @@ def test_jsonl_event_parser_keeps_unknown_completed_item_internal() -> None:
         '{"type":"item.completed","item":{"type":"file_change","path":"a.txt"}}'
     )
 
-    assert event.kind == "unknown"
+    assert event.kind is CodexEventKind.UNKNOWN
     assert event.text is None
 
 
 @pytest.mark.parametrize(
     ("line", "kind"),
     [
-        ('{"type":"turn.started"}', "turn_started"),
-        ('{"type":"item.started","item":{"type":"agent_message"}}', "item_started"),
-        ('{"type":"turn.completed"}', "turn_completed"),
-        ('{"type":"turn.failed","message":"失敗"}', "turn_failed"),
-        ('{"type":"error","message":"異常"}', "error"),
-        ('{"type":"custom.event","value":1}', "unknown"),
+        ('{"type":"turn.started"}', CodexEventKind.TURN_STARTED),
+        (
+            '{"type":"item.started","item":{"type":"agent_message"}}',
+            CodexEventKind.ITEM_STARTED,
+        ),
+        ('{"type":"turn.completed"}', CodexEventKind.TURN_COMPLETED),
+        ('{"type":"turn.failed","message":"失敗"}', CodexEventKind.TURN_FAILED),
+        ('{"type":"error","message":"異常"}', CodexEventKind.ERROR),
+        ('{"type":"custom.event","value":1}', CodexEventKind.UNKNOWN),
     ],
 )
 def test_jsonl_event_parser_distinguishes_known_and_unknown_events(
     line: str,
-    kind: str,
+    kind: CodexEventKind,
 ) -> None:
     """観点：JSONL解析。
 
@@ -67,7 +71,7 @@ def test_jsonl_event_parser_distinguishes_known_and_unknown_events(
     """
     event = JsonlEventParser.parse_line(line)
 
-    assert event.kind == kind
+    assert event.kind is kind
 
 
 @pytest.mark.parametrize(
@@ -102,5 +106,5 @@ def test_jsonl_event_parser_accepts_failed_event_without_message() -> None:
     """
     event = JsonlEventParser.parse_line('{"type":"turn.failed"}')
 
-    assert event.kind == "turn_failed"
+    assert event.kind is CodexEventKind.TURN_FAILED
     assert event.message is None

@@ -13,10 +13,12 @@ from backend.application.execution.execute_chat_run import (
     ExecuteChatRunUseCase,
     RunEvent,
 )
+from backend.application.execution.run_event_type import RunEventType
 from backend.application.ports.codex.dto import CodexRunResult
 from backend.application.ports.filesystem.dto import SavedArtifactFile
 from backend.application.ports.trace_log.dto import TraceLogRecord
 from backend.application.validation.validate_answer import AnswerValidationResult
+from backend.application.validation.validation_status import ValidationStatus
 from backend.domain.answer.answer_candidate import (
     AnswerParseError,
     ParsedAnswerBlock,
@@ -24,10 +26,10 @@ from backend.domain.answer.answer_candidate import (
     ParsedReference,
     parse_generation_final_output,
 )
-from backend.domain.execution.run_state_policy import RunState
+from backend.domain.execution.run_state import RunState
+from backend.shared.error_class import ErrorClass
 from backend.shared.errors import (
     AppError,
-    ErrorClass,
     ReferencePdfReadError,
     RunTimeoutError,
     ValidationResultFormatError,
@@ -67,7 +69,7 @@ def test_execute_chat_run_saves_verified_answer_and_publishes_events() -> None:
     use_case.execute(accepted.chat_id, accepted.run_id)
 
     detail = repository.get_chat_detail(accepted.chat_id)
-    assert detail.runs[0].state == "完了"
+    assert detail.runs[0].state is RunState.COMPLETED
     assert detail.runs[0].answer is not None
     assert detail.runs[0].answer.blocks[0].markdown == "要点はAです。"
     assert detail.runs[0].answer.blocks[0].references[0].relative_path == "manual.pdf"
@@ -80,14 +82,14 @@ def test_execute_chat_run_saves_verified_answer_and_publishes_events() -> None:
         "回答の検証を完了しました。",
     ]
     assert [(event.event, event.text) for event in publisher.events] == [
-        ("state", None),
-        ("message", "作業を開始します。"),
-        ("message", "資料を検索しています。"),
-        ("message", "作業が完了しました。"),
-        ("state", None),
-        ("message", "回答の検証を開始します。"),
-        ("message", "回答の検証を完了しました。"),
-        ("answer", None),
+        (RunEventType.STATE, None),
+        (RunEventType.MESSAGE, "作業を開始します。"),
+        (RunEventType.MESSAGE, "資料を検索しています。"),
+        (RunEventType.MESSAGE, "作業が完了しました。"),
+        (RunEventType.STATE, None),
+        (RunEventType.MESSAGE, "回答の検証を開始します。"),
+        (RunEventType.MESSAGE, "回答の検証を完了しました。"),
+        (RunEventType.ANSWER, None),
     ]
 
 
@@ -112,7 +114,7 @@ def test_execute_chat_run_merges_reference_ranges_before_save() -> None:
         answer_validator=QueuedAnswerValidator(
             results=(
                 AnswerValidationResult(
-                    status="採用可能",
+                    status=ValidationStatus.ACCEPTED,
                     candidate=ParsedAnswerCandidate(
                         blocks=(
                             ParsedAnswerBlock(
@@ -196,14 +198,14 @@ def test_execute_chat_run_publishes_streamed_intermediate_message_before_return(
     assert runner.message_was_persisted_before_return
     assert runner.message_was_published_before_return
     assert [(event.event, event.text) for event in publisher.events] == [
-        ("state", None),
-        ("message", "作業を開始します。"),
-        ("message", "資料を確認しています。"),
-        ("message", "作業が完了しました。"),
-        ("state", None),
-        ("message", "回答の検証を開始します。"),
-        ("message", "回答の検証を完了しました。"),
-        ("answer", None),
+        (RunEventType.STATE, None),
+        (RunEventType.MESSAGE, "作業を開始します。"),
+        (RunEventType.MESSAGE, "資料を確認しています。"),
+        (RunEventType.MESSAGE, "作業が完了しました。"),
+        (RunEventType.STATE, None),
+        (RunEventType.MESSAGE, "回答の検証を開始します。"),
+        (RunEventType.MESSAGE, "回答の検証を完了しました。"),
+        (RunEventType.ANSWER, None),
     ]
 
 
@@ -241,14 +243,14 @@ def test_execute_chat_run_publishes_validation_intermediate_message() -> None:
         "回答の検証を完了しました。",
     ]
     assert [(event.event, event.text) for event in publisher.events] == [
-        ("state", None),
-        ("message", "作業を開始します。"),
-        ("message", "作業が完了しました。"),
-        ("state", None),
-        ("message", "回答の検証を開始します。"),
-        ("message", "参照元PDFを検証しています。"),
-        ("message", "回答の検証を完了しました。"),
-        ("answer", None),
+        (RunEventType.STATE, None),
+        (RunEventType.MESSAGE, "作業を開始します。"),
+        (RunEventType.MESSAGE, "作業が完了しました。"),
+        (RunEventType.STATE, None),
+        (RunEventType.MESSAGE, "回答の検証を開始します。"),
+        (RunEventType.MESSAGE, "参照元PDFを検証しています。"),
+        (RunEventType.MESSAGE, "回答の検証を完了しました。"),
+        (RunEventType.ANSWER, None),
     ]
 
 
@@ -280,7 +282,9 @@ def test_execute_chat_run_completes_cancel_when_run_is_already_canceling() -> No
     """
     repository = InMemoryChatRepository()
     accepted = repository.create_chat_with_first_run("資料を要約してください")
-    repository.set_run_state(accepted.chat_id, accepted.run_id, "キャンセル要求中")
+    repository.set_run_state(
+        accepted.chat_id, accepted.run_id, RunState.CANCEL_REQUESTED
+    )
     runner = FakeCodexRunner(results=())
     publisher = RecordingPublisher()
     use_case = ExecuteChatRunUseCase(
@@ -293,9 +297,9 @@ def test_execute_chat_run_completes_cancel_when_run_is_already_canceling() -> No
     use_case.execute(accepted.chat_id, accepted.run_id, trace_id="trace-505")
 
     detail = repository.get_chat_detail(accepted.chat_id)
-    assert detail.runs[0].state == "キャンセル済み"
+    assert detail.runs[0].state is RunState.CANCELED
     assert runner.prompts == []
-    assert publisher.events[-1].event == "canceled"
+    assert publisher.events[-1].event is RunEventType.CANCELED
 
 
 def test_execute_chat_run_marks_error_when_start_state_update_is_stale() -> None:
@@ -317,9 +321,9 @@ def test_execute_chat_run_marks_error_when_start_state_update_is_stale() -> None
     use_case.execute(accepted.chat_id, accepted.run_id, trace_id="trace-514")
 
     detail = repository.get_chat_detail(accepted.chat_id)
-    assert detail.runs[0].state == "エラー"
+    assert detail.runs[0].state is RunState.ERROR
     assert runner.prompts == []
-    assert publisher.events[-1].event == "error"
+    assert publisher.events[-1].event is RunEventType.ERROR
 
 
 def test_execute_chat_run_marks_error_when_generated_answer_is_invalid() -> None:
@@ -353,7 +357,7 @@ def test_execute_chat_run_marks_error_when_generated_answer_is_invalid() -> None
     use_case.execute(accepted.chat_id, accepted.run_id)
 
     detail = repository.get_chat_detail(accepted.chat_id)
-    assert detail.runs[0].state == "エラー"
+    assert detail.runs[0].state is RunState.ERROR
     assert detail.runs[0].answer is None
     assert detail.runs[0].user_message == "回答を検証できませんでした。"
     assert [message.text for message in detail.runs[0].intermediate_messages] == [
@@ -361,7 +365,7 @@ def test_execute_chat_run_marks_error_when_generated_answer_is_invalid() -> None
         "作業が完了しました。",
         "回答の検証を開始します。",
     ]
-    assert publisher.events[-1].event == "error"
+    assert publisher.events[-1].event is RunEventType.ERROR
 
 
 def test_execute_chat_run_regenerates_when_validator_requests_retry() -> None:
@@ -389,11 +393,11 @@ def test_execute_chat_run_regenerates_when_validator_requests_retry() -> None:
     validator = QueuedAnswerValidator(
         results=(
             AnswerValidationResult(
-                status="再生成指示",
+                status=ValidationStatus.REGENERATE,
                 regeneration_instruction="参照元を具体化してください。",
             ),
             AnswerValidationResult(
-                status="採用可能",
+                status=ValidationStatus.ACCEPTED,
                 candidate=_answer_candidate("修正後回答"),
             ),
         )
@@ -411,7 +415,7 @@ def test_execute_chat_run_regenerates_when_validator_requests_retry() -> None:
     use_case.execute(accepted.chat_id, accepted.run_id)
 
     detail = repository.get_chat_detail(accepted.chat_id)
-    assert detail.runs[0].state == "完了"
+    assert detail.runs[0].state is RunState.COMPLETED
     assert detail.runs[0].answer is not None
     assert detail.runs[0].answer.blocks[0].markdown == "修正後回答"
     assert [message.text for message in detail.runs[0].intermediate_messages] == [
@@ -456,11 +460,11 @@ def test_execute_chat_run_writes_trace_when_validation_reaches_retry_limit() -> 
     validator = QueuedAnswerValidator(
         results=(
             AnswerValidationResult(
-                status="再生成指示",
+                status=ValidationStatus.REGENERATE,
                 regeneration_instruction="1回目の検証不合格",
             ),
             AnswerValidationResult(
-                status="失敗",
+                status=ValidationStatus.FAILED,
                 regeneration_instruction="最後の検証不合格",
                 user_message="回答生成に失敗しました。再度お試しください。",
             ),
@@ -499,11 +503,11 @@ def test_execute_chat_run_publishes_revision_message_before_retry_generation() -
     validator = QueuedAnswerValidator(
         results=(
             AnswerValidationResult(
-                status="再生成指示",
+                status=ValidationStatus.REGENERATE,
                 regeneration_instruction="参照元を具体化してください。",
             ),
             AnswerValidationResult(
-                status="採用可能",
+                status=ValidationStatus.ACCEPTED,
                 candidate=_answer_candidate("修正後回答"),
             ),
         )
@@ -615,7 +619,7 @@ def test_execute_chat_run_marks_error_when_artifact_workdir_is_missing() -> None
     use_case.execute(accepted.chat_id, accepted.run_id, trace_id="trace-506")
 
     detail = repository.get_chat_detail(accepted.chat_id)
-    assert detail.runs[0].state == "エラー"
+    assert detail.runs[0].state is RunState.ERROR
     assert detail.runs[0].answer is None
     assert detail.runs[0].user_message == "回答を検証できませんでした。"
 
@@ -645,7 +649,7 @@ def test_execute_chat_run_marks_error_when_validator_returns_no_candidate() -> N
     use_case.execute(accepted.chat_id, accepted.run_id, trace_id="trace-507")
 
     detail = repository.get_chat_detail(accepted.chat_id)
-    assert detail.runs[0].state == "エラー"
+    assert detail.runs[0].state is RunState.ERROR
     assert detail.runs[0].answer is None
     assert detail.runs[0].user_message == "回答を検証できませんでした。"
 
@@ -764,11 +768,11 @@ def test_execute_chat_run_times_out_before_next_codex_exec_when_deadline_exceede
     use_case.execute(accepted.chat_id, accepted.run_id, trace_id="trace-511")
 
     detail = repository.get_chat_detail(accepted.chat_id)
-    assert detail.runs[0].state == "タイムアウト"
+    assert detail.runs[0].state is RunState.TIMED_OUT
     assert detail.runs[0].answer is None
     assert validator.timeout_seconds == []
-    assert publisher.events[-1].event == "error"
-    assert publisher.events[-1].state == "タイムアウト"
+    assert publisher.events[-1].event is RunEventType.ERROR
+    assert publisher.events[-1].state is RunState.TIMED_OUT
 
 
 def test_execute_chat_run_marks_error_when_codex_generation_fails() -> None:
@@ -790,12 +794,12 @@ def test_execute_chat_run_marks_error_when_codex_generation_fails() -> None:
     use_case.execute(accepted.chat_id, accepted.run_id, trace_id="trace-502")
 
     detail = repository.get_chat_detail(accepted.chat_id)
-    assert detail.runs[0].state == "エラー"
+    assert detail.runs[0].state is RunState.ERROR
     assert detail.runs[0].answer is None
     assert detail.runs[0].user_message == (
         "回答の生成に失敗しました。再度お試しください。"
     )
-    assert publisher.events[-1].event == "error"
+    assert publisher.events[-1].event is RunEventType.ERROR
     assert publisher.events[-1].user_message == (
         "回答の生成に失敗しました。再度お試しください。"
     )
@@ -837,12 +841,12 @@ def test_execute_chat_run_marks_validation_error_for_invalid_validator_result() 
     use_case.execute(accepted.chat_id, accepted.run_id, trace_id="trace-516")
 
     detail = repository.get_chat_detail(accepted.chat_id)
-    assert detail.runs[0].state == "エラー"
+    assert detail.runs[0].state is RunState.ERROR
     assert detail.runs[0].answer is None
     assert detail.runs[0].user_message == (
         "回答の検証に失敗しました。再度お試しください。"
     )
-    assert publisher.events[-1].event == "error"
+    assert publisher.events[-1].event is RunEventType.ERROR
     assert publisher.events[-1].user_message == (
         "回答の検証に失敗しました。再度お試しください。"
     )
@@ -888,10 +892,10 @@ def test_execute_chat_run_marks_error_when_reference_pdf_read_fails() -> None:
     use_case.execute(accepted.chat_id, accepted.run_id, trace_id="trace-515")
 
     detail = repository.get_chat_detail(accepted.chat_id)
-    assert detail.runs[0].state == "エラー"
+    assert detail.runs[0].state is RunState.ERROR
     assert detail.runs[0].answer is None
     assert detail.runs[0].user_message == "PDF読み取り中にエラーが発生しました。"
-    assert publisher.events[-1].event == "error"
+    assert publisher.events[-1].event is RunEventType.ERROR
     assert publisher.events[-1].user_message == (
         "PDF読み取り中にエラーが発生しました。"
     )
@@ -937,14 +941,14 @@ def test_execute_chat_run_marks_error_when_unexpected_adoption_failure_occurs() 
     use_case.execute(accepted.chat_id, accepted.run_id, trace_id="trace-516")
 
     detail = repository.get_chat_detail(accepted.chat_id)
-    assert detail.runs[0].state == "エラー"
+    assert detail.runs[0].state is RunState.ERROR
     assert detail.runs[0].answer is None
     assert detail.runs[0].user_message == "処理中にエラーが発生しました。"
     assert [message.text for message in detail.runs[0].intermediate_messages][-2:] == [
         "回答の検証を開始します。",
         "回答の検証を完了しました。",
     ]
-    assert publisher.events[-1].event == "error"
+    assert publisher.events[-1].event is RunEventType.ERROR
     assert publisher.events[-1].user_message == "処理中にエラーが発生しました。"
     assert trace_logger.records[-1].event_name == "execution_failed"
     assert trace_logger.records[-1].stage == "execution"
@@ -980,9 +984,9 @@ def test_execute_chat_run_treats_app_error_after_cancel_as_canceled() -> None:
     use_case.execute(accepted.chat_id, accepted.run_id, trace_id="trace-509")
 
     detail = repository.get_chat_detail(accepted.chat_id)
-    assert detail.runs[0].state == "キャンセル済み"
+    assert detail.runs[0].state is RunState.CANCELED
     assert detail.runs[0].answer is None
-    assert publisher.events[-1].event == "canceled"
+    assert publisher.events[-1].event is RunEventType.CANCELED
     assert trace_logger.records == []
 
 
@@ -1003,13 +1007,13 @@ def test_execute_chat_run_marks_timeout_when_codex_times_out() -> None:
     use_case.execute(accepted.chat_id, accepted.run_id, trace_id="trace-503")
 
     detail = repository.get_chat_detail(accepted.chat_id)
-    assert detail.runs[0].state == "タイムアウト"
+    assert detail.runs[0].state is RunState.TIMED_OUT
     assert detail.runs[0].answer is None
     assert detail.runs[0].user_message == (
         "回答生成が時間内に完了しませんでした。ユーザ指示を絞って再度お試しください。"
     )
-    assert publisher.events[-1].event == "error"
-    assert publisher.events[-1].state == "タイムアウト"
+    assert publisher.events[-1].event is RunEventType.ERROR
+    assert publisher.events[-1].state is RunState.TIMED_OUT
     assert trace_logger.records[-1].event_name == "execution_timeout"
     assert trace_logger.records[-1].exception_type == "RunTimeoutError"
     assert trace_logger.records[-1].run_state == "タイムアウト"
@@ -1037,9 +1041,9 @@ def test_execute_chat_run_keeps_cancel_when_timeout_races_with_cancel() -> None:
     use_case.execute(accepted.chat_id, accepted.run_id, trace_id="trace-508")
 
     detail = repository.get_chat_detail(accepted.chat_id)
-    assert detail.runs[0].state == "キャンセル済み"
+    assert detail.runs[0].state is RunState.CANCELED
     assert detail.runs[0].user_message == "処理をキャンセルしました。"
-    assert publisher.events[-1].event == "canceled"
+    assert publisher.events[-1].event is RunEventType.CANCELED
 
 
 def test_execute_chat_run_does_not_adopt_answer_after_cancel() -> None:
@@ -1061,12 +1065,12 @@ def test_execute_chat_run_does_not_adopt_answer_after_cancel() -> None:
     use_case.execute(accepted.chat_id, accepted.run_id, trace_id="trace-504")
 
     detail = repository.get_chat_detail(accepted.chat_id)
-    assert detail.runs[0].state == "キャンセル済み"
+    assert detail.runs[0].state is RunState.CANCELED
     assert detail.runs[0].answer is None
     assert [message.text for message in detail.runs[0].intermediate_messages] == [
         "作業を開始します。"
     ]
-    assert publisher.events[-1].event == "canceled"
+    assert publisher.events[-1].event is RunEventType.CANCELED
 
 
 def test_execute_chat_run_does_not_adopt_when_validation_side_cancels() -> None:
@@ -1093,7 +1097,7 @@ def test_execute_chat_run_does_not_adopt_when_validation_side_cancels() -> None:
             chat_id=accepted.chat_id,
             run_id=accepted.run_id,
             result=AnswerValidationResult(
-                status="採用可能",
+                status=ValidationStatus.ACCEPTED,
                 candidate=_answer_candidate("採用してはいけない回答"),
             ),
         ),
@@ -1103,9 +1107,9 @@ def test_execute_chat_run_does_not_adopt_when_validation_side_cancels() -> None:
     use_case.execute(accepted.chat_id, accepted.run_id, trace_id="trace-512")
 
     detail = repository.get_chat_detail(accepted.chat_id)
-    assert detail.runs[0].state == "キャンセル済み"
+    assert detail.runs[0].state is RunState.CANCELED
     assert detail.runs[0].answer is None
-    assert publisher.events[-1].event == "canceled"
+    assert publisher.events[-1].event is RunEventType.CANCELED
 
 
 def test_execute_chat_run_keeps_cancel_when_validation_failure_races_with_cancel() -> (
@@ -1134,7 +1138,7 @@ def test_execute_chat_run_keeps_cancel_when_validation_failure_races_with_cancel
             chat_id=accepted.chat_id,
             run_id=accepted.run_id,
             result=AnswerValidationResult(
-                status="失敗",
+                status=ValidationStatus.FAILED,
                 user_message="採用してはいけないエラー",
             ),
         ),
@@ -1144,9 +1148,9 @@ def test_execute_chat_run_keeps_cancel_when_validation_failure_races_with_cancel
     use_case.execute(accepted.chat_id, accepted.run_id, trace_id="trace-513")
 
     detail = repository.get_chat_detail(accepted.chat_id)
-    assert detail.runs[0].state == "キャンセル済み"
+    assert detail.runs[0].state is RunState.CANCELED
     assert detail.runs[0].user_message == "処理をキャンセルしました。"
-    assert publisher.events[-1].event == "canceled"
+    assert publisher.events[-1].event is RunEventType.CANCELED
 
 
 @dataclass(slots=True)
@@ -1239,7 +1243,7 @@ class StreamingFakeCodexRunner:
             detail.runs[0].intermediate_messages[-1].text == "資料を確認しています。"
         )
         self.message_was_published_before_return = (
-            self.publisher.events[-1].event == "message"
+            self.publisher.events[-1].event is RunEventType.MESSAGE
             and self.publisher.events[-1].text == "資料を確認しています。"
         )
         return CodexRunResult(
@@ -1386,8 +1390,8 @@ class CancelingFailingCodexRunner:
         self.repository.update_run_state_if_current(
             chat_id=self.chat_id,
             run_id=self.run_id,
-            expected_states=("実行中",),
-            state="キャンセル要求中",
+            expected_states=(RunState.RUNNING,),
+            state=RunState.CANCEL_REQUESTED,
             user_message="処理をキャンセルしています。",
         )
         raise AppError(ErrorClass.SYSTEM, "Codex実行が失敗しました。")
@@ -1452,8 +1456,8 @@ class CancelingTimeoutCodexRunner:
         self.repository.update_run_state_if_current(
             chat_id=self.chat_id,
             run_id=self.run_id,
-            expected_states=("実行中",),
-            state="キャンセル要求中",
+            expected_states=(RunState.RUNNING,),
+            state=RunState.CANCEL_REQUESTED,
             user_message="処理をキャンセルしています。",
         )
         raise RunTimeoutError()
@@ -1487,7 +1491,7 @@ class AdoptionWithoutCandidateValidator:
             on_intermediate_message,
             session_workdir,
         )
-        return AnswerValidationResult(status="採用可能")
+        return AnswerValidationResult(status=ValidationStatus.ACCEPTED)
 
 
 @dataclass(slots=True)
@@ -1526,8 +1530,8 @@ class CancelingValidationValidator:
         self.repository.update_run_state_if_current(
             chat_id=self.chat_id,
             run_id=self.run_id,
-            expected_states=("検証中",),
-            state="キャンセル要求中",
+            expected_states=(RunState.VALIDATING,),
+            state=RunState.CANCEL_REQUESTED,
             user_message="処理をキャンセルしています。",
         )
         return self.result
@@ -1565,10 +1569,12 @@ class ParsingAnswerValidator:
             candidate = parse_generation_final_output(raw_answer_json)
         except AnswerParseError:
             return AnswerValidationResult(
-                status="失敗",
+                status=ValidationStatus.FAILED,
                 user_message="回答を検証できませんでした。",
             )
-        return AnswerValidationResult(status="採用可能", candidate=candidate)
+        return AnswerValidationResult(
+            status=ValidationStatus.ACCEPTED, candidate=candidate
+        )
 
 
 @dataclass(slots=True)
@@ -1668,7 +1674,7 @@ class ValidationStreamingAnswerValidator:
             raise AssertionError("検証中間メッセージ通知コールバックがありません。")
         on_intermediate_message("参照元PDFを検証しています。")
         return AnswerValidationResult(
-            status="採用可能",
+            status=ValidationStatus.ACCEPTED,
             candidate=parse_generation_final_output(raw_answer_json),
         )
 

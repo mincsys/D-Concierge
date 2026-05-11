@@ -1,20 +1,10 @@
 import json
 from dataclasses import dataclass
-from typing import Literal
+
+from backend.infrastructure.codex.codex_event_kind import CodexEventKind
 
 type JsonScalar = str | int | float | bool | None
 type JsonValue = JsonScalar | list["JsonValue"] | dict[str, "JsonValue"]
-
-type CodexEventKind = Literal[
-    "thread_started",
-    "turn_started",
-    "item_started",
-    "agent_message",
-    "turn_completed",
-    "turn_failed",
-    "error",
-    "unknown",
-]
 
 
 class JsonlParseError(Exception):
@@ -50,32 +40,44 @@ class JsonlEventParser:
         match event_type:
             case "thread.started":
                 return ParsedCodexEvent(
-                    kind="thread_started",
+                    kind=CodexEventKind.THREAD_STARTED,
                     event_type=event_type,
                     thread_id=_thread_id(loaded),
                 )
             case "turn.started":
-                return ParsedCodexEvent(kind="turn_started", event_type=event_type)
+                return ParsedCodexEvent(
+                    kind=CodexEventKind.TURN_STARTED,
+                    event_type=event_type,
+                )
             case "item.started":
-                return ParsedCodexEvent(kind="item_started", event_type=event_type)
+                return ParsedCodexEvent(
+                    kind=CodexEventKind.ITEM_STARTED,
+                    event_type=event_type,
+                )
             case "item.completed":
                 return _parse_completed_item(event_type, loaded)
             case "turn.completed":
-                return ParsedCodexEvent(kind="turn_completed", event_type=event_type)
+                return ParsedCodexEvent(
+                    kind=CodexEventKind.TURN_COMPLETED,
+                    event_type=event_type,
+                )
             case "turn.failed":
                 return ParsedCodexEvent(
-                    kind="turn_failed",
+                    kind=CodexEventKind.TURN_FAILED,
                     event_type=event_type,
                     message=_optional_string(loaded, "message"),
                 )
             case "error":
                 return ParsedCodexEvent(
-                    kind="error",
+                    kind=CodexEventKind.ERROR,
                     event_type=event_type,
                     message=_optional_string(loaded, "message"),
                 )
             case _:
-                return ParsedCodexEvent(kind="unknown", event_type=event_type)
+                return ParsedCodexEvent(
+                    kind=CodexEventKind.UNKNOWN,
+                    event_type=event_type,
+                )
 
 
 def _parse_completed_item(
@@ -89,12 +91,12 @@ def _parse_completed_item(
     match item_type:
         case "agent_message":
             return ParsedCodexEvent(
-                kind="agent_message",
+                kind=CodexEventKind.AGENT_MESSAGE,
                 event_type=event_type,
                 text=_required_string(item, "text"),
             )
         case _:
-            return ParsedCodexEvent(kind="unknown", event_type=event_type)
+            return ParsedCodexEvent(kind=CodexEventKind.UNKNOWN, event_type=event_type)
 
 
 def _event_type(event_data: dict[str, JsonValue]) -> str:

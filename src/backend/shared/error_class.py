@@ -1,0 +1,12 @@
+from enum import Enum
+
+
+class ErrorClass(Enum):
+    """アプリケーション全体で扱うエラー分類。"""
+
+    INPUT = "input"
+    NOT_FOUND = "not_found"
+    CONFLICT = "conflict"
+    CONFIGURATION = "configuration"
+    FORBIDDEN = "forbidden"
+    SYSTEM = "system"

@@ -9,6 +9,7 @@
 - 呼出方式: run ID単位のイベントpublish/subscribe。
 - 呼出主体: 発行は実行ユースケース、購読はSSEエンドポイント。
 - 外部へ送信するSSEイベント名とpayload形状は外部IF設計に従う。
+- application内部のイベント種別は通常Enumの `RunEventType` として扱い、SSE送信時だけ `state`、`message`、`answer`、`error`、`canceled` の文字列へ変換する。
 - 購読側はイベントキューを非ブロッキングで確認し、イベント未到着中も接続切断を検知できる。
 
 ## 3. IF概要
@@ -72,7 +73,7 @@ sequenceDiagram
 | --- | --- |
 | `chat_id` | SSE購読対象チャットID |
 | `run_id` | SSE購読またはpublish対象run ID |
-| `event_name` | `state`、`message`、`answer`、`error`、`canceled` |
+| `event_name` | 内部では `RunEventType`。SSE送信時は `state`、`message`、`answer`、`error`、`canceled` |
 | `payload` | イベント名に対応する送信データ |
 | `trace_id` | 接続と実行を関連付けるID |
 | `subscription.poll_event()` | イベントが未到着か、終端済みか、送信対象イベントがあるかを非ブロッキングで返す |

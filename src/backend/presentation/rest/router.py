@@ -1,7 +1,7 @@
 import asyncio
 import json
 from collections.abc import AsyncIterator, Callable
-from typing import Literal, Protocol, TypedDict
+from typing import Protocol, TypedDict
 from uuid import UUID
 
 from fastapi import APIRouter, Request
@@ -13,6 +13,7 @@ from backend.application.chat.get_chat_detail import GetChatDetailUseCase
 from backend.application.chat.start_chat import StartChatUseCase
 from backend.application.execution.cancel_chat_run import CancelChatRunUseCase
 from backend.application.execution.execute_chat_run import RunEvent
+from backend.application.execution.run_event_type import RunEventType
 from backend.application.history.list_chat_histories import ListChatHistoriesUseCase
 from backend.application.ports.database.dto import (
     AnswerBlockData,
@@ -23,7 +24,8 @@ from backend.application.ports.database.dto import (
 )
 from backend.application.ports.trace_log.dto import TraceLogRecord
 from backend.application.references.get_reference_data import GetReferenceDataUseCase
-from backend.domain.execution.run_state_policy import RunState
+from backend.domain.execution.run_state import RunState
+from backend.domain.references.source_type import SourceType
 from backend.infrastructure.trace_log.trace_log_writer import TraceLogWriter
 from backend.presentation.rest.trace_context import (
     ensure_request_trace_context,
@@ -44,7 +46,8 @@ from backend.presentation.schemas.api import (
     PdfLocatorSchema,
 )
 from backend.presentation.sse.run_event_broker import RunEventSubscription
-from backend.shared.errors import AppError, ErrorClass
+from backend.shared.error_class import ErrorClass
+from backend.shared.errors import AppError
 from backend.shared.tracing.exception import exception_message, exception_stacktrace
 
 
@@ -58,7 +61,7 @@ class PdfLocatorPayload(TypedDict):
 class DisplayReferencePayload(TypedDict):
     """SSE回答内の表示用参照元payload。"""
 
-    source_type: Literal["pdf"]
+    source_type: str
     label: str
     url: str
     locator: PdfLocatorPayload
@@ -198,7 +201,7 @@ def create_api_router(
                 chat_id=str(item.chat_id),
                 title=item.title,
                 latest_run_id=(str(item.latest_run_id) if item.latest_run_id else None),
-                latest_state=item.latest_state,
+                latest_state=item.latest_state.value,
                 updated_at=item.updated_at.isoformat(),
             )
             for item in list_histories_usecase.execute()
@@ -232,7 +235,7 @@ def create_api_router(
         )
         return CancelChatRunResponseSchema(
             run_id=str(canceled.run_id),
-            state=canceled.state,
+            state=canceled.state.value,
             user_message=canceled.user_message,
         )
 
@@ -297,10 +300,14 @@ async def _run_sse_events(
                 chat_id,
                 run_id,
             )
-            yield _sse_event_bytes("state", _state_payload(run_id, state))
+            yield _sse_event_bytes(
+                RunEventType.STATE.value,
+                _state_payload(run_id, state),
+            )
             for message in saved_messages:
                 yield _sse_event_bytes(
-                    "message", MessageEventPayload(run_id=str(run_id), text=message)
+                    RunEventType.MESSAGE.value,
+                    MessageEventPayload(run_id=str(run_id), text=message),
                 )
             return
 
@@ -312,10 +319,14 @@ async def _run_sse_events(
                 run_id,
             )
             replayed_messages = list(saved_messages)
-            yield _sse_event_bytes("state", _state_payload(run_id, state))
+            yield _sse_event_bytes(
+                RunEventType.STATE.value,
+                _state_payload(run_id, state),
+            )
             for message in saved_messages:
                 yield _sse_event_bytes(
-                    "message", MessageEventPayload(run_id=str(run_id), text=message)
+                    RunEventType.MESSAGE.value,
+                    MessageEventPayload(run_id=str(run_id), text=message),
                 )
             while True:
                 if await request.is_disconnected():
@@ -328,8 +339,12 @@ async def _run_sse_events(
                     return
                 if _is_replayed_message_event(event, replayed_messages):
                     continue
-                yield _sse_event_bytes(event.event, _run_event_payload(event))
-                if event.event in {"answer", "error", "canceled"}:
+                yield _sse_event_bytes(event.event.value, _run_event_payload(event))
+                if event.event in {
+                    RunEventType.ANSWER,
+                    RunEventType.ERROR,
+                    RunEventType.CANCELED,
+                }:
                     return
         finally:
             run_event_source.unsubscribe(subscription)
@@ -344,10 +359,10 @@ async def _run_sse_events(
             user_message=exc.user_message,
         )
         yield _sse_event_bytes(
-            "error",
+            RunEventType.ERROR.value,
             EndEventPayload(
                 run_id=str(run_id),
-                state="エラー",
+                state=RunState.ERROR.value,
                 user_message=exc.user_message,
             ),
         )
@@ -362,10 +377,10 @@ async def _run_sse_events(
             user_message="処理中にエラーが発生しました。",
         )
         yield _sse_event_bytes(
-            "error",
+            RunEventType.ERROR.value,
             EndEventPayload(
                 run_id=str(run_id),
-                state="エラー",
+                state=RunState.ERROR.value,
                 user_message="処理中にエラーが発生しました。",
             ),
         )
@@ -385,7 +400,7 @@ def _run_sse_snapshot(
 
 
 def _is_replayed_message_event(event: RunEvent, replayed_messages: list[str]) -> bool:
-    if event.event != "message" or not replayed_messages:
+    if event.event is not RunEventType.MESSAGE or not replayed_messages:
         return False
     try:
         replayed_index = replayed_messages.index(event.text or "")
@@ -433,7 +448,7 @@ def _write_sse_failure_trace(
             run_id=run_id,
             error_class=error_class,
             exception_type=type(exc).__name__,
-            run_state="エラー",
+            run_state=RunState.ERROR.value,
             stacktrace=exception_stacktrace(exc),
             message=(
                 user_message if isinstance(exc, AppError) else exception_message(exc)
@@ -449,31 +464,31 @@ def _sse_event_bytes(event_name: str, payload: SsePayload) -> bytes:
 
 def _run_event_payload(event: RunEvent) -> SsePayload:
     match event.event:
-        case "state":
+        case RunEventType.STATE:
             return _state_payload(event.run_id, _required_state(event))
-        case "message":
+        case RunEventType.MESSAGE:
             return MessageEventPayload(run_id=str(event.run_id), text=event.text or "")
-        case "answer":
+        case RunEventType.ANSWER:
             if event.answer is None:
                 raise AppError(ErrorClass.SYSTEM, "回答イベントの内容が不正です。")
             return AnswerEventPayload(
                 run_id=str(event.run_id),
-                state=_required_state(event),
+                state=_required_state(event).value,
                 answer=_answer_payload(event.answer),
             )
-        case "error" | "canceled":
+        case RunEventType.ERROR | RunEventType.CANCELED:
             return EndEventPayload(
                 run_id=str(event.run_id),
-                state=_required_state(event),
+                state=_required_state(event).value,
                 user_message=event.user_message or "",
             )
 
 
-def _state_payload(run_id: UUID, state: str) -> StateEventPayload:
-    return StateEventPayload(run_id=str(run_id), state=state)
+def _state_payload(run_id: UUID, state: RunState) -> StateEventPayload:
+    return StateEventPayload(run_id=str(run_id), state=state.value)
 
 
-def _required_state(event: RunEvent) -> str:
+def _required_state(event: RunEvent) -> RunState:
     if event.state is None:
         raise AppError(ErrorClass.SYSTEM, "状態イベントの内容が不正です。")
     return event.state
@@ -486,7 +501,7 @@ def _answer_payload(answer: AnswerData) -> AnswerPayload:
                 markdown=block.markdown,
                 references=[
                     DisplayReferencePayload(
-                        source_type="pdf",
+                        source_type=SourceType.PDF.value,
                         label=reference.label,
                         url=f"/api/references/{reference.reference_id}",
                         locator=PdfLocatorPayload(
@@ -507,7 +522,7 @@ def _accepted_response(chat_id: UUID, run_id: UUID) -> ChatStartResponseSchema:
         chat_id=str(chat_id),
         run_id=str(run_id),
         sse_url=f"/api/chats/{chat_id}/runs/{run_id}/sse",
-        state="受付",
+        state=RunState.ACCEPTED.value,
     )
 
 
@@ -522,7 +537,7 @@ def _chat_detail_response(detail: ChatDetail) -> ChatDetailResponseSchema:
 def _run_response(run: RunDetail) -> ChatRunResponseSchema:
     return ChatRunResponseSchema(
         run_id=str(run.run_id),
-        state=run.state,
+        state=run.state.value,
         user_instruction=run.user_instruction,
         intermediate_messages=[
             IntermediateMessageResponseSchema(text=message.text)
@@ -548,7 +563,7 @@ def _answer_block_response(block: AnswerBlockData) -> AnswerBlockResponseSchema:
 
 def _reference_response(reference: DisplayReferenceData) -> DisplayReferenceSchema:
     return DisplayReferenceSchema(
-        source_type="pdf",
+        source_type=SourceType.PDF.value,
         label=reference.label,
         url=f"/api/references/{reference.reference_id}",
         locator=PdfLocatorSchema(

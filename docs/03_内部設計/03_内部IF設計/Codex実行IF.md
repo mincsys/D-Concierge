@@ -12,6 +12,7 @@
 - 生成用Codexは `codex/sessions/<user-id>/<session-id>/` を作業領域とし、検証用Codexは `codex/sessions_validator/<user-id>/<session-id>/` を作業領域とする。
 - `session_id` はD-Conciergeが作業領域を決定するための内部IDであり、Codex側resume用IDは `codex_conversation_id` として別に受け渡す。
 - `timeout_seconds` は設定ファイル値そのものではなく、呼出元が全体deadlineから算出した当該codex execの残り秒数である。
+- Codex JSONLイベント種別、Codex出力 `payload.kind`、キャンセル要求結果は内部では通常Enumとして扱い、Codex JSONL、Codex出力JSON、プロセス終了要求結果の境界で文字列へ変換する。
 
 ## 3. IF概要
 
@@ -103,11 +104,11 @@ sequenceDiagram
 
 | 項目 | 内容 |
 | --- | --- |
-| `CodexEvent` | 中間メッセージ、最終回答候補、検証結果、エラーを表す構造化イベント |
+| `CodexEvent` | 中間メッセージ、最終回答候補、検証結果、エラーを表す構造化イベント。イベント種別は内部では `CodexEventKind` |
 | `exit_status` | codex exec終了コードと終了理由 |
 | `codex_conversation_id` | `thread.started.thread_id` から取得した、次回resumeに使うCodex側resume用ID |
 | `artifact_candidates` | 生成結果が参照したCodex成果物候補 |
-| `cancel_result` | 終了要求結果。`sent`、`already_exited`、`not_registered` のいずれか |
+| `cancel_result` | 終了要求結果。内部では `CancelRequestResult`、外部境界では `sent`、`already_exited`、`not_registered` のいずれか |
 
 ### 6.4. Codex作業領域
 

@@ -1,5 +1,6 @@
 from backend.presentation.errors.http import error_response_payload, status_code
-from backend.shared.errors import AppError, ErrorClass
+from backend.shared.error_class import ErrorClass
+from backend.shared.errors import AppError
 
 
 def test_app_error_handler_response() -> None:

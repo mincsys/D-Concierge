@@ -1,6 +1,8 @@
 from uuid import UUID
 
 from backend.application.execution.execute_chat_run import RunEvent
+from backend.application.execution.run_event_type import RunEventType
+from backend.domain.execution.run_state import RunState
 from backend.presentation.sse.run_event_broker import RunEventBroker
 
 
@@ -15,18 +17,28 @@ def test_run_event_broker_delivers_events_to_subscriber_in_order() -> None:
     subscription = broker.subscribe(run_id)
 
     broker.publish(
-        RunEvent(event="state", chat_id=chat_id, run_id=run_id, state="実行中")
+        RunEvent(
+            event=RunEventType.STATE,
+            chat_id=chat_id,
+            run_id=run_id,
+            state=RunState.RUNNING,
+        )
     )
     broker.publish(
-        RunEvent(event="message", chat_id=chat_id, run_id=run_id, text="検索中です。")
+        RunEvent(
+            event=RunEventType.MESSAGE,
+            chat_id=chat_id,
+            run_id=run_id,
+            text="検索中です。",
+        )
     )
 
     first = subscription.next_event(timeout_seconds=0)
     second = subscription.next_event(timeout_seconds=0)
     assert first is not None
     assert second is not None
-    assert first.event == "state"
-    assert second.event == "message"
+    assert first.event is RunEventType.STATE
+    assert second.event is RunEventType.MESSAGE
 
 
 def test_run_event_broker_ignores_publish_without_subscriber() -> None:
@@ -38,10 +50,10 @@ def test_run_event_broker_ignores_publish_without_subscriber() -> None:
 
     broker.publish(
         RunEvent(
-            event="state",
+            event=RunEventType.STATE,
             chat_id=UUID("00000000-0000-0000-0000-000000000503"),
             run_id=UUID("00000000-0000-0000-0000-000000000504"),
-            state="実行中",
+            state=RunState.RUNNING,
         )
     )
 
@@ -57,17 +69,27 @@ def test_run_event_broker_closes_subscription_after_terminal_event() -> None:
     subscription = broker.subscribe(run_id)
 
     broker.publish(
-        RunEvent(event="answer", chat_id=chat_id, run_id=run_id, state="完了")
+        RunEvent(
+            event=RunEventType.ANSWER,
+            chat_id=chat_id,
+            run_id=run_id,
+            state=RunState.COMPLETED,
+        )
     )
     broker.publish(
-        RunEvent(event="state", chat_id=chat_id, run_id=run_id, state="実行中")
+        RunEvent(
+            event=RunEventType.STATE,
+            chat_id=chat_id,
+            run_id=run_id,
+            state=RunState.RUNNING,
+        )
     )
 
     terminal = subscription.next_event(timeout_seconds=0)
     closed = subscription.next_event(timeout_seconds=0)
     late = subscription.next_event(timeout_seconds=0)
     assert terminal is not None
-    assert terminal.event == "answer"
+    assert terminal.event is RunEventType.ANSWER
     assert closed is None
     assert late is None
 
@@ -84,7 +106,12 @@ def test_run_event_broker_unsubscribe_stops_delivery() -> None:
 
     broker.unsubscribe(subscription)
     broker.publish(
-        RunEvent(event="state", chat_id=chat_id, run_id=run_id, state="実行中")
+        RunEvent(
+            event=RunEventType.STATE,
+            chat_id=chat_id,
+            run_id=run_id,
+            state=RunState.RUNNING,
+        )
     )
 
     assert subscription.next_event(timeout_seconds=0) is None
@@ -104,13 +131,18 @@ def test_run_event_broker_unsubscribe_one_of_multiple_subscribers() -> None:
 
     broker.unsubscribe(removed)
     broker.publish(
-        RunEvent(event="state", chat_id=chat_id, run_id=run_id, state="実行中")
+        RunEvent(
+            event=RunEventType.STATE,
+            chat_id=chat_id,
+            run_id=run_id,
+            state=RunState.RUNNING,
+        )
     )
 
     assert removed.next_event(timeout_seconds=0) is None
     delivered = remaining.next_event(timeout_seconds=0)
     assert delivered is not None
-    assert delivered.event == "state"
+    assert delivered.event is RunEventType.STATE
 
 
 def test_run_event_broker_unsubscribe_unknown_subscription_is_noop() -> None:

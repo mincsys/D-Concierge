@@ -13,7 +13,8 @@ from backend.application.artifacts.save_adopted_artifacts import (
 from backend.application.ports.filesystem.dto import (
     SavedArtifactFile,
 )
-from backend.shared.errors import AppError, ErrorClass
+from backend.shared.error_class import ErrorClass
+from backend.shared.errors import AppError
 
 
 def test_save_adopted_artifacts_replaces_markdown_and_html_paths() -> None:

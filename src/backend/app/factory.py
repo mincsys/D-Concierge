@@ -76,7 +76,8 @@ from backend.presentation.rest.trace_context import (
     request_trace_id,
 )
 from backend.presentation.sse.run_event_broker import RunEventBroker
-from backend.shared.errors import AppError, ErrorClass
+from backend.shared.error_class import ErrorClass
+from backend.shared.errors import AppError
 from backend.shared.tracing.exception import exception_message, exception_stacktrace
 
 

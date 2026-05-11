@@ -1,9 +1,5 @@
 # mypy: disable-error-code="explicit-any"
-from typing import Literal
-
 from pydantic import BaseModel, Field
-
-from backend.domain.execution.run_state_policy import RunState
 
 
 class AppConfigResponseSchema(BaseModel):
@@ -25,14 +21,14 @@ class ChatStartResponseSchema(BaseModel):
     chat_id: str
     run_id: str
     sse_url: str
-    state: RunState
+    state: str
 
 
 class CancelChatRunResponseSchema(BaseModel):
     """キャンセル受付APIの応答。"""
 
     run_id: str
-    state: Literal["キャンセル要求中"]
+    state: str
     user_message: str
 
 
@@ -42,7 +38,7 @@ class ChatHistoryItemResponseSchema(BaseModel):
     chat_id: str
     title: str
     latest_run_id: str | None = None
-    latest_state: RunState = "受付"
+    latest_state: str = ""
     updated_at: str = ""
 
 
@@ -56,7 +52,7 @@ class PdfLocatorSchema(BaseModel):
 class DisplayReferenceSchema(BaseModel):
     """表示用参照元メタ情報。"""
 
-    source_type: Literal["pdf"]
+    source_type: str
     label: str
     url: str
     locator: PdfLocatorSchema
@@ -85,7 +81,7 @@ class ChatRunResponseSchema(BaseModel):
     """チャット詳細内のrun応答。"""
 
     run_id: str
-    state: RunState
+    state: str
     user_instruction: str
     intermediate_messages: list[IntermediateMessageResponseSchema] = Field(
         default_factory=list

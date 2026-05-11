@@ -1,17 +1,20 @@
 from dataclasses import dataclass
-from typing import Literal, Protocol
+from typing import Protocol
 from uuid import UUID
 
 from backend.application.execution.execute_chat_run import RunEvent
-from backend.application.ports.codex.dto import CancelRequestResult
+from backend.application.execution.run_event_type import RunEventType
+from backend.application.ports.codex.cancel_request_result import CancelRequestResult
 from backend.application.ports.codex.interface import CancelRequesterPort
 from backend.application.ports.database.interface import (
     CancelChatRunRepositoryPort,
     TransactionManagerPort,
 )
 from backend.application.transactions import NoopTransactionManager
+from backend.domain.execution.run_state import RunState
 from backend.domain.execution.run_state_policy import RunStatePolicy
-from backend.shared.errors import AppError, ErrorClass
+from backend.shared.error_class import ErrorClass
+from backend.shared.errors import AppError
 
 CANCELED_MESSAGE = "処理をキャンセルしました。"
 CANCEL_REQUESTED_MESSAGE = "処理をキャンセルしています。"
@@ -22,7 +25,7 @@ class CancelChatRunResult:
     """キャンセル受付結果。"""
 
     run_id: UUID
-    state: Literal["キャンセル要求中"]
+    state: RunState
     user_message: str
 
 
@@ -69,33 +72,36 @@ class CancelChatRunUseCase:
                 chat_id=chat_id,
                 run_id=run_id,
                 expected_states=(current_state,),
-                state="キャンセル要求中",
+                state=RunState.CANCEL_REQUESTED,
                 user_message=CANCEL_REQUESTED_MESSAGE,
             )
         if not updated:
             raise AppError(ErrorClass.CONFLICT, "この処理はキャンセルできません。")
         self._publish(
             RunEvent(
-                event="state",
+                event=RunEventType.STATE,
                 chat_id=chat_id,
                 run_id=run_id,
-                state="キャンセル要求中",
+                state=RunState.CANCEL_REQUESTED,
             )
         )
-        if current_state == "受付":
+        if current_state is RunState.ACCEPTED:
             self._complete_cancel(chat_id, run_id)
-        elif current_state in {"実行中", "検証中"}:
+        elif current_state in {RunState.RUNNING, RunState.VALIDATING}:
             cancel_result: CancelRequestResult = (
                 self._cancel_requester.request_cancel(run_id)
                 if self._cancel_requester is not None
-                else "not_registered"
+                else CancelRequestResult.NOT_REGISTERED
             )
-            if cancel_result in {"already_exited", "not_registered"}:
+            if cancel_result in {
+                CancelRequestResult.ALREADY_EXITED,
+                CancelRequestResult.NOT_REGISTERED,
+            }:
                 self._complete_cancel(chat_id, run_id)
 
         return CancelChatRunResult(
             run_id=run_id,
-            state="キャンセル要求中",
+            state=RunState.CANCEL_REQUESTED,
             user_message=CANCEL_REQUESTED_MESSAGE,
         )
 
@@ -104,18 +110,18 @@ class CancelChatRunUseCase:
             updated = self._repository.update_run_state_if_current(
                 chat_id=chat_id,
                 run_id=run_id,
-                expected_states=("キャンセル要求中",),
-                state="キャンセル済み",
+                expected_states=(RunState.CANCEL_REQUESTED,),
+                state=RunState.CANCELED,
                 user_message=CANCELED_MESSAGE,
             )
         if not updated:
             return
         self._publish(
             RunEvent(
-                event="canceled",
+                event=RunEventType.CANCELED,
                 chat_id=chat_id,
                 run_id=run_id,
-                state="キャンセル済み",
+                state=RunState.CANCELED,
                 user_message=CANCELED_MESSAGE,
             )
         )

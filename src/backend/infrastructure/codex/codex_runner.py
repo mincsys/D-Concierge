@@ -4,17 +4,20 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from threading import RLock, Thread
-from typing import Literal, Protocol
+from typing import Protocol
 from uuid import UUID
 
+from backend.application.ports.codex.cancel_request_result import CancelRequestResult
+from backend.infrastructure.codex.codex_event_kind import CodexEventKind
 from backend.infrastructure.codex.jsonl_event_parser import (
     JsonlEventParser,
     JsonlParseError,
     ParsedCodexEvent,
 )
-from backend.shared.errors import AppError, ErrorClass, RunTimeoutError
+from backend.shared.error_class import ErrorClass
+from backend.shared.errors import AppError, RunTimeoutError
 
-CancelResult = Literal["sent", "already_exited", "not_registered"]
+CancelResult = CancelRequestResult
 
 
 class CodexProcessTimeout(Exception):
@@ -116,12 +119,12 @@ class CodexRunner:
         with self._lock:
             process = self._running_processes.get(run_id)
             if process is None:
-                return "not_registered"
+                return CancelRequestResult.NOT_REGISTERED
             if process.poll() is not None:
                 self._running_processes.pop(run_id, None)
-                return "already_exited"
+                return CancelRequestResult.ALREADY_EXITED
             process.terminate()
-            return "sent"
+            return CancelRequestResult.SENT
 
     def _run(self, request: CodexRunRequest) -> CodexRunResult:
         if request.timeout_seconds <= 0:
@@ -300,13 +303,13 @@ def _to_run_result(events: list[ParsedCodexEvent]) -> CodexRunResult:
     final_message: str | None = None
     for event in events:
         match event.kind:
-            case "thread_started":
+            case CodexEventKind.THREAD_STARTED:
                 codex_conversation_id = event.thread_id
-            case "agent_message":
+            case CodexEventKind.AGENT_MESSAGE:
                 latest_agent_message = event.text
-            case "turn_completed":
+            case CodexEventKind.TURN_COMPLETED:
                 final_message = latest_agent_message
-            case "turn_failed" | "error":
+            case CodexEventKind.TURN_FAILED | CodexEventKind.ERROR:
                 raise AppError(ErrorClass.SYSTEM, "Codex実行が失敗しました。")
             case _:
                 continue

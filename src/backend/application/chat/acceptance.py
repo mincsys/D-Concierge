@@ -6,9 +6,11 @@ from backend.application.ports.database.interface import (
     AcceptedRunStateRepositoryPort,
     TransactionManagerPort,
 )
+from backend.application.ports.runtime.dispatch_status import DispatchStatus
 from backend.application.ports.runtime.interface import RunExecutionDispatcherPort
-from backend.domain.execution.run_state_policy import RunState
-from backend.shared.errors import AppError, ErrorClass
+from backend.domain.execution.run_state import RunState
+from backend.shared.error_class import ErrorClass
+from backend.shared.errors import AppError
 
 DISPATCH_FAILURE_MESSAGE = "チャット実行処理を開始できませんでした。"
 
@@ -45,12 +47,12 @@ def register_accepted_run(
         return
 
     result = run_dispatcher.register(accepted.chat_id, accepted.run_id, trace_id)
-    if result.status == "failed":
+    if result.status is DispatchStatus.FAILED:
         with transaction_manager.transaction():
             repository.set_run_state(
                 accepted.chat_id,
                 accepted.run_id,
-                "エラー",
+                RunState.ERROR,
                 DISPATCH_FAILURE_MESSAGE,
             )
         raise AppError(ErrorClass.SYSTEM, DISPATCH_FAILURE_MESSAGE)
