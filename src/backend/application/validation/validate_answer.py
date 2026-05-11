@@ -16,10 +16,7 @@ from backend.domain.answer.answer_candidate import (
     parse_generation_final_output,
 )
 
-VALIDATION_FAILURE_MESSAGE = (
-    "回答の確認に失敗したため、回答を表示できませんでした。"
-    "ユーザ指示を具体化して再度お試しください。"
-)
+VALIDATION_FAILURE_MESSAGE = "回答生成に失敗しました。再度お試しください。"
 
 type ValidationStatus = Literal["採用可能", "再生成指示", "失敗"]
 

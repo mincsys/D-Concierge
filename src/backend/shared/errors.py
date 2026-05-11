@@ -22,6 +22,7 @@ class AppError(Exception):
 
 
 PDF_READ_FAILURE_MESSAGE = "PDF読み取り中にエラーが発生しました。"
+VALIDATION_RESULT_FAILURE_MESSAGE = "回答の検証に失敗しました。再度お試しください。"
 
 
 class ReferencePdfReadError(AppError):
@@ -63,6 +64,14 @@ class ValidationWorkspacePreparationError(AppError):
         if self.cause_message == "":
             return f"{self.message} ({self.cause_type})"
         return f"{self.message} ({self.cause_type}: {self.cause_message})"
+
+
+class ValidationResultFormatError(AppError):
+    """検証用Codexの最終検証結果形式が不正であることを示すシステムエラー。"""
+
+    def __init__(self, diagnostic_message: str) -> None:
+        super().__init__(ErrorClass.SYSTEM, VALIDATION_RESULT_FAILURE_MESSAGE)
+        self.diagnostic_message = diagnostic_message
 
 
 class RunTimeoutError(Exception):

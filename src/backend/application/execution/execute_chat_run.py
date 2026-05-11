@@ -40,13 +40,12 @@ from backend.shared.errors import (
     ErrorClass,
     ReferencePdfReadError,
     RunTimeoutError,
+    ValidationResultFormatError,
     ValidationWorkspacePreparationError,
 )
 from backend.shared.tracing.exception import exception_message, exception_stacktrace
 
-GENERATION_FAILURE_MESSAGE = (
-    "回答生成に失敗しました。ユーザ指示を見直して再度お試しください。"
-)
+GENERATION_FAILURE_MESSAGE = "回答の生成に失敗しました。再度お試しください。"
 TIMEOUT_FAILURE_MESSAGE = (
     "回答生成が時間内に完了しませんでした。ユーザ指示を絞って再度お試しください。"
 )
@@ -197,6 +196,26 @@ class ExecuteChatRunUseCase:
                 )
             )
         except ValidationWorkspacePreparationError as exc:
+            if self._is_canceled(chat_id, run_id):
+                self._finish_canceled(chat_id, run_id)
+                return
+            self._finish_error(chat_id, run_id, exc.user_message)
+            self._write_trace(
+                TraceLogRecord(
+                    trace_id=trace_id,
+                    event_name="execution_failed",
+                    stage="validation",
+                    chat_id=chat_id,
+                    run_id=run_id,
+                    error_class=exc.error_class.value,
+                    exception_type=type(exc).__name__,
+                    run_state="エラー",
+                    validation_failure_reason=exc.diagnostic_message,
+                    stacktrace=exception_stacktrace(exc),
+                    message=exc.user_message,
+                )
+            )
+        except ValidationResultFormatError as exc:
             if self._is_canceled(chat_id, run_id):
                 self._finish_canceled(chat_id, run_id)
                 return

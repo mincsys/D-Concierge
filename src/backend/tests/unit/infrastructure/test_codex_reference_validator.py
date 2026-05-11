@@ -20,7 +20,12 @@ from backend.infrastructure.codex.codex_runner import (
 from backend.infrastructure.codex.jsonl_event_parser import ParsedCodexEvent
 from backend.infrastructure.codex.reference_validator import CodexReferenceValidator
 from backend.infrastructure.config.models import CodexConfig
-from backend.shared.errors import AppError, ErrorClass, ReferencePdfReadError
+from backend.shared.errors import (
+    AppError,
+    ErrorClass,
+    ReferencePdfReadError,
+    ValidationResultFormatError,
+)
 from backend.tests.support.memory_repository import InMemoryChatRepository
 
 
@@ -345,7 +350,10 @@ def test_codex_reference_validator_streams_progress_only(
 def test_codex_reference_validator_rejects_invalid_context_or_payload(
     tmp_path: Path,
 ) -> None:
-    """観点：検証用Codex連携。確認：実行文脈なしと検証結果不正をシステムエラーにする。"""
+    """観点：検証用Codex連携。
+
+    確認：実行文脈なしは汎用システムエラー、検証結果不正は専用エラーにする。
+    """
     repository = InMemoryChatRepository()
     accepted = repository.create_chat_with_first_run("資料を要約")
     candidate = _candidate_without_references()
@@ -370,7 +378,7 @@ def test_codex_reference_validator_rejects_invalid_context_or_payload(
 
     with pytest.raises(AppError) as context_error:
         validator.validate_references(candidate, user_instruction="資料を要約")
-    with pytest.raises(AppError) as payload_error:
+    with pytest.raises(ValidationResultFormatError) as payload_error:
         validator.validate_references(
             candidate,
             user_instruction="資料を要約",
@@ -381,6 +389,54 @@ def test_codex_reference_validator_rejects_invalid_context_or_payload(
 
     assert context_error.value.error_class is ErrorClass.SYSTEM
     assert payload_error.value.error_class is ErrorClass.SYSTEM
+    assert payload_error.value.diagnostic_message == "検証結果の形式が不正です。"
+
+
+@pytest.mark.parametrize(
+    "final_message",
+    (
+        '{"payload":{"kind":"progress","text":"検証しています。"}}',
+        '{"payload":{"kind":"final","valid":true}}',
+        "not-json",
+    ),
+)
+def test_codex_reference_validator_rejects_invalid_final_validation_result(
+    tmp_path: Path,
+    final_message: str,
+) -> None:
+    """観点：検証用Codex連携。
+
+    確認：最終検証結果として採用できないJSONは専用エラーにする。
+    """
+    repository = InMemoryChatRepository()
+    accepted = repository.create_chat_with_first_run("資料を要約")
+    validator = CodexReferenceValidator(
+        repository=repository,
+        codex_runner=RecordingCodexRunner(
+            result=InfrastructureCodexRunResult(
+                events=(),
+                final_message=final_message,
+                codex_conversation_id="thread",
+            )
+        ),
+        validator_config=CodexConfig(
+            home=tmp_path / "codex/.codex_validator",
+            workdir=tmp_path / "codex/sessions_validator",
+            output_schema=tmp_path / "validator-schema.json",
+            saved_artifacts_dir=tmp_path / "unused",
+        ),
+        datasource_dir=tmp_path / "readonly",
+        timeout_seconds=120,
+    )
+
+    with pytest.raises(ValidationResultFormatError):
+        validator.validate_references(
+            _candidate_without_references(),
+            user_instruction="資料を要約",
+            chat_id=accepted.chat_id,
+            run_id=accepted.run_id,
+            trace_id="trace-603",
+        )
 
 
 def test_codex_reference_validator_rejects_missing_pdf_before_codex(

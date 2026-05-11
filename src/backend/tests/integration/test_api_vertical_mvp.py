@@ -361,7 +361,7 @@ def test_sse_streams_state_and_error_events(tmp_path: Path) -> None:
                 chat_id=accepted.chat_id,
                 run_id=accepted.run_id,
                 state="エラー",
-                user_message="回答生成に失敗しました。",
+                user_message="回答の生成に失敗しました。再度お試しください。",
             ),
         )
     )
@@ -382,7 +382,7 @@ def test_sse_streams_state_and_error_events(tmp_path: Path) -> None:
     assert body.count("event: state") == 2
     assert "event: error" in body
     assert '"state":"エラー"' in body
-    assert '"user_message":"回答生成に失敗しました。"' in body
+    assert '"user_message":"回答の生成に失敗しました。再度お試しください。"' in body
 
 
 def test_sse_closes_when_subscription_returns_no_event(tmp_path: Path) -> None:

@@ -30,6 +30,7 @@ from backend.shared.errors import (
     ErrorClass,
     ReferencePdfReadError,
     RunTimeoutError,
+    ValidationResultFormatError,
 )
 from backend.tests.support.memory_repository import InMemoryChatRepository
 
@@ -461,7 +462,7 @@ def test_execute_chat_run_writes_trace_when_validation_reaches_retry_limit() -> 
             AnswerValidationResult(
                 status="失敗",
                 regeneration_instruction="最後の検証不合格",
-                user_message="回答の確認に失敗しました。",
+                user_message="回答生成に失敗しました。再度お試しください。",
             ),
         )
     )
@@ -482,7 +483,9 @@ def test_execute_chat_run_writes_trace_when_validation_reaches_retry_limit() -> 
     assert trace_logger.records[0].stage == "validation"
     assert trace_logger.records[0].retry_count == 1
     assert trace_logger.records[0].validation_failure_reason == "最後の検証不合格"
-    assert trace_logger.records[0].message == "回答の確認に失敗しました。"
+    assert trace_logger.records[0].message == (
+        "回答生成に失敗しました。再度お試しください。"
+    )
 
 
 def test_execute_chat_run_publishes_revision_message_before_retry_generation() -> None:
@@ -790,14 +793,66 @@ def test_execute_chat_run_marks_error_when_codex_generation_fails() -> None:
     assert detail.runs[0].state == "エラー"
     assert detail.runs[0].answer is None
     assert detail.runs[0].user_message == (
-        "回答生成に失敗しました。ユーザ指示を見直して再度お試しください。"
+        "回答の生成に失敗しました。再度お試しください。"
     )
     assert publisher.events[-1].event == "error"
+    assert publisher.events[-1].user_message == (
+        "回答の生成に失敗しました。再度お試しください。"
+    )
     assert trace_logger.records[-1].event_name == "execution_failed"
+    assert trace_logger.records[-1].stage == "generation"
     assert trace_logger.records[-1].trace_id == "trace-502"
     assert trace_logger.records[-1].chat_id == accepted.chat_id
     assert trace_logger.records[-1].run_id == accepted.run_id
     assert trace_logger.records[-1].error_class == "system"
+
+
+def test_execute_chat_run_marks_validation_error_for_invalid_validator_result() -> None:
+    """観点：チャット実行処理の異常系。
+
+    確認：検証用Codexの最終出力形式不正は生成失敗ではなく検証失敗として終端する。
+    """
+    repository = InMemoryChatRepository()
+    accepted = repository.create_chat_with_first_run("資料を要約してください")
+    publisher = RecordingPublisher()
+    trace_logger = RecordingTraceLogger()
+    use_case = ExecuteChatRunUseCase(
+        repository=repository,
+        codex_runner=FakeCodexRunner(
+            results=(
+                CodexRunResult(
+                    conversation_id="codex-thread-1",
+                    intermediate_messages=(),
+                    final_answer_json=_valid_answer_json(),
+                ),
+            )
+        ),
+        answer_validator=FailingValidationValidator(
+            error=ValidationResultFormatError("検証結果の形式が不正です。")
+        ),
+        event_publisher=publisher,
+        trace_logger=trace_logger,
+    )
+
+    use_case.execute(accepted.chat_id, accepted.run_id, trace_id="trace-516")
+
+    detail = repository.get_chat_detail(accepted.chat_id)
+    assert detail.runs[0].state == "エラー"
+    assert detail.runs[0].answer is None
+    assert detail.runs[0].user_message == (
+        "回答の検証に失敗しました。再度お試しください。"
+    )
+    assert publisher.events[-1].event == "error"
+    assert publisher.events[-1].user_message == (
+        "回答の検証に失敗しました。再度お試しください。"
+    )
+    assert trace_logger.records[-1].event_name == "execution_failed"
+    assert trace_logger.records[-1].stage == "validation"
+    assert trace_logger.records[-1].trace_id == "trace-516"
+    assert trace_logger.records[-1].error_class == "system"
+    assert trace_logger.records[-1].validation_failure_reason == (
+        "検証結果の形式が不正です。"
+    )
 
 
 def test_execute_chat_run_marks_error_when_reference_pdf_read_fails() -> None:

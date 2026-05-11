@@ -45,6 +45,7 @@ from backend.shared.errors import (
     AppError,
     ErrorClass,
     ReferencePdfReadError,
+    ValidationResultFormatError,
     ValidationWorkspacePreparationError,
 )
 
@@ -185,17 +186,17 @@ def _parse_validation_result(raw_json: str) -> _ParsedValidationResult:
     try:
         loaded: JsonValue = json.loads(raw_json)
     except json.JSONDecodeError as exc:
-        raise AppError(ErrorClass.SYSTEM, "検証結果を解析できませんでした。") from exc
+        raise ValidationResultFormatError("検証結果を解析できませんでした。") from exc
     if not isinstance(loaded, dict):
-        raise AppError(ErrorClass.SYSTEM, "検証結果の形式が不正です。")
+        raise ValidationResultFormatError("検証結果の形式が不正です。")
 
     payload = loaded.get("payload")
     if not isinstance(payload, dict) or payload.get("kind") != "final":
-        raise AppError(ErrorClass.SYSTEM, "検証結果の形式が不正です。")
+        raise ValidationResultFormatError("検証結果の形式が不正です。")
     valid_value = payload.get("valid")
     comment_value = payload.get("comment")
     if not isinstance(valid_value, bool) or not isinstance(comment_value, str):
-        raise AppError(ErrorClass.SYSTEM, "検証結果の形式が不正です。")
+        raise ValidationResultFormatError("検証結果の形式が不正です。")
     return _ParsedValidationResult(valid=valid_value, comment=comment_value)
 
 
