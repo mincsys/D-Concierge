@@ -44,9 +44,11 @@ class ServerConfig:
 
 @dataclass(frozen=True, slots=True)
 class TraceLogConfig:
-    """トレースログ保存先設定。"""
+    """トレースログ保存先と保持設定。"""
 
     dir: Path
+    retention_days: int
+    max_files_per_day: int
 
 
 @dataclass(frozen=True, slots=True)

@@ -50,6 +50,22 @@ class ConfigLoader:
         if max_retries < 0:
             raise AppError(ErrorClass.CONFIGURATION, "検証再試行上限が不正です。")
 
+        trace_log_retention_days = _required_int(data, ("trace_log", "retention_days"))
+        if trace_log_retention_days <= 0:
+            raise AppError(
+                ErrorClass.CONFIGURATION,
+                "必須設定 trace_log.retention_days が不正です。",
+            )
+
+        trace_log_max_files_per_day = _required_int(
+            data, ("trace_log", "max_files_per_day")
+        )
+        if trace_log_max_files_per_day <= 0:
+            raise AppError(
+                ErrorClass.CONFIGURATION,
+                "必須設定 trace_log.max_files_per_day が不正です。",
+            )
+
         return AppConfig(
             ui=UiConfig(
                 welcome_message=_optional_str(data, ("ui", "welcome_message")),
@@ -89,7 +105,9 @@ class ConfigLoader:
             database=DatabaseConfig(url=_required_str(data, ("database", "url"))),
             server=ServerConfig(timeout_seconds=timeout_seconds),
             trace_log=TraceLogConfig(
-                dir=_path(root, _required_str(data, ("trace_log", "dir")))
+                dir=_path(root, _required_str(data, ("trace_log", "dir"))),
+                retention_days=trace_log_retention_days,
+                max_files_per_day=trace_log_max_files_per_day,
             ),
         )
 
@@ -136,7 +154,7 @@ def _optional_str(data: Mapping[str, YamlValue], path: tuple[str, ...]) -> str |
 
 def _required_int(data: Mapping[str, YamlValue], path: tuple[str, ...]) -> int:
     value = _nested(data, path)
-    if not isinstance(value, int):
+    if type(value) is not int:
         dotted = ".".join(path)
         raise AppError(ErrorClass.CONFIGURATION, f"必須設定 {dotted} が不正です。")
     return value

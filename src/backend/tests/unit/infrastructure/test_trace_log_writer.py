@@ -3,6 +3,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from uuid import UUID
 
+from pytest import MonkeyPatch
+
 from backend.application.ports.trace_log.dto import TraceLogRecord
 from backend.infrastructure.trace_log.trace_log_writer import TraceLogWriter
 
@@ -122,3 +124,148 @@ def test_trace_log_writer_limits_huge_text_without_masking(tmp_path: Path) -> No
     assert payload["message"].startswith("/tmp/secret ")
     assert payload["message"].endswith("...<truncated>")
     assert len(payload["message"]) <= 65_536 + len("...<truncated>")
+
+
+def test_trace_log_writer_cleanup_expired_deletes_old_date_directories(
+    tmp_path: Path,
+) -> None:
+    """観点：TraceLogWriter。確認：保存期間を超えた日付ディレクトリだけを削除する。"""
+    old_dir = tmp_path / "2026-02-07"
+    boundary_dir = tmp_path / "2026-02-08"
+    current_dir = tmp_path / "2026-05-09"
+    ignored_dir = tmp_path / "not-a-date"
+    ignored_file = tmp_path / "2026-01-01.json"
+    for directory in (old_dir, boundary_dir, current_dir, ignored_dir):
+        directory.mkdir()
+        (directory / "trace.json").write_text("{}", encoding="utf-8")
+    ignored_file.write_text("{}", encoding="utf-8")
+    writer = TraceLogWriter(
+        log_dir=tmp_path,
+        retention_days=90,
+        max_files_per_day=1000,
+        clock=lambda: datetime(2026, 5, 9, tzinfo=UTC),
+    )
+
+    writer.cleanup_expired()
+
+    assert old_dir.exists() is False
+    assert boundary_dir.exists()
+    assert current_dir.exists()
+    assert ignored_dir.exists()
+    assert ignored_file.exists()
+
+
+def test_trace_log_writer_cleanup_expired_ignores_delete_failure(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    """観点：TraceLogWriter。確認：期限超過ログの削除失敗は呼出元へ波及しない。"""
+    old_dir = tmp_path / "2026-02-07"
+    old_dir.mkdir()
+    (old_dir / "trace.json").write_text("{}", encoding="utf-8")
+    writer = TraceLogWriter(
+        log_dir=tmp_path,
+        retention_days=90,
+        max_files_per_day=1000,
+        clock=lambda: datetime(2026, 5, 9, tzinfo=UTC),
+    )
+
+    def fail_delete(_path: Path) -> None:
+        raise OSError
+
+    monkeypatch.setattr(
+        "backend.infrastructure.trace_log.trace_log_writer.shutil.rmtree",
+        fail_delete,
+    )
+
+    writer.cleanup_expired()
+
+    assert old_dir.exists()
+
+
+def test_trace_log_writer_limits_written_files_per_process_day(tmp_path: Path) -> None:
+    """観点：TraceLogWriter。確認：起動後同日上限を超えたログは保存しない。"""
+    writer = TraceLogWriter(
+        log_dir=tmp_path,
+        retention_days=90,
+        max_files_per_day=2,
+        clock=lambda: datetime(2026, 5, 9, 10, 5, tzinfo=UTC),
+    )
+    existing = tmp_path / "2026-05-09"
+    existing.mkdir()
+    (existing / "existing.json").write_text("{}", encoding="utf-8")
+
+    writer.write(
+        TraceLogRecord(trace_id="trace-1", event_name="api_failed", stage="api")
+    )
+    writer.write(
+        TraceLogRecord(trace_id="trace-2", event_name="api_failed", stage="api")
+    )
+    writer.write(
+        TraceLogRecord(trace_id="trace-3", event_name="api_failed", stage="api")
+    )
+
+    paths = sorted(path.name for path in existing.glob("*.json"))
+    assert paths == [
+        "10-05-00_000000_api_failed.json",
+        "10-05-00_000000_api_failed_2.json",
+        "existing.json",
+    ]
+
+
+def test_trace_log_writer_does_not_increment_limit_on_write_failure(
+    tmp_path: Path,
+) -> None:
+    """観点：TraceLogWriter。確認：書込失敗時は同日保存件数を増やさない。"""
+    log_dir = tmp_path / "logs"
+    log_dir.write_text("not directory", encoding="utf-8")
+    writer = TraceLogWriter(
+        log_dir=log_dir,
+        retention_days=90,
+        max_files_per_day=1,
+        clock=lambda: datetime(2026, 5, 9, 10, 5, tzinfo=UTC),
+    )
+
+    writer.write(
+        TraceLogRecord(trace_id="trace-1", event_name="api_failed", stage="api")
+    )
+    log_dir.unlink()
+    writer.write(
+        TraceLogRecord(trace_id="trace-2", event_name="api_failed", stage="api")
+    )
+    writer.write(
+        TraceLogRecord(trace_id="trace-3", event_name="api_failed", stage="api")
+    )
+
+    paths = sorted(path.name for path in (log_dir / "2026-05-09").glob("*.json"))
+    assert paths == ["10-05-00_000000_api_failed.json"]
+
+
+def test_trace_log_writer_resets_daily_limit_when_date_changes(tmp_path: Path) -> None:
+    """観点：TraceLogWriter。確認：日付が変わると起動後同日カウンタを初期化する。"""
+    timestamps = iter(
+        (
+            datetime(2026, 5, 9, 23, 59, tzinfo=UTC),
+            datetime(2026, 5, 9, 23, 59, tzinfo=UTC),
+            datetime(2026, 5, 10, 0, 0, tzinfo=UTC),
+        )
+    )
+    writer = TraceLogWriter(
+        log_dir=tmp_path,
+        retention_days=90,
+        max_files_per_day=1,
+        clock=lambda: next(timestamps),
+    )
+
+    writer.write(
+        TraceLogRecord(trace_id="trace-1", event_name="api_failed", stage="api")
+    )
+    writer.write(
+        TraceLogRecord(trace_id="trace-2", event_name="api_failed", stage="api")
+    )
+    writer.write(
+        TraceLogRecord(trace_id="trace-3", event_name="api_failed", stage="api")
+    )
+
+    assert len(list((tmp_path / "2026-05-09").glob("*.json"))) == 1
+    assert len(list((tmp_path / "2026-05-10").glob("*.json"))) == 1

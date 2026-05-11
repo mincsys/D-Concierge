@@ -30,6 +30,8 @@ server:
   timeout_seconds: 300
 trace_log:
   dir: "logs/trace"
+  retention_days: 90
+  max_files_per_day: 1000
 """
 
 
@@ -45,6 +47,8 @@ def test_config_loader_returns_typed_public_ui_settings(tmp_path: Path) -> None:
     assert config.database.url == "postgresql+psycopg://user:password@127.0.0.1:5432/db"
     assert config.server.timeout_seconds == 300
     assert config.datasource_dir == tmp_path / "data"
+    assert config.trace_log.retention_days == 90
+    assert config.trace_log.max_files_per_day == 1000
 
 
 def test_config_loader_resolves_relative_paths_from_relative_config_path(
@@ -128,6 +132,44 @@ def test_config_loader_uses_absolute_paths_without_base_dir_join(
         (
             VALID_CONFIG.replace("timeout_seconds: 300", 'timeout_seconds: "300"'),
             "server.timeout_seconds",
+        ),
+        (
+            VALID_CONFIG.replace("retention_days: 90", "retention_days: 0"),
+            "trace_log.retention_days",
+        ),
+        (
+            VALID_CONFIG.replace("  retention_days: 90\n", ""),
+            "trace_log.retention_days",
+        ),
+        (
+            VALID_CONFIG.replace("retention_days: 90", "retention_days: true"),
+            "trace_log.retention_days",
+        ),
+        (
+            VALID_CONFIG.replace("retention_days: 90", 'retention_days: "90"'),
+            "trace_log.retention_days",
+        ),
+        (
+            VALID_CONFIG.replace("max_files_per_day: 1000", "max_files_per_day: 0"),
+            "trace_log.max_files_per_day",
+        ),
+        (
+            VALID_CONFIG.replace("max_files_per_day: 1000", "max_files_per_day: -1"),
+            "trace_log.max_files_per_day",
+        ),
+        (
+            VALID_CONFIG.replace("  max_files_per_day: 1000\n", ""),
+            "trace_log.max_files_per_day",
+        ),
+        (
+            VALID_CONFIG.replace("max_files_per_day: 1000", "max_files_per_day: true"),
+            "trace_log.max_files_per_day",
+        ),
+        (
+            VALID_CONFIG.replace(
+                "max_files_per_day: 1000", 'max_files_per_day: "1000"'
+            ),
+            "trace_log.max_files_per_day",
         ),
         (
             VALID_CONFIG.replace('welcome_message: "ようこそ"', "welcome_message: 1"),

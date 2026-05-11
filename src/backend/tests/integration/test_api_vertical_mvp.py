@@ -825,6 +825,25 @@ def test_startup_recovery_reregisters_and_terminalizes_unfinished_runs(
     assert repository.get_chat_detail(completed.chat_id).runs[0].state == "完了"
 
 
+def test_create_app_cleans_expired_trace_logs(tmp_path: Path) -> None:
+    """観点：トレースログ保持。確認：アプリ生成時に保存期間超過ログを削除する。"""
+    expired_dir = tmp_path / "logs/trace/2026-01-01"
+    retained_dir = tmp_path / "logs/trace/not-a-date"
+    expired_dir.mkdir(parents=True)
+    retained_dir.mkdir(parents=True)
+    (expired_dir / "old.json").write_text("{}", encoding="utf-8")
+    (retained_dir / "kept.json").write_text("{}", encoding="utf-8")
+
+    create_app(
+        config=_make_config(tmp_path),
+        repository=InMemoryChatRepository(),
+        run_dispatcher=None,
+    )
+
+    assert expired_dir.exists() is False
+    assert retained_dir.exists()
+
+
 def test_default_runtime_executes_start_chat_through_codex_adapters(
     tmp_path: Path,
 ) -> None:
@@ -1139,7 +1158,11 @@ def _make_config(tmp_path: Path) -> AppConfig:
             url="postgresql+psycopg://user:password@127.0.0.1:5432/db"
         ),
         server=ServerConfig(timeout_seconds=300),
-        trace_log=TraceLogConfig(dir=tmp_path / "logs/trace"),
+        trace_log=TraceLogConfig(
+            dir=tmp_path / "logs/trace",
+            retention_days=90,
+            max_files_per_day=1000,
+        ),
     )
 
 

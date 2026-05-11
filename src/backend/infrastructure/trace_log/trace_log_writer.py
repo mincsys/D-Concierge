@@ -1,7 +1,8 @@
 import json
 import re
+import shutil
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import TypedDict
 
@@ -12,6 +13,9 @@ from backend.shared.tracing.exception import (
 )
 
 _FILENAME_EVENT_PATTERN = re.compile(r"[^A-Za-z0-9_-]+")
+_TRACE_LOG_DATE_FORMAT = "%Y-%m-%d"
+DEFAULT_RETENTION_DAYS = 90
+DEFAULT_MAX_FILES_PER_DAY = 1000
 
 
 class TraceLogPayload(TypedDict, total=False):
@@ -58,14 +62,48 @@ class TraceLogWriter:
     def __init__(
         self,
         log_dir: Path,
+        retention_days: int = DEFAULT_RETENTION_DAYS,
+        max_files_per_day: int = DEFAULT_MAX_FILES_PER_DAY,
         clock: Callable[[], datetime] | None = None,
     ) -> None:
+        if retention_days <= 0:
+            raise ValueError("retention_days must be positive.")
+        if max_files_per_day <= 0:
+            raise ValueError("max_files_per_day must be positive.")
         self._log_dir = log_dir
+        self._retention_days = retention_days
+        self._max_files_per_day = max_files_per_day
         self._clock = clock if clock is not None else lambda: datetime.now(UTC)
+        self._current_log_date: date | None = None
+        self._current_day_written_count = 0
+
+    def cleanup_expired(self) -> None:
+        """保存期間を過ぎた日付ディレクトリを削除する。失敗は主処理へ波及させない。"""
+        cutoff_date = self._clock().date() - timedelta(days=self._retention_days)
+        try:
+            entries = list(self._log_dir.iterdir())
+        except OSError:
+            return
+        for entry in entries:
+            if not entry.is_dir():
+                continue
+            try:
+                log_date = datetime.strptime(entry.name, _TRACE_LOG_DATE_FORMAT).date()
+            except ValueError:
+                continue
+            if log_date >= cutoff_date:
+                continue
+            try:
+                shutil.rmtree(entry)
+            except OSError:
+                continue
 
     def write(self, record: TraceLogRecord) -> None:
         """トレースログを1件保存する。書込失敗は主処理へ波及させない。"""
         now = self._clock()
+        self._reset_counter_if_new_day(now.date())
+        if self._current_day_written_count >= self._max_files_per_day:
+            return
         payload = _to_payload(record, now)
         try:
             day_dir = self._log_dir / f"{now:%Y-%m-%d}"
@@ -73,6 +111,13 @@ class TraceLogWriter:
             self._write_new_file(day_dir, now, record.event_name, payload)
         except OSError:
             return
+        self._current_day_written_count += 1
+
+    def _reset_counter_if_new_day(self, log_date: date) -> None:
+        if self._current_log_date == log_date:
+            return
+        self._current_log_date = log_date
+        self._current_day_written_count = 0
 
     def _write_new_file(
         self,

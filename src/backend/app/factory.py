@@ -136,7 +136,12 @@ def create_app(
             else NoopTransactionManager()
         )
 
-    trace_logger = TraceLogWriter(app_config.trace_log.dir)
+    trace_logger = TraceLogWriter(
+        app_config.trace_log.dir,
+        retention_days=app_config.trace_log.retention_days,
+        max_files_per_day=app_config.trace_log.max_files_per_day,
+    )
+    trace_logger.cleanup_expired()
     (
         runtime_run_dispatcher,
         runtime_run_event_source,

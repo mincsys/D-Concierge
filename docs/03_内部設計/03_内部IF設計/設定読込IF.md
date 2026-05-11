@@ -54,7 +54,7 @@ sequenceDiagram
 
 - application層は生YAMLやdictを直接参照しない。
 - パス設定は文字列連結ではなく、正規化済みPathとして扱う。
-- 機密情報をtraceログへそのまま出力しない。
+- 機密情報を画面、SSE、利用者向けエラーへそのまま出力しない。
 - `server.timeout_seconds` は外部設定として1項目のまま保持し、内部では `ExecuteChatRunUseCase` が `execution_deadline_at` と各codex execへの残り秒数へ分解する。
 
 ## 6. 入出力とデータ項目
@@ -72,6 +72,8 @@ sequenceDiagram
 | --- | --- |
 | `AppConfig` | アプリ表示設定、DB、Codex、ファイル、ログ、タイムアウトなどの型付き設定 |
 | `normalized_paths` | 共有データソース、Codex作業領域、成果物保存先、トレースログ出力先 |
+| `trace_log.retention_days` | トレースログ日付ディレクトリの保持日数 |
+| `trace_log.max_files_per_day` | アプリケーション起動ごとの同日トレースログ最大保存件数 |
 
 ### 6.3. タイムアウト設定の扱い
 
