@@ -140,11 +140,7 @@ class InMemoryChatRepository:
         with self._lock:
             chat = self._get_chat_locked(chat_id)
             runs = tuple(
-                self._to_run_detail(self._runs[run_id])
-                for run_id in sorted(
-                    chat.run_ids,
-                    key=lambda item: (self._runs[item].started_at, str(item)),
-                )
+                self._to_run_detail(self._runs[run_id]) for run_id in chat.run_ids
             )
             return ChatDetail(chat_id=chat.id, title=chat.title, runs=runs)
 
