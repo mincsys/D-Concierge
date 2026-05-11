@@ -105,12 +105,23 @@ def test_config_loader_uses_absolute_paths_without_base_dir_join(
     """
     config_path = tmp_path / "config.yaml"
     absolute_config = (
-        VALID_CONFIG.replace('dir: "data"', f'dir: "{tmp_path / "readonly"}"')
-        .replace('home: "codex/.codex"', f'home: "{tmp_path / "home"}"', 1)
-        .replace('workdir: "codex/sessions"', f'workdir: "{tmp_path / "sessions"}"', 1)
+        VALID_CONFIG.replace(
+            'dir: "data"',
+            f'dir: "{(tmp_path / "readonly").as_posix()}"',
+        )
+        .replace(
+            'home: "codex/.codex"',
+            f'home: "{(tmp_path / "home").as_posix()}"',
+            1,
+        )
+        .replace(
+            'workdir: "codex/sessions"',
+            f'workdir: "{(tmp_path / "sessions").as_posix()}"',
+            1,
+        )
         .replace(
             'dir: "logs/trace"',
-            f'dir: "{tmp_path / "logs" / "trace"}"',
+            f'dir: "{(tmp_path / "logs" / "trace").as_posix()}"',
         )
     )
     config_path.write_text(absolute_config, encoding="utf-8")

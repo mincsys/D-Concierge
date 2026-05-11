@@ -125,7 +125,15 @@ def test_memory_repository_rejects_missing_chat_and_run() -> None:
 
 def test_memory_repository_lists_unfinished_runs_for_recovery() -> None:
     """観点：起動時回復Repository IF。確認：未完了runだけを回復対象として返す。"""
-    repository = InMemoryChatRepository()
+    repository = InMemoryChatRepository(
+        now_values=(
+            datetime(2026, 5, 9, 10, 0, 0, tzinfo=UTC),
+            datetime(2026, 5, 9, 10, 0, 1, tzinfo=UTC),
+            datetime(2026, 5, 9, 10, 0, 2, tzinfo=UTC),
+            datetime(2026, 5, 9, 10, 0, 3, tzinfo=UTC),
+            datetime(2026, 5, 9, 10, 0, 4, tzinfo=UTC),
+        )
+    )
     accepted = repository.create_chat_with_first_run("accepted run")
     running = repository.create_chat_with_first_run("running run")
     terminal = repository.create_chat_with_first_run("completed run")
