@@ -100,6 +100,7 @@ export function ChatThread({
               )}
             >
               <ThoughtPanel
+                busy={isInProgressRun(run.state)}
                 open={openThoughtRunIds.has(run.runId)}
                 messages={run.intermediateMessages}
                 onToggle={() => onToggleThought(run.runId)}
@@ -129,5 +130,11 @@ export function ChatThread({
         />
       </div>
     </section>
+  );
+}
+
+function isInProgressRun(state: ChatSession["runs"][number]["state"]) {
+  return (
+    state === "受付" || state === "実行中" || state === "検証中" || state === "キャンセル要求中"
   );
 }

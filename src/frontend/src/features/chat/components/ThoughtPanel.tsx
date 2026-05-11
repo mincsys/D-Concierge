@@ -1,14 +1,16 @@
-import { ChevronDown, Sparkles } from "lucide-react";
+import { ChevronDown, LoaderCircle, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import type { IntermediateMessage } from "@/features/chat/model/types";
 import { cn } from "@/lib/utils";
 
 export function ThoughtPanel({
+  busy = false,
   open,
   messages,
   onToggle,
 }: {
+  busy?: boolean;
   open: boolean;
   messages: IntermediateMessage[];
   onToggle: () => void;
@@ -21,8 +23,15 @@ export function ThoughtPanel({
         variant="ghost"
         onClick={onToggle}
       >
-        <span className="grid size-10 place-items-center rounded-full bg-[var(--dc-primary)] text-white shadow-[0_8px_18px_var(--dc-shadow-primary)]">
-          <Sparkles size={22} fill="currentColor" />
+        <span
+          className="grid size-10 place-items-center rounded-full bg-[var(--dc-primary)] text-white shadow-[0_8px_18px_var(--dc-shadow-primary)]"
+          aria-hidden="true"
+        >
+          {busy ? (
+            <LoaderCircle className="animate-spin" size={22} />
+          ) : (
+            <Sparkles size={22} fill="currentColor" />
+          )}
         </span>
         <ChevronDown
           className={cn(

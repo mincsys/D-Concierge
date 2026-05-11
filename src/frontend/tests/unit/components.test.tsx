@@ -245,7 +245,7 @@ describe("frontend components", () => {
     const onOpenPdf = vi.fn();
     const onCancelRun = vi.fn();
     const onSubmitInstruction = vi.fn();
-    const { rerender } = render(
+    const { container, rerender } = render(
       <Providers>
         <ChatThread
           cancelingRunId={null}
@@ -266,6 +266,7 @@ describe("frontend components", () => {
     expect(screen.getByText("初回指示")).toBeInTheDocument();
     expect(screen.getByText("調査中")).toBeInTheDocument();
     expect(screen.getByText("回答本文")).toBeInTheDocument();
+    expect(container.querySelectorAll(".animate-spin")).toHaveLength(1);
     await user.click(screen.getByRole("button", { name: /資料 p.1-2/ }));
     expect(onOpenPdf).toHaveBeenCalledWith(reference());
     expect(screen.getAllByRole("button", { name: /作業プロセス/ })).toHaveLength(3);
@@ -289,6 +290,7 @@ describe("frontend components", () => {
         />
       </Providers>,
     );
+    expect(container.querySelectorAll(".animate-spin")).toHaveLength(0);
     await user.type(screen.getByPlaceholderText("指示を入力してください"), "追加");
     fireEvent.keyDown(screen.getByPlaceholderText("指示を入力してください"), {
       metaKey: true,
