@@ -374,7 +374,7 @@ def test_os_process_group_terminator_uses_posix_process_group() -> None:
     terminator.terminate(1234)
     terminator.kill(1234)
 
-    assert killpg_calls == [(1234, signal.SIGTERM), (1234, signal.SIGKILL)]
+    assert killpg_calls == [(1234, signal.SIGTERM), (1234, 9)]
 
 
 def test_os_process_group_terminator_uses_windows_taskkill() -> None:

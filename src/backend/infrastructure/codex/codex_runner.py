@@ -20,6 +20,7 @@ from backend.shared.errors import AppError, RunTimeoutError
 
 CancelResult = CancelRequestResult
 _WINDOWS_CREATE_NEW_PROCESS_GROUP = 0x00000200
+_POSIX_SIGKILL = 9
 
 
 class CodexProcessTimeout(Exception):
@@ -283,7 +284,7 @@ class _OsProcessGroupTerminator:
         if self.os_name == "nt":
             self._run_taskkill(("taskkill", "/F", "/T", "/PID", str(pid)))
             return
-        self.killpg(pid, signal.SIGKILL)
+        self.killpg(pid, _POSIX_SIGKILL)
 
     def _run_taskkill(self, command: tuple[str, ...]) -> None:
         runner = self.taskkill_runner or _run_taskkill_command
