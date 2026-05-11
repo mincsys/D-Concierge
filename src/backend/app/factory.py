@@ -117,7 +117,7 @@ def create_app(
     app_config = (
         config if config is not None else ConfigLoader.load(Path("config.yaml"))
     )
-    runtime_clock = clock if clock is not None else SystemClock()
+    runtime_clock = clock if clock is not None else SystemClock(app_config.app.timezone)
     runtime_id_generator = id_generator if id_generator is not None else UuidGenerator()
     runtime_transaction_manager: TransactionManagerPort
     if repository is None:
@@ -140,6 +140,7 @@ def create_app(
         app_config.trace_log.dir,
         retention_days=app_config.trace_log.retention_days,
         max_files_per_day=app_config.trace_log.max_files_per_day,
+        clock=runtime_clock.now_app_timezone,
     )
     trace_logger.cleanup_expired()
     (

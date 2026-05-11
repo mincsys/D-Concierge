@@ -13,6 +13,7 @@
 
 - API、ユースケース、infrastructureで発生した障害調査用情報をYAMLへ変換する。
 - trace_id、chat_id、run_id、user_id、stage、error_class、exception_type、stacktrace、retry_count、run_state、execution_deadline_at、timeout_state、cancel_state、os_name、runner_type、codex_exit_status、process_result、validation_failure_reason、validation_comment、messageを出力する。
+- `app.timezone` 基準の日時で、発生日時、日付ディレクトリ、ファイル名、保存期間削除日を決定する。
 - 開発者向け調査情報はマスクせず、巨大な文字列だけを上限長で切り詰める。
 - 保存期間を過ぎた日付ディレクトリを起動時に削除する。
 - アプリケーション起動ごとの同日最大保存件数をメモリ上のカウンタで管理する。
@@ -24,6 +25,7 @@
 - APIキー、環境変数、秘密情報、OS依存の絶対パス、生JSONL全文、コマンド出力全文は開発者向け調査情報としてそのまま保存する。
 - `message`、`validation_comment`、`request_validation_errors` などは64KiB、`stacktrace` は1MiBを上限に切り詰める。
 - 改行を含む文字列はYAMLのブロック形式で出力する。
+- 日時の取得元は呼出元から注入され、TraceLogWriterは設定ファイルを直接読まない。
 - ログ出力失敗は元処理のHTTP応答、SSEイベント、run終端状態を上書きしない。
 - 既存ファイル数は同日上限判定に使わず、起動後に保存できた件数だけを数える。
 - 書き込み失敗時は同日保存件数を増やさない。

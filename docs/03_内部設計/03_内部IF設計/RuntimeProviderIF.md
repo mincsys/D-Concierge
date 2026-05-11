@@ -33,7 +33,9 @@ sequenceDiagram
     usecase->>ids: new_run_id()
     ids-->>usecase: RunId
     usecase->>clock: now()
-    clock-->>usecase: aware datetime
+    clock-->>usecase: UTC aware datetime
+    usecase->>clock: now_app_timezone()
+    clock-->>usecase: app timezone aware datetime
 ```
 
 ## 5. 事前条件 / 事後条件 / 不変条件
@@ -46,13 +48,15 @@ sequenceDiagram
 ### 5.2. 事後条件
 
 - ID発番は対象種別の値オブジェクトとして返る。
-- 現在時刻はタイムゾーン付き日時として返る。
+- 内部処理向け現在時刻はUTCのタイムゾーン付き日時として返る。
+- 運用者向け日時が必要な場合はアプリ共通タイムゾーンのタイムゾーン付き日時として返る。
 
 ### 5.3. 不変条件
 
 - application層は `datetime.now()` やUUID生成ライブラリを直接呼び出さない。
 - DB主キー、SSE payload、traceログで同一ID値を使い回す。
-- 時刻は内部でUTCまたは設定済み基準に統一し、画面表示用形式へ混在させない。
+- DB保存、実行deadline、タイムアウト計算はUTC基準に統一する。
+- トレースログなど運用者向け日時は `app.timezone` のアプリ共通タイムゾーン基準で扱う。
 
 ## 6. 入出力とデータ項目
 
@@ -61,14 +65,15 @@ sequenceDiagram
 | 項目 | 内容 |
 | --- | --- |
 | `id_kind` | チャット、run、参照元、成果物、traceなどのID種別 |
-| `timezone` | 必要に応じた時刻基準 |
+| `app.timezone` | 運用者向け日時に使用するIANA timezone名 |
 
 ### 6.2. 出力
 
 | 項目 | 内容 |
 | --- | --- |
 | `ChatId`、`RunId`、`ReferenceId`、`ArtifactId`、`TraceId` | 種別ごとのID値 |
-| `now` | タイムゾーン付き現在日時 |
+| `now`、`now_utc` | UTCのタイムゾーン付き現在日時 |
+| `now_app_timezone` | アプリ共通タイムゾーンのタイムゾーン付き現在日時 |
 
 ## 7. 例外処理
 

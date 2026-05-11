@@ -1,5 +1,13 @@
 from dataclasses import dataclass
 from pathlib import Path
+from zoneinfo import ZoneInfo
+
+
+@dataclass(frozen=True, slots=True)
+class AppRuntimeConfig:
+    """アプリケーション共通の実行時設定。"""
+
+    timezone: ZoneInfo
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,6 +63,7 @@ class TraceLogConfig:
 class AppConfig:
     """D-Conciergeバックエンドの型付き設定。"""
 
+    app: AppRuntimeConfig
     ui: UiConfig
     datasource_dir: Path
     codex: CodexConfig

@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 import pytest
 import yaml
@@ -34,6 +35,7 @@ from backend.infrastructure.codex.codex_runner import (
 from backend.infrastructure.codex.jsonl_event_parser import ParsedCodexEvent
 from backend.infrastructure.config.models import (
     AppConfig,
+    AppRuntimeConfig,
     CodexConfig,
     DatabaseConfig,
     ServerConfig,
@@ -793,6 +795,25 @@ def test_unexpected_api_error_writes_system_trace_log(tmp_path: Path) -> None:
     )
 
 
+def test_create_app_writes_trace_log_with_app_timezone_path(tmp_path: Path) -> None:
+    """観点：トレースログ。確認：アプリ共通タイムゾーンの日時でログパスを作る。"""
+    app = create_app(
+        config=_make_config(tmp_path),
+        repository=UnexpectedHistoryRepository(),
+        run_dispatcher=None,
+        clock=FixedClock(datetime(2026, 5, 10, 15, 0, tzinfo=UTC)),
+    )
+    client = TestClient(app, raise_server_exceptions=False)
+
+    response = client.get("/api/chat-histories")
+
+    assert response.status_code == 500
+    log_path = tmp_path / "logs/trace/2026-05-11/00-00-00_000000_api_failed.yaml"
+    payload = yaml.safe_load(log_path.read_text(encoding="utf-8"))
+    assert payload["occurred_at"] == "2026-05-11T00:00:00+09:00"
+    assert payload["event_name"] == "api_failed"
+
+
 def test_startup_recovery_reregisters_and_terminalizes_unfinished_runs(
     tmp_path: Path,
 ) -> None:
@@ -1132,6 +1153,7 @@ def _make_client_with_repository(
 
 def _make_config(tmp_path: Path) -> AppConfig:
     return AppConfig(
+        app=AppRuntimeConfig(timezone=ZoneInfo("Asia/Tokyo")),
         ui=UiConfig(
             welcome_message="ようこそ",
             input_suggestions=("要約してください",),
@@ -1164,6 +1186,25 @@ def _make_config(tmp_path: Path) -> AppConfig:
             max_files_per_day=1000,
         ),
     )
+
+
+@dataclass(frozen=True, slots=True)
+class FixedClock:
+    """テスト用に固定時刻を返す時計。"""
+
+    now_value: datetime
+
+    def now(self) -> datetime:
+        """UTC基準の現在時刻を返す。"""
+        return self.now_utc()
+
+    def now_utc(self) -> datetime:
+        """UTC基準の現在時刻を返す。"""
+        return self.now_value.astimezone(UTC)
+
+    def now_app_timezone(self) -> datetime:
+        """アプリタイムゾーン基準の現在時刻を返す。"""
+        return self.now_utc().astimezone(ZoneInfo("Asia/Tokyo"))
 
 
 def _trace_records(tmp_path: Path) -> list[dict[str, str]]:

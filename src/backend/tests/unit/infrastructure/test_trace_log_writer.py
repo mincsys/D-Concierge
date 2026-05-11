@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
 from pathlib import Path
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 import yaml
 from pytest import MonkeyPatch
@@ -84,6 +85,25 @@ def test_trace_log_writer_writes_optional_diagnostic_fields(
     assert payload["runner_type"] == "validator"
     assert payload["codex_exit_status"] == "failed"
     assert payload["process_result"] == "exit 1"
+
+
+def test_trace_log_writer_uses_app_timezone_timestamp_for_path_and_payload(
+    tmp_path: Path,
+) -> None:
+    """観点：TraceLogWriter。確認：注入されたアプリタイムゾーン日時で保存先と発生日時を決める。"""
+    app_timezone = ZoneInfo("Asia/Tokyo")
+    writer = TraceLogWriter(
+        log_dir=tmp_path,
+        clock=lambda: datetime(2026, 5, 10, 15, 0, tzinfo=UTC).astimezone(app_timezone),
+    )
+
+    writer.write(
+        TraceLogRecord(trace_id="trace-704", event_name="api_failed", stage="api")
+    )
+
+    log_path = tmp_path / "2026-05-11" / "00-00-00_000000_api_failed.yaml"
+    payload = yaml.safe_load(log_path.read_text(encoding="utf-8"))
+    assert payload["occurred_at"] == "2026-05-11T00:00:00+09:00"
 
 
 def test_trace_log_writer_appends_suffix_when_filename_collides(tmp_path: Path) -> None:

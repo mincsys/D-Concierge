@@ -52,6 +52,7 @@ sequenceDiagram
 
 - 全APIとSSE接続はtrace_idを持つ。
 - トレースログは1異常1YAMLファイルで出力する。
+- トレースログの発生日時、日付ディレクトリ、ファイル名、保存期間判定は `app.timezone` 基準で扱う。
 - 開発者向け調査情報はマスクしない。
 - 巨大な文字列は上限長で切り詰める。
 - 保存期間を過ぎた日付ディレクトリはアプリケーション起動時に削除対象とする。
@@ -98,7 +99,7 @@ sequenceDiagram
 
 | 項目 | 内容 |
 | --- | --- |
-| `trace_record` | `<trace_log.dir>/<yyyy-MM-dd>/<HH-mm-ss>_<microseconds>_<event_name>.yaml` に保存された1異常分のYAML |
+| `trace_record` | `<trace_log.dir>/<yyyy-MM-dd>/<HH-mm-ss>_<microseconds>_<event_name>.yaml` に保存された1異常分のYAML。日時部分は `app.timezone` 基準。 |
 | `write_result` | 呼出元へは返さない。書込失敗は元処理へ波及させない。 |
 
 ### 6.3. 保持設定

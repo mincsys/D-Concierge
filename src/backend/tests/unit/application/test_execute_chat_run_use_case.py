@@ -1743,6 +1743,14 @@ class SequenceClock:
         self.index += 1
         return value
 
+    def now_utc(self) -> datetime:
+        """登録済み時刻をUTC現在時刻として順番に返す。"""
+        return self.now()
+
+    def now_app_timezone(self) -> datetime:
+        """登録済み時刻をアプリタイムゾーン現在時刻として順番に返す。"""
+        return self.now()
+
 
 @dataclass(slots=True)
 class RecordingTransactionManager:

@@ -27,6 +27,12 @@ class ClockPort(Protocol):
     def now(self) -> datetime:
         """タイムゾーン付き現在日時を返す。"""
 
+    def now_utc(self) -> datetime:
+        """タイムゾーン付きUTC現在日時を返す。"""
+
+    def now_app_timezone(self) -> datetime:
+        """アプリタイムゾーンの現在日時を返す。"""
+
 
 class IdGeneratorPort(Protocol):
     """UUID発番境界。"""

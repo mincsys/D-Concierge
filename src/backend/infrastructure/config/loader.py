@@ -1,10 +1,12 @@
 from collections.abc import Mapping, Sequence
 from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import yaml
 
 from backend.infrastructure.config.models import (
     AppConfig,
+    AppRuntimeConfig,
     CodexConfig,
     DatabaseConfig,
     ServerConfig,
@@ -42,6 +44,8 @@ class ConfigLoader:
             )
 
         data: Mapping[str, YamlValue] = loaded
+        app_timezone = _required_timezone(data, ("app", "timezone"))
+
         timeout_seconds = _required_int(data, ("server", "timeout_seconds"))
         if timeout_seconds <= 0:
             raise AppError(ErrorClass.CONFIGURATION, "タイムアウト設定が不正です。")
@@ -67,6 +71,7 @@ class ConfigLoader:
             )
 
         return AppConfig(
+            app=AppRuntimeConfig(timezone=app_timezone),
             ui=UiConfig(
                 welcome_message=_optional_str(data, ("ui", "welcome_message")),
                 input_suggestions=tuple(
@@ -158,6 +163,19 @@ def _required_int(data: Mapping[str, YamlValue], path: tuple[str, ...]) -> int:
         dotted = ".".join(path)
         raise AppError(ErrorClass.CONFIGURATION, f"必須設定 {dotted} が不正です。")
     return value
+
+
+def _required_timezone(
+    data: Mapping[str, YamlValue], path: tuple[str, ...]
+) -> ZoneInfo:
+    timezone_name = _required_str(data, path)
+    try:
+        return ZoneInfo(timezone_name)
+    except ZoneInfoNotFoundError as exc:
+        dotted = ".".join(path)
+        raise AppError(
+            ErrorClass.CONFIGURATION, f"必須設定 {dotted} が不正です。"
+        ) from exc
 
 
 def _optional_str_list(

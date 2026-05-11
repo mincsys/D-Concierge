@@ -1,4 +1,5 @@
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pytest
 from pytest import MonkeyPatch
@@ -7,6 +8,8 @@ from backend.infrastructure.config.loader import ConfigLoader
 from backend.shared.errors import AppError, ErrorClass
 
 VALID_CONFIG = """
+app:
+  timezone: "Asia/Tokyo"
 ui:
   welcome_message: "ようこそ"
   input_suggestions:
@@ -44,6 +47,8 @@ def test_config_loader_returns_typed_public_ui_settings(tmp_path: Path) -> None:
 
     assert config.ui.welcome_message == "ようこそ"
     assert config.ui.input_suggestions == ("要約してください",)
+    assert config.app.timezone == ZoneInfo("Asia/Tokyo")
+    assert config.app.timezone.key == "Asia/Tokyo"
     assert config.database.url == "postgresql+psycopg://user:password@127.0.0.1:5432/db"
     assert config.server.timeout_seconds == 300
     assert config.datasource_dir == tmp_path / "data"
@@ -132,6 +137,22 @@ def test_config_loader_uses_absolute_paths_without_base_dir_join(
         (
             VALID_CONFIG.replace("timeout_seconds: 300", 'timeout_seconds: "300"'),
             "server.timeout_seconds",
+        ),
+        (
+            VALID_CONFIG.replace('timezone: "Asia/Tokyo"', 'timezone: ""'),
+            "app.timezone",
+        ),
+        (
+            VALID_CONFIG.replace('timezone: "Asia/Tokyo"', "timezone: 1"),
+            "app.timezone",
+        ),
+        (
+            VALID_CONFIG.replace('timezone: "Asia/Tokyo"', 'timezone: "Invalid/Zone"'),
+            "app.timezone",
+        ),
+        (
+            VALID_CONFIG.replace('  timezone: "Asia/Tokyo"\n', ""),
+            "app.timezone",
         ),
         (
             VALID_CONFIG.replace("retention_days: 90", "retention_days: 0"),
