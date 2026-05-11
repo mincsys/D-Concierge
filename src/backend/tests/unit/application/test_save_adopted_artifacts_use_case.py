@@ -68,6 +68,40 @@ def test_save_adopted_artifacts_replaces_markdown_and_html_paths() -> None:
     )
 
 
+def test_save_adopted_artifacts_replaces_normalized_backslash_paths() -> None:
+    """観点：採用済み成果物保存。
+
+    確認：区切り文字差分を正規化した成果物参照を保存し、回答URLを置換する。
+    """
+    run_id = UUID("00000000-0000-0000-0000-000000000506")
+    first_artifact_id = UUID("00000000-0000-0000-0000-000000000551")
+    second_artifact_id = UUID("00000000-0000-0000-0000-000000000552")
+    store = RecordingArtifactStore()
+    usecase = SaveAdoptedArtifactsUseCase(
+        artifact_store=store,
+        artifact_id_factory=IdFactory((first_artifact_id, second_artifact_id)),
+    )
+
+    result = usecase.save_for_answer_blocks(
+        markdowns=(
+            "![図](artifacts\\chart.png)\n"
+            '<a href=".\\artifacts\\report.html">レポート</a>',
+        ),
+        run_id=run_id,
+        session_workdir=Path("/sessions/user/session"),
+        trace_id="trace-006",
+    )
+
+    assert tuple(block.markdown for block in result.blocks) == (
+        f"![図](/api/artifacts/{first_artifact_id})\n"
+        f'<a href="/api/artifacts/{second_artifact_id}">レポート</a>',
+    )
+    assert store.calls == (
+        SaveCall("artifacts/chart.png", run_id, first_artifact_id),
+        SaveCall("artifacts/report.html", run_id, second_artifact_id),
+    )
+
+
 def test_save_adopted_artifacts_saves_duplicate_candidate_each_time() -> None:
     """観点：採用済み成果物保存。確認：同じ候補参照も登場ごとに別成果物として保存する。"""
     run_id = UUID("00000000-0000-0000-0000-000000000502")

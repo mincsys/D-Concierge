@@ -19,6 +19,7 @@
 - `thread.started.thread_id` を生成用または検証用Codex側resume用IDとして返す。
 - `turn.completed` 時に最新の `item.completed.agent_message.text` を最終出力候補として返す。
 - キャンセル要求、タイムアウト、プロセス異常終了を検知する。
+- Windows/Linuxのプロセス制御差異を吸収し、codex execの子プロセスを含めて終了要求を送る。
 - 実行中プロセスの登録有無を確認し、終了要求結果を `sent`、`already_exited`、`not_registered` に分類して返す。
 
 ## 4. 不変条件
@@ -27,7 +28,8 @@
 - 生成用は `codex/.codex` と `codex/sessions/<user-id>/<session-id>` を使い、検証用は `codex/.codex_validator` と `codex/sessions_validator/<user-id>/<session-id>` を使う。
 - コマンド文字列、標準出力、絶対パスは利用者向け中間メッセージへ渡さない。Codex由来の中間メッセージは `payload.kind="progress"` の `payload.text` だけから返す。`payload.kind="final"` の生成結果JSONまたは検証結果JSONは利用者向け中間メッセージへ渡さない。
 - キャンセル要求後に受信したagent_messageを最終回答として採用しない。
-- 終了要求後は内部固定の短いgrace timeoutだけプロセス終了を待ち、待機時間を外部設定項目として増やさない。
+- POSIXでは新しいセッションでcodex execを起動し、終了要求はプロセスグループへ `SIGTERM`、強制終了は `SIGKILL` を送る。Windowsでは新しいプロセスグループで起動し、`taskkill /T` と `taskkill /F /T` を使う。
+- OS別の子プロセス込み終了要求に失敗した場合は、対象プロセス単体の `terminate` または `kill` にフォールバックする。
 
 ## 5. 公開メソッド
 

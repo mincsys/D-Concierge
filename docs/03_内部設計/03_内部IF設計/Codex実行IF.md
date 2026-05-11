@@ -65,7 +65,7 @@ sequenceDiagram
 - JSONLの生文字列はinfrastructure内に閉じ、applicationへは構造化イベントだけを返す。
 - 生成用Codexホームと検証用Codexホームを混在させない。
 - codex exec作業領域から許可外のファイルを採用済み成果物として扱わない。
-- 生成用の最終回答候補では、絶対パス、`codex/` から始まるパス、`readonly/` 配下以外のパス、HTML/メタデータファイルをPDF参照元pathとして扱わない。
+- 生成用の最終回答候補では、`readonly\...` の区切り文字差分を `readonly/...` へ標準化したうえで、絶対パス、UNC、URL、`codex/` から始まるパス、`readonly/` 配下以外のパス、HTML/メタデータファイルをPDF参照元pathとして扱わない。
 - `turn.failed`、プロセス異常終了、キャンセル要求後の `agent_message` は最終回答候補として返さない。
 - `item.completed.agent_message.text` が `payload.kind="progress"` のJSONである場合だけ、`payload.text` を利用者向け中間メッセージとして返す。
 - `payload.kind="final"` の生成結果JSONまたは検証結果JSONは利用者向け中間メッセージとして返さない。

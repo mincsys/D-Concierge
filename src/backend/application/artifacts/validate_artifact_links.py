@@ -117,11 +117,15 @@ def extract_artifact_links(markdown: str) -> tuple[ArtifactLink, ...]:
 
 
 def _normalize_artifact_target(target: str) -> str | None:
-    if target.startswith("./artifacts/"):
-        return target[2:]
-    if target.startswith("artifacts/"):
-        return target
-    return None
+    normalized = target.replace("\\", "/")
+    if normalized.startswith("./artifacts/"):
+        normalized = normalized[2:]
+    if not normalized.startswith("artifacts/"):
+        return None
+    try:
+        return _safe_artifact_relative_path(normalized).as_posix()
+    except OSError:
+        return None
 
 
 def _without_overlaps(links: tuple[ArtifactLink, ...]) -> tuple[ArtifactLink, ...]:

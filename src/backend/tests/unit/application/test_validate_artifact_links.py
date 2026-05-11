@@ -28,6 +28,30 @@ def test_artifact_link_validator_accepts_allowed_existing_files(
     assert result.regeneration_instruction == ""
 
 
+def test_artifact_link_validator_normalizes_backslash_artifact_paths(
+    tmp_path: Path,
+) -> None:
+    """観点：成果物リンク固定検証。
+
+    確認：Codex出力のartifacts配下リンクは区切り文字差分をPOSIX相対形式へ標準化する。
+    """
+    session_workdir = tmp_path / "session"
+    artifacts_dir = session_workdir / "artifacts"
+    artifacts_dir.mkdir(parents=True)
+    (artifacts_dir / "chart.jpg").write_bytes(b"jpg")
+    (artifacts_dir / "report.csv").write_text("a,b", encoding="utf-8")
+
+    result = ArtifactLinkValidator().validate(
+        markdowns=(
+            '![図](artifacts\\chart.jpg)\n<a href=".\\artifacts\\report.csv">CSV</a>',
+        ),
+        session_workdir=session_workdir,
+    )
+
+    assert result.valid is True
+    assert result.has_artifact_links is True
+
+
 def test_artifact_link_validator_rejects_non_artifact_link_targets(
     tmp_path: Path,
 ) -> None:
@@ -36,6 +60,9 @@ def test_artifact_link_validator_rejects_non_artifact_link_targets(
         markdowns=(
             "[外部](https://example.test/report.html)\n"
             "![参照元](readonly/chart.png)\n"
+            "![絶対](C:\\data\\chart.png)\n"
+            "![UNC](\\\\server\\share\\chart.png)\n"
+            "![親](artifacts\\..\\secret.png)\n"
             '<img src="/api/artifacts/00000000-0000-0000-0000-000000000001">',
         ),
         session_workdir=tmp_path / "session",
@@ -45,6 +72,9 @@ def test_artifact_link_validator_rejects_non_artifact_link_targets(
     assert "許可されていない成果物リンク" in result.regeneration_instruction
     assert "- https://example.test/report.html" in result.regeneration_instruction
     assert "- readonly/chart.png" in result.regeneration_instruction
+    assert "- C:\\data\\chart.png" in result.regeneration_instruction
+    assert "- \\\\server\\share\\chart.png" in result.regeneration_instruction
+    assert "- artifacts\\..\\secret.png" in result.regeneration_instruction
     assert "- /api/artifacts/00000000-0000-0000-0000-000000000001" in (
         result.regeneration_instruction
     )

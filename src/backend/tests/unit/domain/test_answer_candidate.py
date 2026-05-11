@@ -83,6 +83,39 @@ def test_parse_generation_final_output_accepts_payload_final_answers() -> None:
     )
 
 
+def test_parse_generation_final_output_normalizes_readonly_backslashes() -> None:
+    """観点：回答候補固定検証。
+
+    確認：Codex出力のreadonly配下pathは区切り文字差分をPOSIX相対形式へ標準化する。
+    """
+    candidate = parse_generation_final_output(
+        """
+        {
+          "payload": {
+            "kind": "final",
+            "answers": [
+              {
+                "text": "回答",
+                "references": [
+                  {
+                    "source_type": "pdf",
+                    "locator": {
+                      "path": "readonly\\\\raw\\\\pdf\\\\manual.pdf",
+                      "start_page": 1,
+                      "end_page": 1
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        }
+        """
+    )
+
+    assert candidate.blocks[0].references[0].relative_path == "raw/pdf/manual.pdf"
+
+
 def test_parse_generation_final_output_reports_invalid_reference_paths() -> None:
     """観点：回答候補固定検証の異常系。
 
@@ -238,6 +271,31 @@ def test_parse_generation_final_output_reports_invalid_page_ranges() -> None:
         (
             '{"payload":{"kind":"final","answers":[{"text":"回答","references":'
             '[{"source_type":"pdf","locator":{"path":"readonly/memo.txt",'
+            '"start_page":1,"end_page":1}}]}]}}'
+        ),
+        (
+            '{"payload":{"kind":"final","answers":[{"text":"回答","references":'
+            '[{"source_type":"pdf","locator":{"path":"C:\\\\data\\\\manual.pdf",'
+            '"start_page":1,"end_page":1}}]}]}}'
+        ),
+        (
+            '{"payload":{"kind":"final","answers":[{"text":"回答","references":'
+            '[{"source_type":"pdf","locator":{"path":"\\\\\\\\server\\\\share\\\\manual.pdf",'
+            '"start_page":1,"end_page":1}}]}]}}'
+        ),
+        (
+            '{"payload":{"kind":"final","answers":[{"text":"回答","references":'
+            '[{"source_type":"pdf","locator":{"path":"readonly\\\\..\\\\secret.pdf",'
+            '"start_page":1,"end_page":1}}]}]}}'
+        ),
+        (
+            '{"payload":{"kind":"final","answers":[{"text":"回答","references":'
+            '[{"source_type":"pdf","locator":{"path":"file:///tmp/manual.pdf",'
+            '"start_page":1,"end_page":1}}]}]}}'
+        ),
+        (
+            '{"payload":{"kind":"final","answers":[{"text":"回答","references":'
+            '[{"source_type":"pdf","locator":{"path":"https://example.test/manual.pdf",'
             '"start_page":1,"end_page":1}}]}]}}'
         ),
     ],

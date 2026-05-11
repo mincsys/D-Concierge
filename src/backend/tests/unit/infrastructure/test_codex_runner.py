@@ -1,9 +1,12 @@
+import signal
 import sys
 from collections.abc import Callable, Mapping
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
+from io import StringIO
 from pathlib import Path
 from threading import Event
+from typing import IO
 from uuid import UUID
 
 import pytest
@@ -17,6 +20,8 @@ from backend.infrastructure.codex.codex_runner import (
     CodexRunner,
     CodexRunRequest,
     SubprocessCodexProcessFactory,
+    _OsProcessGroupTerminator,
+    _SubprocessCodexProcess,
 )
 from backend.infrastructure.codex.jsonl_event_parser import (
     ParsedCodexEvent,
@@ -354,6 +359,68 @@ def test_subprocess_codex_process_converts_stdout_callback_failure(
         process.communicate(5, on_stdout_line=fail_on_stdout)
 
 
+def test_os_process_group_terminator_uses_posix_process_group() -> None:
+    """観点：CodexRunnerプロセス制御。
+
+    確認：POSIXではプロセスグループへ終了要求と強制終了要求を送る。
+    """
+    killpg_calls: list[tuple[int, int]] = []
+    terminator = _OsProcessGroupTerminator(
+        os_name="posix",
+        killpg=lambda pid, sig: killpg_calls.append((pid, sig)),
+        taskkill_runner=lambda _command: 0,
+    )
+
+    terminator.terminate(1234)
+    terminator.kill(1234)
+
+    assert killpg_calls == [(1234, signal.SIGTERM), (1234, signal.SIGKILL)]
+
+
+def test_os_process_group_terminator_uses_windows_taskkill() -> None:
+    """観点：CodexRunnerプロセス制御。
+
+    確認：Windowsではtaskkillで子プロセスを含めて終了要求と強制終了要求を送る。
+    """
+    taskkill_calls: list[tuple[str, ...]] = []
+
+    def record_taskkill(command: tuple[str, ...]) -> int:
+        taskkill_calls.append(command)
+        return 0
+
+    terminator = _OsProcessGroupTerminator(
+        os_name="nt",
+        killpg=lambda _pid, _sig: None,
+        taskkill_runner=record_taskkill,
+    )
+
+    terminator.terminate(1234)
+    terminator.kill(1234)
+
+    assert taskkill_calls == [
+        ("taskkill", "/T", "/PID", "1234"),
+        ("taskkill", "/F", "/T", "/PID", "1234"),
+    ]
+
+
+def test_subprocess_codex_process_falls_back_when_group_termination_fails() -> None:
+    """観点：CodexRunnerプロセス制御。
+
+    確認：OS別の子プロセス込み終了要求に失敗した場合は対象プロセス単体へfallbackする。
+    """
+    handle = RecordingSubprocessHandle(pid=1234)
+    process = _SubprocessCodexProcess(
+        handle,
+        process_group_terminator=FailingProcessGroupTerminator(),
+    )
+
+    process.terminate()
+    process.kill()
+
+    assert handle.terminated is True
+    assert handle.killed is True
+
+
 def test_codex_runner_returns_already_exited_for_registered_exited_process(
     tmp_path: Path,
 ) -> None:
@@ -365,6 +432,40 @@ def test_codex_runner_returns_already_exited_for_registered_exited_process(
     result = runner.cancel(run_id=run_id, trace_id="trace-407")
 
     assert result is CancelRequestResult.ALREADY_EXITED
+
+
+@dataclass(slots=True)
+class RecordingSubprocessHandle:
+    pid: int
+    stdout: IO[str] = field(default_factory=StringIO)
+    stderr: IO[str] = field(default_factory=StringIO)
+    returncode: int | None = None
+    terminated: bool = False
+    killed: bool = False
+
+    def wait(self, timeout: int) -> int:
+        _ = timeout
+        self.returncode = 0
+        return 0
+
+    def poll(self) -> int | None:
+        return self.returncode
+
+    def terminate(self) -> None:
+        self.terminated = True
+
+    def kill(self) -> None:
+        self.killed = True
+
+
+class FailingProcessGroupTerminator:
+    def terminate(self, pid: int) -> None:
+        _ = pid
+        raise OSError("group termination failed")
+
+    def kill(self, pid: int) -> None:
+        _ = pid
+        raise OSError("group kill failed")
 
 
 @dataclass(slots=True)

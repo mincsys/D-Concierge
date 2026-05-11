@@ -83,3 +83,33 @@ jobs:
         run: |
           npm run test:unit
           npm run test:integration
+
+  backend-windows:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Install backend dependencies
+        env:
+          UV_CACHE_DIR: ${{ runner.temp }}\uv-cache
+        run: uv sync --all-groups
+
+      - name: Backend static checks
+        env:
+          UV_CACHE_DIR: ${{ runner.temp }}\uv-cache
+        run: |
+          uv run ruff check src/backend
+          uv run ruff format --check src/backend
+          uv run mypy src/backend
+
+      - name: Backend unit tests
+        env:
+          UV_CACHE_DIR: ${{ runner.temp }}\uv-cache
+        run: uv run pytest src/backend/tests/unit

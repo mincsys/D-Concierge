@@ -37,6 +37,7 @@ from backend.shared.errors import (
     ValidationResultFormatError,
 )
 from backend.tests.support.memory_repository import InMemoryChatRepository
+from backend.tests.support.symlink import require_symlink_support
 from backend.tests.support.transaction_manager import NoopTransactionManager
 
 
@@ -201,6 +202,7 @@ def test_codex_reference_validator_links_generation_artifacts_when_needed(
     tmp_path: Path,
 ) -> None:
     """観点：検証用Codex連携。確認：成果物リンクがある回答では生成成果物を検証用workdirへ提示する。"""
+    require_symlink_support(tmp_path, target_is_directory=True)
     repository = InMemoryChatRepository()
     accepted = repository.create_chat_with_first_run("資料を要約")
     context = repository.get_chat_runtime_context(accepted.chat_id)

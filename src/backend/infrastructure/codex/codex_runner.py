@@ -1,10 +1,11 @@
 import os
+import signal
 import subprocess
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from threading import RLock, Thread
-from typing import Protocol
+from typing import IO, Protocol
 from uuid import UUID
 
 from backend.application.ports.codex.cancel_request_result import CancelRequestResult
@@ -18,6 +19,7 @@ from backend.shared.error_class import ErrorClass
 from backend.shared.errors import AppError, RunTimeoutError
 
 CancelResult = CancelRequestResult
+_WINDOWS_CREATE_NEW_PROCESS_GROUP = 0x00000200
 
 
 class CodexProcessTimeout(Exception):
@@ -64,6 +66,48 @@ class CodexProcessFactory(Protocol):
         env: Mapping[str, str],
     ) -> CodexProcess:
         """指定コマンドでcodex execプロセスを起動する。"""
+
+
+class SubprocessHandle(Protocol):
+    """標準subprocessハンドルのうちCodexProcessが利用する操作。"""
+
+    @property
+    def pid(self) -> int:
+        """プロセスID。"""
+
+    @property
+    def stdout(self) -> IO[str] | None:
+        """標準出力pipe。"""
+
+    @property
+    def stderr(self) -> IO[str] | None:
+        """標準エラーpipe。"""
+
+    @property
+    def returncode(self) -> int | None:
+        """終了コード。"""
+
+    def wait(self, timeout: int) -> int:
+        """プロセス終了まで待つ。"""
+
+    def poll(self) -> int | None:
+        """終了済みなら終了コード、生存中ならNoneを返す。"""
+
+    def terminate(self) -> None:
+        """対象プロセス単体へ通常終了要求を送る。"""
+
+    def kill(self) -> None:
+        """対象プロセス単体へ強制終了要求を送る。"""
+
+
+class ProcessGroupTerminator(Protocol):
+    """OS別のプロセスツリー終了境界。"""
+
+    def terminate(self, pid: int) -> None:
+        """子プロセスを含む通常終了要求を送る。"""
+
+    def kill(self, pid: int) -> None:
+        """子プロセスを含む強制終了要求を送る。"""
 
 
 @dataclass(frozen=True, slots=True)
@@ -192,20 +236,84 @@ class SubprocessCodexProcessFactory:
     ) -> CodexProcess:
         process_env = os.environ.copy()
         process_env.update(env)
-        process = subprocess.Popen(
-            list(command),
-            cwd=cwd,
-            env=process_env,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
+        if os.name == "nt":
+            process = subprocess.Popen(
+                list(command),
+                cwd=cwd,
+                env=process_env,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                creationflags=_WINDOWS_CREATE_NEW_PROCESS_GROUP,
+            )
+        else:
+            process = subprocess.Popen(
+                list(command),
+                cwd=cwd,
+                env=process_env,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                start_new_session=True,
+            )
         return _SubprocessCodexProcess(process)
 
 
+def _kill_process_group(pid: int, sig: int) -> None:
+    if not hasattr(os, "killpg"):
+        raise OSError("process group termination is not supported")
+    os.killpg(pid, sig)
+
+
+@dataclass(frozen=True, slots=True)
+class _OsProcessGroupTerminator:
+    """OS別に子プロセスを含む終了要求を送る。"""
+
+    os_name: str = os.name
+    killpg: Callable[[int, int], None] = _kill_process_group
+    taskkill_runner: Callable[[tuple[str, ...]], int] | None = None
+
+    def terminate(self, pid: int) -> None:
+        if self.os_name == "nt":
+            self._run_taskkill(("taskkill", "/T", "/PID", str(pid)))
+            return
+        self.killpg(pid, signal.SIGTERM)
+
+    def kill(self, pid: int) -> None:
+        if self.os_name == "nt":
+            self._run_taskkill(("taskkill", "/F", "/T", "/PID", str(pid)))
+            return
+        self.killpg(pid, signal.SIGKILL)
+
+    def _run_taskkill(self, command: tuple[str, ...]) -> None:
+        runner = self.taskkill_runner or _run_taskkill_command
+        exit_code = runner(command)
+        if exit_code != 0:
+            raise OSError(f"taskkill failed: {exit_code}")
+
+
+def _run_taskkill_command(command: tuple[str, ...]) -> int:
+    completed = subprocess.run(
+        list(command),
+        check=False,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    return completed.returncode
+
+
 class _SubprocessCodexProcess:
-    def __init__(self, process: subprocess.Popen[str]) -> None:
+    def __init__(
+        self,
+        process: SubprocessHandle,
+        process_group_terminator: ProcessGroupTerminator | None = None,
+    ) -> None:
         self._process = process
+        self._process_group_terminator = (
+            process_group_terminator
+            if process_group_terminator is not None
+            else _OsProcessGroupTerminator()
+        )
 
     def communicate(
         self,
@@ -263,17 +371,23 @@ class _SubprocessCodexProcess:
         return CodexProcessOutput(
             stdout="".join(stdout_lines),
             stderr="".join(stderr_chunks),
-            return_code=self._process.returncode,
+            return_code=_completed_return_code(self._process),
         )
 
     def poll(self) -> int | None:
         return self._process.poll()
 
     def terminate(self) -> None:
-        self._process.terminate()
+        try:
+            self._process_group_terminator.terminate(self._process.pid)
+        except OSError:
+            self._process.terminate()
 
     def kill(self) -> None:
-        self._process.kill()
+        try:
+            self._process_group_terminator.kill(self._process.pid)
+        except OSError:
+            self._process.kill()
 
 
 def _build_command(request: CodexRunRequest) -> tuple[str, ...]:
@@ -289,6 +403,12 @@ def _build_command(request: CodexRunRequest) -> tuple[str, ...]:
     if request.codex_conversation_id is None:
         return (*command, request.prompt)
     return (*command, "resume", request.codex_conversation_id, request.prompt)
+
+
+def _completed_return_code(process: SubprocessHandle) -> int:
+    if process.returncode is None:
+        raise RuntimeError("Codexプロセスの終了コードを取得できません。")
+    return process.returncode
 
 
 def _parse_stdout_line(line: str) -> ParsedCodexEvent | None:

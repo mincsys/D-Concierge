@@ -12,6 +12,7 @@ from backend.infrastructure.filesystem.artifacts.file_artifact_store import (
 )
 from backend.shared.error_class import ErrorClass
 from backend.shared.errors import AppError
+from backend.tests.support.symlink import require_symlink_support
 
 
 def test_file_artifact_store_copies_candidate_into_saved_area(
@@ -165,6 +166,7 @@ def test_file_artifact_store_rejects_symlink_to_outside_candidate(
     tmp_path: Path,
 ) -> None:
     """観点：成果物ファイルIF。確認：シンボリックリンク解決後の外部参照を拒否する。"""
+    require_symlink_support(tmp_path, target_is_directory=False)
     session_workdir = tmp_path / "sessions" / "user" / "session"
     artifacts_dir = session_workdir / "artifacts"
     artifacts_dir.mkdir(parents=True)
@@ -221,6 +223,7 @@ def test_file_artifact_store_rejects_saved_symlink_to_outside(
     tmp_path: Path,
 ) -> None:
     """観点：成果物配信。確認：保存済み領域内シンボリックリンクの外部参照を拒否する。"""
+    require_symlink_support(tmp_path, target_is_directory=True)
     saved_root = tmp_path / "saved_artifacts"
     outside = tmp_path / "outside"
     outside.mkdir()

@@ -10,6 +10,7 @@ from backend.infrastructure.codex.session_readonly import (
     prepare_validation_session_readonly,
 )
 from backend.shared.errors import ValidationWorkspacePreparationError
+from backend.tests.support.symlink import require_symlink_support
 
 type ReadonlyPreparer = Callable[[Path, Path], None]
 
@@ -108,6 +109,7 @@ def test_prepare_validation_session_artifacts_links_generation_artifacts(
     tmp_path: Path,
 ) -> None:
     """観点：検証用Codex作業領域。確認：生成成果物を検証用artifactsへsymlinkする。"""
+    require_symlink_support(tmp_path, target_is_directory=True)
     generation_workdir = tmp_path / "generation"
     generation_artifacts = generation_workdir / "artifacts"
     generation_artifacts.mkdir(parents=True)

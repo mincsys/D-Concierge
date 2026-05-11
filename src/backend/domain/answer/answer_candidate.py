@@ -214,10 +214,11 @@ def _try_normalize_readonly_pdf_path(path_value: str) -> str | None:
 
 
 def _normalize_readonly_pdf_path(path_value: str) -> str:
-    if "\x00" in path_value or "\\" in path_value:
+    if "\x00" in path_value:
         raise AnswerParseError("PDF参照位置が不正です。")
 
-    path = PurePosixPath(path_value)
+    normalized_path_value = path_value.replace("\\", "/")
+    path = PurePosixPath(normalized_path_value)
     parts = path.parts
     if path.is_absolute() or len(parts) < 2 or parts[0] != _CODEX_READONLY_DIR:
         raise AnswerParseError("PDF参照位置が不正です。")
