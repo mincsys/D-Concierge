@@ -1,5 +1,4 @@
 import asyncio
-import json
 from collections.abc import Callable
 from concurrent.futures import Future
 from dataclasses import dataclass, field
@@ -8,6 +7,7 @@ from pathlib import Path
 from uuid import UUID
 
 import pytest
+import yaml
 from fastapi.testclient import TestClient
 from pydantic import TypeAdapter
 from pypdf import PdfWriter
@@ -831,8 +831,8 @@ def test_create_app_cleans_expired_trace_logs(tmp_path: Path) -> None:
     retained_dir = tmp_path / "logs/trace/not-a-date"
     expired_dir.mkdir(parents=True)
     retained_dir.mkdir(parents=True)
-    (expired_dir / "old.json").write_text("{}", encoding="utf-8")
-    (retained_dir / "kept.json").write_text("{}", encoding="utf-8")
+    (expired_dir / "old.yaml").write_text("{}", encoding="utf-8")
+    (retained_dir / "kept.yaml").write_text("{}", encoding="utf-8")
 
     create_app(
         config=_make_config(tmp_path),
@@ -1167,10 +1167,10 @@ def _make_config(tmp_path: Path) -> AppConfig:
 
 
 def _trace_records(tmp_path: Path) -> list[dict[str, str]]:
-    log_files = sorted((tmp_path / "logs/trace").glob("*/*.json"))
+    log_files = sorted((tmp_path / "logs/trace").glob("*/*.yaml"))
     records: list[dict[str, str]] = []
     for log_file in log_files:
-        loaded = json.loads(log_file.read_text(encoding="utf-8"))
+        loaded = yaml.safe_load(log_file.read_text(encoding="utf-8"))
         assert isinstance(loaded, dict)
         records.append({str(key): str(value) for key, value in loaded.items()})
     return records

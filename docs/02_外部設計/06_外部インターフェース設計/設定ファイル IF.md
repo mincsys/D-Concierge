@@ -47,7 +47,7 @@
 | `validator.codex.output_schema` | 必須 | 検証用codex execの検証結果出力契約。 | 回答検証 |
 | `database.url` | 必須 | データベース接続先。 | 永続化 |
 | `server.timeout_seconds` | 必須 | 回答生成から検証完了までのタイムアウト値。 | 実行制約 |
-| `trace_log.dir` | 必須 | 異常系トレースログJSONファイルの保存先。 | ログ設計 |
+| `trace_log.dir` | 必須 | 異常系トレースログYAMLファイルの保存先。 | ログ設計 |
 | `trace_log.retention_days` | 必須 | トレースログの日付ディレクトリを保持する日数。正の整数を指定する。MVP標準は90日。 | ログ設計 |
 | `trace_log.max_files_per_day` | 必須 | アプリケーション起動ごとの同日トレースログ最大保存件数。正の整数を指定する。MVP標準は1000件。 | ログ設計 |
 

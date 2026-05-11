@@ -1,18 +1,18 @@
-import json
 from datetime import UTC, datetime
 from pathlib import Path
 from uuid import UUID
 
+import yaml
 from pytest import MonkeyPatch
 
 from backend.application.ports.trace_log.dto import TraceLogRecord
 from backend.infrastructure.trace_log.trace_log_writer import TraceLogWriter
 
 
-def test_trace_log_writer_writes_pretty_json_file_without_masking(
+def test_trace_log_writer_writes_yaml_file_without_masking(
     tmp_path: Path,
 ) -> None:
-    """観点：TraceLogWriter。確認：1イベント1JSONで、開発者向け情報をマスクしない。"""
+    """観点：TraceLogWriter。確認：1イベント1YAMLで、開発者向け情報をマスクしない。"""
     writer = TraceLogWriter(
         log_dir=tmp_path,
         clock=lambda: datetime(2026, 5, 9, 10, 0, 1, 234567, tzinfo=UTC),
@@ -35,14 +35,16 @@ def test_trace_log_writer_writes_pretty_json_file_without_masking(
         )
     )
 
-    log_path = tmp_path / "2026-05-09" / "10-00-01_234567_execution_failed.json"
-    payload = json.loads(log_path.read_text(encoding="utf-8"))
+    log_path = tmp_path / "2026-05-09" / "10-00-01_234567_execution_failed.yaml"
+    log_text = log_path.read_text(encoding="utf-8")
+    payload = yaml.safe_load(log_text)
     assert payload["trace_id"] == "trace-701"
     assert payload["event_name"] == "execution/failed"
     assert payload["chat_id"] == "00000000-0000-0000-0000-000000000701"
     assert "/home/minami/dev/D-Concierge/codex/secret" in payload["message"]
     assert "Authorization: Bearer token-value" in payload["message"]
-    assert "\n  " in log_path.read_text(encoding="utf-8")
+    assert payload["stacktrace"] == "Traceback...\nRuntimeError: failed"
+    assert "stacktrace: |" in log_text
 
 
 def test_trace_log_writer_writes_optional_diagnostic_fields(
@@ -71,8 +73,8 @@ def test_trace_log_writer_writes_optional_diagnostic_fields(
         )
     )
 
-    [log_path] = list((tmp_path / "2026-05-09").glob("*.json"))
-    payload = json.loads(log_path.read_text(encoding="utf-8"))
+    [log_path] = list((tmp_path / "2026-05-09").glob("*.yaml"))
+    payload = yaml.safe_load(log_path.read_text(encoding="utf-8"))
     assert payload["run_state"] == "エラー"
     assert payload["timeout_state"] == "none"
     assert payload["cancel_state"] == "none"
@@ -96,10 +98,10 @@ def test_trace_log_writer_appends_suffix_when_filename_collides(tmp_path: Path) 
         TraceLogRecord(trace_id="trace-2", event_name="api_failed", stage="api")
     )
 
-    paths = sorted(path.name for path in (tmp_path / "2026-05-09").glob("*.json"))
+    paths = sorted(path.name for path in (tmp_path / "2026-05-09").glob("*.yaml"))
     assert paths == [
-        "10-05-00_000000_api_failed.json",
-        "10-05-00_000000_api_failed_2.json",
+        "10-05-00_000000_api_failed.yaml",
+        "10-05-00_000000_api_failed_2.yaml",
     ]
 
 
@@ -119,8 +121,8 @@ def test_trace_log_writer_limits_huge_text_without_masking(tmp_path: Path) -> No
         )
     )
 
-    [log_path] = list((tmp_path / "2026-05-09").glob("*.json"))
-    payload = json.loads(log_path.read_text(encoding="utf-8"))
+    [log_path] = list((tmp_path / "2026-05-09").glob("*.yaml"))
+    payload = yaml.safe_load(log_path.read_text(encoding="utf-8"))
     assert payload["message"].startswith("/tmp/secret ")
     assert payload["message"].endswith("...<truncated>")
     assert len(payload["message"]) <= 65_536 + len("...<truncated>")
@@ -134,10 +136,10 @@ def test_trace_log_writer_cleanup_expired_deletes_old_date_directories(
     boundary_dir = tmp_path / "2026-02-08"
     current_dir = tmp_path / "2026-05-09"
     ignored_dir = tmp_path / "not-a-date"
-    ignored_file = tmp_path / "2026-01-01.json"
+    ignored_file = tmp_path / "2026-01-01.yaml"
     for directory in (old_dir, boundary_dir, current_dir, ignored_dir):
         directory.mkdir()
-        (directory / "trace.json").write_text("{}", encoding="utf-8")
+        (directory / "trace.yaml").write_text("{}", encoding="utf-8")
     ignored_file.write_text("{}", encoding="utf-8")
     writer = TraceLogWriter(
         log_dir=tmp_path,
@@ -162,7 +164,7 @@ def test_trace_log_writer_cleanup_expired_ignores_delete_failure(
     """観点：TraceLogWriter。確認：期限超過ログの削除失敗は呼出元へ波及しない。"""
     old_dir = tmp_path / "2026-02-07"
     old_dir.mkdir()
-    (old_dir / "trace.json").write_text("{}", encoding="utf-8")
+    (old_dir / "trace.yaml").write_text("{}", encoding="utf-8")
     writer = TraceLogWriter(
         log_dir=tmp_path,
         retention_days=90,
@@ -205,12 +207,12 @@ def test_trace_log_writer_limits_written_files_per_process_day(tmp_path: Path) -
         TraceLogRecord(trace_id="trace-3", event_name="api_failed", stage="api")
     )
 
-    paths = sorted(path.name for path in existing.glob("*.json"))
+    paths = sorted(path.name for path in existing.glob("*.yaml"))
     assert paths == [
-        "10-05-00_000000_api_failed.json",
-        "10-05-00_000000_api_failed_2.json",
-        "existing.json",
+        "10-05-00_000000_api_failed.yaml",
+        "10-05-00_000000_api_failed_2.yaml",
     ]
+    assert (existing / "existing.json").exists()
 
 
 def test_trace_log_writer_does_not_increment_limit_on_write_failure(
@@ -237,8 +239,8 @@ def test_trace_log_writer_does_not_increment_limit_on_write_failure(
         TraceLogRecord(trace_id="trace-3", event_name="api_failed", stage="api")
     )
 
-    paths = sorted(path.name for path in (log_dir / "2026-05-09").glob("*.json"))
-    assert paths == ["10-05-00_000000_api_failed.json"]
+    paths = sorted(path.name for path in (log_dir / "2026-05-09").glob("*.yaml"))
+    assert paths == ["10-05-00_000000_api_failed.yaml"]
 
 
 def test_trace_log_writer_resets_daily_limit_when_date_changes(tmp_path: Path) -> None:
@@ -267,5 +269,5 @@ def test_trace_log_writer_resets_daily_limit_when_date_changes(tmp_path: Path) -
         TraceLogRecord(trace_id="trace-3", event_name="api_failed", stage="api")
     )
 
-    assert len(list((tmp_path / "2026-05-09").glob("*.json"))) == 1
-    assert len(list((tmp_path / "2026-05-10").glob("*.json"))) == 1
+    assert len(list((tmp_path / "2026-05-09").glob("*.yaml"))) == 1
+    assert len(list((tmp_path / "2026-05-10").glob("*.yaml"))) == 1

@@ -1,10 +1,12 @@
-import json
 import re
 import shutil
 from collections.abc import Callable
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import TypedDict
+
+import yaml
+from yaml.nodes import ScalarNode
 
 from backend.application.ports.trace_log.dto import TraceLogRecord
 from backend.shared.tracing.exception import (
@@ -19,7 +21,7 @@ DEFAULT_MAX_FILES_PER_DAY = 1000
 
 
 class TraceLogPayload(TypedDict, total=False):
-    """JSONへ保存するトレースログpayload。"""
+    """YAMLへ保存するトレースログpayload。"""
 
     occurred_at: str
     trace_id: str
@@ -57,7 +59,7 @@ class TraceLogPayload(TypedDict, total=False):
 
 
 class TraceLogWriter:
-    """障害調査用トレースログを1イベント1JSONファイルへ保存する。"""
+    """障害調査用トレースログを1イベント1YAMLファイルへ保存する。"""
 
     def __init__(
         self,
@@ -132,14 +134,34 @@ class TraceLogWriter:
         suffix = 1
         while True:
             suffix_text = "" if suffix == 1 else f"_{suffix}"
-            log_path = day_dir / f"{base_name}{suffix_text}.json"
+            log_path = day_dir / f"{base_name}{suffix_text}.yaml"
             try:
                 with log_path.open("x", encoding="utf-8") as log_file:
-                    log_file.write(json.dumps(payload, ensure_ascii=False, indent=2))
-                    log_file.write("\n")
+                    log_file.write(_dump_yaml(payload))
                 return
             except FileExistsError:
                 suffix += 1
+
+
+class _TraceLogYamlDumper(yaml.SafeDumper):
+    """トレースログ用YAML Dumper。"""
+
+
+def _represent_str(dumper: _TraceLogYamlDumper, value: str) -> ScalarNode:
+    style = "|" if "\n" in value else None
+    return dumper.represent_scalar("tag:yaml.org,2002:str", value, style=style)
+
+
+_TraceLogYamlDumper.add_representer(str, _represent_str)
+
+
+def _dump_yaml(payload: TraceLogPayload) -> str:
+    return yaml.dump(
+        payload,
+        Dumper=_TraceLogYamlDumper,
+        allow_unicode=True,
+        sort_keys=False,
+    )
 
 
 def _to_payload(record: TraceLogRecord, now: datetime) -> TraceLogPayload:

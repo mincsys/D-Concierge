@@ -51,7 +51,7 @@ sequenceDiagram
 ### 5.3. 不変条件
 
 - 全APIとSSE接続はtrace_idを持つ。
-- トレースログは1異常1JSONファイルで出力する。
+- トレースログは1異常1YAMLファイルで出力する。
 - 開発者向け調査情報はマスクしない。
 - 巨大な文字列は上限長で切り詰める。
 - 保存期間を過ぎた日付ディレクトリはアプリケーション起動時に削除対象とする。
@@ -98,7 +98,7 @@ sequenceDiagram
 
 | 項目 | 内容 |
 | --- | --- |
-| `trace_record` | `<trace_log.dir>/<yyyy-MM-dd>/<HH-mm-ss>_<microseconds>_<event_name>.json` に保存された1異常分のJSON |
+| `trace_record` | `<trace_log.dir>/<yyyy-MM-dd>/<HH-mm-ss>_<microseconds>_<event_name>.yaml` に保存された1異常分のYAML |
 | `write_result` | 呼出元へは返さない。書込失敗は元処理へ波及させない。 |
 
 ### 6.3. 保持設定
