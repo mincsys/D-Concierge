@@ -1,8 +1,8 @@
 from backend.domain.answer.answer_candidate import (
     ParsedAnswerBlock,
     ParsedAnswerCandidate,
-    ParsedReference,
 )
+from backend.domain.references.pdf_reference import PdfLocator, PdfReference
 from backend.infrastructure.codex.validator_codex_input import (
     build_validator_codex_input,
 )
@@ -15,11 +15,13 @@ def test_build_validator_codex_input_uses_validator_specific_shape() -> None:
             ParsedAnswerBlock(
                 markdown="回答本文",
                 references=(
-                    ParsedReference(
+                    PdfReference(
                         label="manual.pdf",
-                        relative_path="raw/pdf/manual.pdf",
-                        page_start=1,
-                        page_end=2,
+                        locator=PdfLocator(
+                            relative_path="raw/pdf/manual.pdf",
+                            page_start=1,
+                            page_end=2,
+                        ),
                     ),
                 ),
             ),

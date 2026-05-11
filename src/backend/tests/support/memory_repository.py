@@ -18,6 +18,11 @@ from backend.application.ports.database.dto import (
     RunDetail,
     UnfinishedRun,
 )
+from backend.domain.chat.chat_title_policy import ChatTitlePolicy
+from backend.domain.chat.user_instruction import (
+    InvalidUserInstructionError,
+    UserInstruction,
+)
 from backend.domain.execution.run_state import RunState
 from backend.domain.execution.run_state_policy import RunStatePolicy
 from backend.domain.references.source_type import SourceType
@@ -64,7 +69,7 @@ class InMemoryChatRepository:
 
     def create_chat_with_first_run(self, user_instruction: str) -> AcceptedRun:
         """新規チャット、初回run、初回指示を同時に保存する。"""
-        instruction = _normalize_instruction(user_instruction)
+        instruction = _user_instruction(user_instruction)
         now = self._now()
         chat_id = uuid4()
         run_id = uuid4()
@@ -72,7 +77,7 @@ class InMemoryChatRepository:
             id=chat_id,
             local_user_id=SHARED_LOCAL_USER_ID,
             session_id=uuid4(),
-            title=_make_title(instruction),
+            title=ChatTitlePolicy.make_title(instruction),
             updated_at=now,
             run_ids=[run_id],
         )
@@ -81,7 +86,7 @@ class InMemoryChatRepository:
             chat_id=chat_id,
             state=RunState.ACCEPTED,
             started_at=now,
-            user_instruction=instruction,
+            user_instruction=instruction.body,
         )
         with self._lock:
             self._chats[chat_id] = chat
@@ -90,7 +95,7 @@ class InMemoryChatRepository:
 
     def append_run(self, chat_id: UUID, user_instruction: str) -> AcceptedRun:
         """既存チャットへ受付runと指示を追加する。"""
-        instruction = _normalize_instruction(user_instruction)
+        instruction = _user_instruction(user_instruction)
         now = self._now()
         run_id = uuid4()
         with self._lock:
@@ -105,7 +110,7 @@ class InMemoryChatRepository:
                 chat_id=chat_id,
                 state=RunState.ACCEPTED,
                 started_at=now,
-                user_instruction=instruction,
+                user_instruction=instruction.body,
             )
             chat.run_ids.append(run_id)
             chat.updated_at = now
@@ -372,13 +377,8 @@ class InMemoryChatRepository:
         return datetime.now(UTC)
 
 
-def _normalize_instruction(user_instruction: str) -> str:
-    instruction = user_instruction.strip()
-    if instruction == "":
-        raise AppError(ErrorClass.INPUT, "ユーザ指示を入力してください。")
-    return instruction
-
-
-def _make_title(user_instruction: str) -> str:
-    normalized = " ".join(user_instruction.split())
-    return normalized[:50]
+def _user_instruction(user_instruction: str) -> UserInstruction:
+    try:
+        return UserInstruction(user_instruction)
+    except InvalidUserInstructionError as exc:
+        raise AppError(ErrorClass.INPUT, "ユーザ指示を入力してください。") from exc

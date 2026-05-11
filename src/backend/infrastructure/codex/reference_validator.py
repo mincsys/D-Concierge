@@ -15,13 +15,12 @@ from backend.application.ports.database.interface import (
 from backend.domain.answer.answer_candidate import (
     InvalidPageRange,
     ParsedAnswerCandidate,
-    ParsedReference,
-    codex_visible_reference_path,
     invalid_reference_page_range_message,
     invalid_reference_path_message,
     parsed_candidate_references,
 )
 from backend.domain.answer.output_kind import CodexOutputKind
+from backend.domain.references.pdf_reference import PdfReference
 from backend.infrastructure.codex.codex_runner import (
     CodexRunRequest,
 )
@@ -200,13 +199,13 @@ def _parse_validation_result(raw_json: str) -> _ParsedValidationResult:
 
 
 def _validate_reference_files(
-    references: tuple[ParsedReference, ...],
+    references: tuple[PdfReference, ...],
     datasource_dir: Path,
 ) -> ReferenceValidationResult | None:
     invalid_paths: list[str] = []
     resolved_paths: dict[str, Path] = {}
     for reference in references:
-        display_path = codex_visible_reference_path(reference.relative_path)
+        display_path = reference.codex_visible_path()
         try:
             resolved_path = PathSecurityService.resolve_file(
                 datasource_dir,
@@ -242,7 +241,7 @@ def _validate_reference_files(
         if reference.page_end > page_count:
             invalid_page_ranges.append(
                 InvalidPageRange(
-                    path=codex_visible_reference_path(reference.relative_path),
+                    path=reference.codex_visible_path(),
                     page_start=reference.page_start,
                     page_end=reference.page_end,
                 ),

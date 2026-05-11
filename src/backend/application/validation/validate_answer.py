@@ -16,6 +16,7 @@ from backend.domain.answer.answer_candidate import (
     ParsedAnswerCandidate,
     parse_generation_final_output,
 )
+from backend.domain.validation.retry_policy import RetryPolicy
 
 VALIDATION_FAILURE_MESSAGE = "回答生成に失敗しました。再度お試しください。"
 
@@ -49,9 +50,12 @@ class ValidateAnswerUseCase:
         reference_validator: ReferenceValidatorPort,
         max_retries: int,
         artifact_link_validator: AnswerArtifactLinkValidator | None = None,
+        retry_policy: RetryPolicy | None = None,
     ) -> None:
         self._reference_validator = reference_validator
-        self._max_retries = max_retries
+        self._retry_policy = (
+            retry_policy if retry_policy is not None else RetryPolicy(max_retries)
+        )
         self._artifact_link_validator = (
             artifact_link_validator
             if artifact_link_validator is not None
@@ -116,7 +120,7 @@ class ValidateAnswerUseCase:
         retry_count: int,
         reason: str,
     ) -> AnswerValidationResult:
-        if retry_count < self._max_retries:
+        if self._retry_policy.can_retry(retry_count):
             return AnswerValidationResult(
                 status=ValidationStatus.REGENERATE,
                 regeneration_instruction=reason,

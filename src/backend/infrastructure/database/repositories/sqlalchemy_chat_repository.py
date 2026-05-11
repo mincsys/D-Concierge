@@ -21,6 +21,11 @@ from backend.application.ports.database.dto import (
     UnfinishedRun,
 )
 from backend.application.ports.runtime.interface import ClockPort, IdGeneratorPort
+from backend.domain.chat.chat_title_policy import ChatTitlePolicy
+from backend.domain.chat.user_instruction import (
+    InvalidUserInstructionError,
+    UserInstruction,
+)
 from backend.domain.execution.run_state import RunState
 from backend.domain.execution.run_state_policy import (
     UNFINISHED_STATES,
@@ -72,7 +77,7 @@ class SqlAlchemyChatRepository:
 
     def create_chat_with_first_run(self, user_instruction: str) -> AcceptedRun:
         """新規チャット、初回run、初回指示を同一トランザクションで保存する。"""
-        instruction = _normalize_instruction(user_instruction)
+        instruction = _user_instruction(user_instruction)
         now = self._clock.now()
         chat_id = self._id_generator.new_uuid()
         run_id = self._id_generator.new_uuid()
@@ -84,7 +89,7 @@ class SqlAlchemyChatRepository:
                 id=chat_id,
                 local_user_id=SHARED_LOCAL_USER_ID,
                 session_id=self._id_generator.new_uuid(),
-                title=_make_title(instruction),
+                title=ChatTitlePolicy.make_title(instruction),
                 updated_at=now,
             )
         )
@@ -102,14 +107,14 @@ class SqlAlchemyChatRepository:
             UserInstructionModel(
                 id=self._id_generator.new_uuid(),
                 run_id=run_id,
-                body=instruction,
+                body=instruction.body,
             )
         )
         return AcceptedRun(chat_id=chat_id, run_id=run_id, state=RunState.ACCEPTED)
 
     def append_run(self, chat_id: UUID, user_instruction: str) -> AcceptedRun:
         """既存チャットへ受付runと指示を追加する。"""
-        instruction = _normalize_instruction(user_instruction)
+        instruction = _user_instruction(user_instruction)
         now = self._clock.now()
         run_id = self._id_generator.new_uuid()
         session = self._session()
@@ -141,7 +146,7 @@ class SqlAlchemyChatRepository:
             UserInstructionModel(
                 id=self._id_generator.new_uuid(),
                 run_id=run_id,
-                body=instruction,
+                body=instruction.body,
             )
         )
         return AcceptedRun(chat_id=chat_id, run_id=run_id, state=RunState.ACCEPTED)
@@ -520,16 +525,11 @@ class SqlAlchemyChatRepository:
         return instruction
 
 
-def _normalize_instruction(user_instruction: str) -> str:
-    instruction = user_instruction.strip()
-    if instruction == "":
-        raise AppError(ErrorClass.INPUT, "ユーザ指示を入力してください。")
-    return instruction
-
-
-def _make_title(user_instruction: str) -> str:
-    normalized = " ".join(user_instruction.split())
-    return normalized[:50]
+def _user_instruction(user_instruction: str) -> UserInstruction:
+    try:
+        return UserInstruction(user_instruction)
+    except InvalidUserInstructionError as exc:
+        raise AppError(ErrorClass.INPUT, "ユーザ指示を入力してください。") from exc
 
 
 def _run_state(run: ChatRunModel) -> RunState:

@@ -34,10 +34,9 @@ from backend.application.validation.validate_answer import (
 from backend.application.validation.validation_status import ValidationStatus
 from backend.domain.answer.answer_candidate import (
     ParsedAnswerCandidate,
-    ParsedReference,
 )
 from backend.domain.execution.run_state import RunState
-from backend.domain.references.source_type import SourceType
+from backend.domain.references.pdf_reference import PdfLocator, PdfReference
 from backend.shared.error_class import ErrorClass
 from backend.shared.errors import (
     AppError,
@@ -490,7 +489,7 @@ class ExecuteChatRunUseCase:
                     references=tuple(
                         DisplayReferenceData(
                             reference_id=self._id_generator.new_uuid(),
-                            source_type=SourceType.PDF,
+                            source_type=reference.source_type,
                             label=reference.label,
                             relative_path=reference.relative_path,
                             page_start=reference.page_start,
@@ -623,8 +622,8 @@ class ExecuteChatRunUseCase:
 
 
 def _merge_references(
-    references: tuple[ParsedReference, ...],
-) -> tuple[ParsedReference, ...]:
+    references: tuple[PdfReference, ...],
+) -> tuple[PdfReference, ...]:
     sorted_references = sorted(
         references,
         key=lambda reference: (
@@ -633,7 +632,7 @@ def _merge_references(
             reference.page_end,
         ),
     )
-    merged: list[ParsedReference] = []
+    merged: list[PdfReference] = []
     for reference in sorted_references:
         if not merged:
             merged.append(reference)
@@ -644,11 +643,13 @@ def _merge_references(
             current.relative_path == reference.relative_path
             and reference.page_start <= current.page_end + 1
         ):
-            merged[-1] = ParsedReference(
+            merged[-1] = PdfReference(
                 label=current.label,
-                relative_path=current.relative_path,
-                page_start=current.page_start,
-                page_end=max(current.page_end, reference.page_end),
+                locator=PdfLocator(
+                    relative_path=current.relative_path,
+                    page_start=current.page_start,
+                    page_end=max(current.page_end, reference.page_end),
+                ),
             )
             continue
 

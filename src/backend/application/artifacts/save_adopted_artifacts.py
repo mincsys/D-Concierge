@@ -4,11 +4,9 @@ from pathlib import Path
 from uuid import UUID
 
 from backend.application.artifacts.validate_artifact_links import extract_artifact_links
-from backend.application.ports.filesystem.dto import (
-    SavedArtifactFile,
-)
 from backend.application.ports.filesystem.interface import AdoptedArtifactStorePort
 from backend.application.ports.runtime.interface import IdGeneratorPort
+from backend.domain.artifacts.artifact_reference import ArtifactReference
 
 
 @dataclass(frozen=True, slots=True)
@@ -16,7 +14,7 @@ class SavedAnswerBlockArtifacts:
     """成果物URL置換後の回答ブロック本文と保存済み成果物メタ情報。"""
 
     markdown: str
-    artifacts: tuple[SavedArtifactFile, ...]
+    artifacts: tuple[ArtifactReference, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -63,7 +61,7 @@ class SaveAdoptedArtifactsUseCase:
 
         for markdown in markdowns:
             replacements: list[_Replacement] = []
-            saved_artifacts: list[SavedArtifactFile] = []
+            saved_artifacts: list[ArtifactReference] = []
             for link in extract_artifact_links(markdown):
                 if link.normalized_target is None:
                     continue
@@ -74,7 +72,13 @@ class SaveAdoptedArtifactsUseCase:
                     run_id=run_id,
                     artifact_id=artifact_id,
                 )
-                saved_artifacts.append(saved)
+                saved_artifacts.append(
+                    ArtifactReference(
+                        artifact_id=saved.artifact_id,
+                        mime_type=saved.mime_type,
+                        relative_path=saved.relative_path,
+                    )
+                )
                 replacements.append(
                     _Replacement(
                         start=link.start,

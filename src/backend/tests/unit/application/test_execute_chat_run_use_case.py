@@ -28,7 +28,6 @@ from backend.application.ports.database.interface import (
     ChatExecutionRepositoryPort,
     TransactionManagerPort,
 )
-from backend.application.ports.filesystem.dto import SavedArtifactFile
 from backend.application.ports.runtime.interface import ClockPort, IdGeneratorPort
 from backend.application.ports.trace_log.dto import TraceLogRecord
 from backend.application.ports.trace_log.interface import TraceLoggerPort
@@ -38,10 +37,11 @@ from backend.domain.answer.answer_candidate import (
     AnswerParseError,
     ParsedAnswerBlock,
     ParsedAnswerCandidate,
-    ParsedReference,
     parse_generation_final_output,
 )
+from backend.domain.artifacts.artifact_reference import ArtifactReference
 from backend.domain.execution.run_state import RunState
+from backend.domain.references.pdf_reference import PdfLocator, PdfReference
 from backend.shared.error_class import ErrorClass
 from backend.shared.errors import (
     AppError,
@@ -169,31 +169,31 @@ def test_execute_chat_run_merges_reference_ranges_before_save() -> None:
                             ParsedAnswerBlock(
                                 markdown="回答",
                                 references=(
-                                    ParsedReference(
+                                    _pdf_reference(
                                         label="b.pdf",
                                         relative_path="b.pdf",
                                         page_start=5,
                                         page_end=5,
                                     ),
-                                    ParsedReference(
+                                    _pdf_reference(
                                         label="a.pdf",
                                         relative_path="a.pdf",
                                         page_start=3,
                                         page_end=4,
                                     ),
-                                    ParsedReference(
+                                    _pdf_reference(
                                         label="a.pdf",
                                         relative_path="a.pdf",
                                         page_start=1,
                                         page_end=2,
                                     ),
-                                    ParsedReference(
+                                    _pdf_reference(
                                         label="a.pdf",
                                         relative_path="a.pdf",
                                         page_start=5,
                                         page_end=6,
                                     ),
-                                    ParsedReference(
+                                    _pdf_reference(
                                         label="b.pdf",
                                         relative_path="b.pdf",
                                         page_start=1,
@@ -584,7 +584,7 @@ def test_execute_chat_run_saves_adopted_artifacts() -> None:
                 SavedAnswerBlockArtifacts(
                     markdown=f"![図](/api/artifacts/{artifact_id})",
                     artifacts=(
-                        SavedArtifactFile(
+                        ArtifactReference(
                             artifact_id=artifact_id,
                             mime_type="image/png",
                             relative_path=f"{accepted.run_id}/{artifact_id}.png",
@@ -1854,7 +1854,7 @@ def _answer_candidate(text: str) -> ParsedAnswerCandidate:
             ParsedAnswerBlock(
                 markdown=text,
                 references=(
-                    ParsedReference(
+                    _pdf_reference(
                         label="manual.pdf",
                         relative_path="manual.pdf",
                         page_start=1,
@@ -1862,5 +1862,22 @@ def _answer_candidate(text: str) -> ParsedAnswerCandidate:
                     ),
                 ),
             ),
+        ),
+    )
+
+
+def _pdf_reference(
+    *,
+    label: str,
+    relative_path: str,
+    page_start: int,
+    page_end: int,
+) -> PdfReference:
+    return PdfReference(
+        label=label,
+        locator=PdfLocator(
+            relative_path=relative_path,
+            page_start=page_start,
+            page_end=page_end,
         ),
     )

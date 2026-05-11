@@ -13,8 +13,8 @@ from backend.application.ports.database.interface import (
 from backend.domain.answer.answer_candidate import (
     ParsedAnswerBlock,
     ParsedAnswerCandidate,
-    ParsedReference,
 )
+from backend.domain.references.pdf_reference import PdfLocator, PdfReference
 from backend.infrastructure.codex.codex_event_kind import CodexEventKind
 from backend.infrastructure.codex.codex_runner import (
     CodexRunRequest,
@@ -635,11 +635,13 @@ def _candidate_with_pdf() -> ParsedAnswerCandidate:
             ParsedAnswerBlock(
                 markdown="回答",
                 references=(
-                    ParsedReference(
+                    PdfReference(
                         label="manual.pdf",
-                        relative_path="manual.pdf",
-                        page_start=1,
-                        page_end=2,
+                        locator=PdfLocator(
+                            relative_path="manual.pdf",
+                            page_start=1,
+                            page_end=2,
+                        ),
                     ),
                 ),
             ),

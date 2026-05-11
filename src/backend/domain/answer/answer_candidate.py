@@ -3,6 +3,11 @@ from dataclasses import dataclass
 from pathlib import PurePosixPath
 
 from backend.domain.answer.output_kind import CodexOutputKind
+from backend.domain.references.pdf_reference import (
+    InvalidPdfReferenceError,
+    PdfLocator,
+    PdfReference,
+)
 from backend.domain.references.source_type import SourceType
 
 type JsonScalar = str | int | float | bool | None
@@ -32,16 +37,6 @@ class InvalidPageRange:
 
 
 @dataclass(frozen=True, slots=True)
-class ParsedReference:
-    """固定検証済みPDF参照元。"""
-
-    label: str
-    relative_path: str
-    page_start: int
-    page_end: int
-
-
-@dataclass(frozen=True, slots=True)
 class ParsedAnswerCandidate:
     """固定検証済み回答候補。"""
 
@@ -53,19 +48,16 @@ class ParsedAnswerBlock:
     """固定検証済み回答候補の本文と参照元の組。"""
 
     markdown: str
-    references: tuple[ParsedReference, ...]
+    references: tuple[PdfReference, ...]
 
 
 def parsed_candidate_references(
     candidate: ParsedAnswerCandidate,
-) -> tuple[ParsedReference, ...]:
+) -> tuple[PdfReference, ...]:
     """回答候補内の全参照元をブロック順に返す。"""
     return tuple(
         reference for block in candidate.blocks for reference in block.references
     )
-
-
-_CODEX_READONLY_DIR = "readonly"
 
 
 def invalid_reference_path_message(paths: list[str]) -> str:
@@ -98,11 +90,6 @@ def invalid_reference_page_range_message(page_ranges: list[InvalidPageRange]) ->
         "参照元だけを正しいPDFパスとページ範囲へ修正して"
         "最終JSONを再出力してください。"
     )
-
-
-def codex_visible_reference_path(relative_path: str) -> str:
-    """共有データソース相対pathをCodex作業領域上の表示pathへ戻す。"""
-    return PurePosixPath(_CODEX_READONLY_DIR, relative_path).as_posix()
 
 
 def parse_generation_final_output(raw_json: str) -> ParsedAnswerCandidate:
@@ -154,8 +141,8 @@ def _parse_answers(answers_value: list[JsonValue]) -> ParsedAnswerCandidate:
     return ParsedAnswerCandidate(blocks=tuple(blocks))
 
 
-def _parse_references(references_value: list[JsonValue]) -> list[ParsedReference]:
-    parsed: list[ParsedReference] = []
+def _parse_references(references_value: list[JsonValue]) -> list[PdfReference]:
+    parsed: list[PdfReference] = []
     invalid_paths: list[str] = []
     invalid_page_ranges: list[InvalidPageRange] = []
     for reference_value in references_value:
@@ -180,7 +167,13 @@ def _parse_references(references_value: list[JsonValue]) -> list[ParsedReference
         if relative_path is None:
             invalid_paths.append(path_value)
             continue
-        if start_page_value < 1 or end_page_value < start_page_value:
+        try:
+            locator = PdfLocator(
+                relative_path=relative_path,
+                page_start=start_page_value,
+                page_end=end_page_value,
+            )
+        except InvalidPdfReferenceError:
             invalid_page_ranges.append(
                 InvalidPageRange(
                     path=path_value,
@@ -189,14 +182,7 @@ def _parse_references(references_value: list[JsonValue]) -> list[ParsedReference
                 )
             )
             continue
-        parsed.append(
-            ParsedReference(
-                label=PurePosixPath(relative_path).name,
-                relative_path=relative_path,
-                page_start=start_page_value,
-                page_end=end_page_value,
-            )
-        )
+        parsed.append(PdfReference.from_locator(locator))
     if invalid_paths:
         message = invalid_reference_path_message(invalid_paths)
         raise AnswerParseError(message, regeneration_instruction=message)
@@ -220,12 +206,14 @@ def _normalize_readonly_pdf_path(path_value: str) -> str:
     normalized_path_value = path_value.replace("\\", "/")
     path = PurePosixPath(normalized_path_value)
     parts = path.parts
-    if path.is_absolute() or len(parts) < 2 or parts[0] != _CODEX_READONLY_DIR:
+    if path.is_absolute() or len(parts) < 2 or parts[0] != "readonly":
         raise AnswerParseError("PDF参照位置が不正です。")
     if any(part in {"", ".", ".."} for part in parts):
         raise AnswerParseError("PDF参照位置が不正です。")
 
-    relative_path = PurePosixPath(*parts[1:])
-    if relative_path.suffix.lower() != ".pdf":
-        raise AnswerParseError("PDF参照位置が不正です。")
-    return relative_path.as_posix()
+    relative_path = PurePosixPath(*parts[1:]).as_posix()
+    try:
+        PdfLocator(relative_path=relative_path, page_start=1, page_end=1)
+    except InvalidPdfReferenceError as exc:
+        raise AnswerParseError("PDF参照位置が不正です。") from exc
+    return relative_path

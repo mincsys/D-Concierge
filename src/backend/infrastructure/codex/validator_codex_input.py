@@ -1,9 +1,6 @@
 from typing import TypedDict
 
-from backend.domain.answer.answer_candidate import (
-    ParsedAnswerCandidate,
-    codex_visible_reference_path,
-)
+from backend.domain.answer.answer_candidate import ParsedAnswerCandidate
 
 
 class ValidatorCodexReferenceInput(TypedDict):
@@ -43,7 +40,7 @@ def build_validator_codex_input(
                 references=[
                     ValidatorCodexReferenceInput(
                         label=reference.label,
-                        path=codex_visible_reference_path(reference.relative_path),
+                        path=reference.codex_visible_path(),
                         page_start=reference.page_start,
                         page_end=reference.page_end,
                     )

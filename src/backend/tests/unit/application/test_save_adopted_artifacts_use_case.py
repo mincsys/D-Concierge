@@ -13,6 +13,7 @@ from backend.application.artifacts.save_adopted_artifacts import (
 from backend.application.ports.filesystem.dto import (
     SavedArtifactFile,
 )
+from backend.domain.artifacts.artifact_reference import ArtifactReference
 from backend.shared.error_class import ErrorClass
 from backend.shared.errors import AppError
 
@@ -48,12 +49,12 @@ def test_save_adopted_artifacts_replaces_markdown_and_html_paths() -> None:
                     "[保存済み](/api/artifacts/00000000-0000-0000-0000-000000000599)"
                 ),
                 artifacts=(
-                    SavedArtifactFile(
+                    ArtifactReference(
                         artifact_id=first_artifact_id,
                         mime_type="image/png",
                         relative_path=f"{run_id}/{first_artifact_id}.png",
                     ),
-                    SavedArtifactFile(
+                    ArtifactReference(
                         artifact_id=second_artifact_id,
                         mime_type="text/html",
                         relative_path=f"{run_id}/{second_artifact_id}.html",
@@ -161,7 +162,7 @@ def test_save_adopted_artifacts_saves_duplicate_candidate_each_time_across_block
             SavedAnswerBlockArtifacts(
                 markdown=f"第一回答 ![図](/api/artifacts/{first_artifact_id})",
                 artifacts=(
-                    SavedArtifactFile(
+                    ArtifactReference(
                         artifact_id=first_artifact_id,
                         mime_type="image/svg+xml",
                         relative_path=f"{run_id}/{first_artifact_id}.svg",
@@ -171,7 +172,7 @@ def test_save_adopted_artifacts_saves_duplicate_candidate_each_time_across_block
             SavedAnswerBlockArtifacts(
                 markdown=f'<img src="/api/artifacts/{second_artifact_id}" alt="図">',
                 artifacts=(
-                    SavedArtifactFile(
+                    ArtifactReference(
                         artifact_id=second_artifact_id,
                         mime_type="image/svg+xml",
                         relative_path=f"{run_id}/{second_artifact_id}.svg",
