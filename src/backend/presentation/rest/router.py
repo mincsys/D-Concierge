@@ -1,7 +1,6 @@
 import asyncio
-import json
 from collections.abc import AsyncIterator, Callable
-from typing import Protocol, TypedDict
+from typing import Protocol
 from uuid import UUID
 
 from fastapi import APIRouter, Request
@@ -45,74 +44,17 @@ from backend.presentation.schemas.api import (
     IntermediateMessageResponseSchema,
     PdfLocatorSchema,
 )
+from backend.presentation.sse.payload import (
+    end_payload,
+    message_payload,
+    run_event_payload,
+    sse_event_bytes,
+    state_payload,
+)
 from backend.presentation.sse.run_event_broker import RunEventSubscription
 from backend.shared.error_class import ErrorClass
 from backend.shared.errors import AppError
 from backend.shared.tracing.exception import exception_message, exception_stacktrace
-
-
-class PdfLocatorPayload(TypedDict):
-    """SSE回答内のPDF locator payload。"""
-
-    page_start: int
-    page_end: int
-
-
-class DisplayReferencePayload(TypedDict):
-    """SSE回答内の表示用参照元payload。"""
-
-    source_type: str
-    label: str
-    url: str
-    locator: PdfLocatorPayload
-
-
-class AnswerPayload(TypedDict):
-    """SSE回答表示payload。"""
-
-    blocks: list["AnswerBlockPayload"]
-
-
-class AnswerBlockPayload(TypedDict):
-    """SSE回答ブロック表示payload。"""
-
-    markdown: str
-    references: list[DisplayReferencePayload]
-
-
-class StateEventPayload(TypedDict):
-    """SSE state payload。"""
-
-    run_id: str
-    state: str
-
-
-class MessageEventPayload(TypedDict):
-    """SSE message payload。"""
-
-    run_id: str
-    text: str
-
-
-class AnswerEventPayload(TypedDict):
-    """SSE answer payload。"""
-
-    run_id: str
-    state: str
-    answer: AnswerPayload
-
-
-class EndEventPayload(TypedDict):
-    """SSE error/canceled payload。"""
-
-    run_id: str
-    state: str
-    user_message: str
-
-
-type SsePayload = (
-    StateEventPayload | MessageEventPayload | AnswerEventPayload | EndEventPayload
-)
 
 
 class RunEventSource(Protocol):
@@ -300,14 +242,14 @@ async def _run_sse_events(
                 chat_id,
                 run_id,
             )
-            yield _sse_event_bytes(
+            yield sse_event_bytes(
                 RunEventType.STATE.value,
-                _state_payload(run_id, state),
+                state_payload(run_id, state),
             )
             for message in saved_messages:
-                yield _sse_event_bytes(
+                yield sse_event_bytes(
                     RunEventType.MESSAGE.value,
-                    MessageEventPayload(run_id=str(run_id), text=message),
+                    message_payload(run_id, message),
                 )
             return
 
@@ -319,14 +261,14 @@ async def _run_sse_events(
                 run_id,
             )
             replayed_messages = list(saved_messages)
-            yield _sse_event_bytes(
+            yield sse_event_bytes(
                 RunEventType.STATE.value,
-                _state_payload(run_id, state),
+                state_payload(run_id, state),
             )
             for message in saved_messages:
-                yield _sse_event_bytes(
+                yield sse_event_bytes(
                     RunEventType.MESSAGE.value,
-                    MessageEventPayload(run_id=str(run_id), text=message),
+                    message_payload(run_id, message),
                 )
             while True:
                 if await request.is_disconnected():
@@ -339,7 +281,7 @@ async def _run_sse_events(
                     return
                 if _is_replayed_message_event(event, replayed_messages):
                     continue
-                yield _sse_event_bytes(event.event.value, _run_event_payload(event))
+                yield sse_event_bytes(event.event.value, run_event_payload(event))
                 if event.event in {
                     RunEventType.ANSWER,
                     RunEventType.ERROR,
@@ -358,13 +300,9 @@ async def _run_sse_events(
             error_class=exc.error_class.value,
             user_message=exc.user_message,
         )
-        yield _sse_event_bytes(
+        yield sse_event_bytes(
             RunEventType.ERROR.value,
-            EndEventPayload(
-                run_id=str(run_id),
-                state=RunState.ERROR.value,
-                user_message=exc.user_message,
-            ),
+            end_payload(run_id, RunState.ERROR.value, exc.user_message),
         )
     except Exception as exc:
         _write_sse_failure_trace(
@@ -376,12 +314,12 @@ async def _run_sse_events(
             error_class=ErrorClass.SYSTEM.value,
             user_message="処理中にエラーが発生しました。",
         )
-        yield _sse_event_bytes(
+        yield sse_event_bytes(
             RunEventType.ERROR.value,
-            EndEventPayload(
-                run_id=str(run_id),
-                state=RunState.ERROR.value,
-                user_message="処理中にエラーが発生しました。",
+            end_payload(
+                run_id,
+                RunState.ERROR.value,
+                "処理中にエラーが発生しました。",
             ),
         )
 
@@ -454,66 +392,6 @@ def _write_sse_failure_trace(
                 user_message if isinstance(exc, AppError) else exception_message(exc)
             ),
         )
-    )
-
-
-def _sse_event_bytes(event_name: str, payload: SsePayload) -> bytes:
-    payload_json = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
-    return f"event: {event_name}\ndata: {payload_json}\n\n".encode()
-
-
-def _run_event_payload(event: RunEvent) -> SsePayload:
-    match event.event:
-        case RunEventType.STATE:
-            return _state_payload(event.run_id, _required_state_value(event))
-        case RunEventType.MESSAGE:
-            return MessageEventPayload(run_id=str(event.run_id), text=event.text or "")
-        case RunEventType.ANSWER:
-            if event.answer is None:
-                raise AppError(ErrorClass.SYSTEM, "回答イベントの内容が不正です。")
-            return AnswerEventPayload(
-                run_id=str(event.run_id),
-                state=_required_state_value(event),
-                answer=_answer_payload(event.answer),
-            )
-        case RunEventType.ERROR | RunEventType.CANCELED:
-            return EndEventPayload(
-                run_id=str(event.run_id),
-                state=_required_state_value(event),
-                user_message=event.user_message or "",
-            )
-
-
-def _state_payload(run_id: UUID, state: str) -> StateEventPayload:
-    return StateEventPayload(run_id=str(run_id), state=state)
-
-
-def _required_state_value(event: RunEvent) -> str:
-    if event.state is None:
-        raise AppError(ErrorClass.SYSTEM, "状態イベントの内容が不正です。")
-    return event.state.value
-
-
-def _answer_payload(answer: AnswerData) -> AnswerPayload:
-    return AnswerPayload(
-        blocks=[
-            AnswerBlockPayload(
-                markdown=block.markdown,
-                references=[
-                    DisplayReferencePayload(
-                        source_type=reference.source_type.value,
-                        label=reference.label,
-                        url=f"/api/references/{reference.reference_id}",
-                        locator=PdfLocatorPayload(
-                            page_start=reference.page_start,
-                            page_end=reference.page_end,
-                        ),
-                    )
-                    for reference in block.references
-                ],
-            )
-            for block in answer.blocks
-        ],
     )
 
 

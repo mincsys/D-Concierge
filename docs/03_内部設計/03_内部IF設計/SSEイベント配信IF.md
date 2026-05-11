@@ -10,6 +10,8 @@
 - 呼出主体: 発行は実行ユースケース、購読はSSEエンドポイント。
 - 外部へ送信するSSEイベント名とpayload形状は外部IF設計に従う。
 - application内部のイベント種別は通常Enumの `RunEventType` として扱い、SSE送信時だけ `state`、`message`、`answer`、`error`、`canceled` の文字列へ変換する。
+- SSE payloadは `presentation/sse/payload.py` のTypedDictで定義し、REST API用Pydanticスキーマとは分離する。
+- SSE送信直前に、TypedDictで表したpayloadをJSON文字列へ直列化し、`event: ...` / `data: ...` のSSE wire形式へ変換する。
 - 購読側はイベントキューを非ブロッキングで確認し、イベント未到着中も接続切断を検知できる。
 
 ## 3. IF概要
@@ -85,7 +87,17 @@ sequenceDiagram
 | `SseEvent` | ブラウザへ送信するイベント名とJSON payload |
 | `subscription` | 購読解除可能な接続ハンドル |
 
-### 6.3. システム固定中間メッセージ
+### 6.3. SSE payload定義
+
+| payload | 内容 |
+| --- | --- |
+| `StateEventPayload` | `state` イベントで送信するrun IDと状態文字列 |
+| `MessageEventPayload` | `message` イベントで送信するrun IDと中間メッセージ本文 |
+| `AnswerEventPayload` | `answer` イベントで送信するrun ID、完了状態、回答ブロック配列 |
+| `EndEventPayload` | `error` と `canceled` イベントで送信するrun ID、終端状態、利用者向けメッセージ |
+| `SsePayload` | 上記payloadのUnion型 |
+
+### 6.4. システム固定中間メッセージ
 
 | 本文 | 発行条件 |
 | --- | --- |
