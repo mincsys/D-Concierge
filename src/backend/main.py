@@ -1,3 +1,42 @@
-from backend.app.factory import create_app
+from pathlib import Path
+from uuid import uuid4
 
-app = create_app()
+from fastapi import FastAPI
+
+from backend.app.factory import create_app
+from backend.application.ports.trace_log.dto import TraceLogRecord
+from backend.infrastructure.config.loader import ConfigLoader
+from backend.infrastructure.trace_log.trace_log_writer import TraceLogWriter
+from backend.shared.errors import ErrorClass
+from backend.shared.tracing.exception import exception_message, exception_stacktrace
+
+_CONFIG_PATH = Path("config.yaml")
+
+
+def _create_app_with_bootstrap_trace() -> FastAPI:
+    try:
+        return create_app()
+    except Exception as exc:
+        TraceLogWriter(_bootstrap_trace_log_dir()).write(
+            TraceLogRecord(
+                trace_id=str(uuid4()),
+                event_name="app_bootstrap_failed",
+                stage="app_bootstrap",
+                error_class=ErrorClass.SYSTEM.value,
+                exception_type=type(exc).__name__,
+                stacktrace=exception_stacktrace(exc),
+                config_path=str(_CONFIG_PATH),
+                message=exception_message(exc),
+            )
+        )
+        raise
+
+
+def _bootstrap_trace_log_dir() -> Path:
+    try:
+        return ConfigLoader.load(_CONFIG_PATH).trace_log.dir
+    except Exception:
+        return Path("logs/trace")
+
+
+app = _create_app_with_bootstrap_trace()

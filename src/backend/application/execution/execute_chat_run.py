@@ -42,6 +42,7 @@ from backend.shared.errors import (
     RunTimeoutError,
     ValidationWorkspacePreparationError,
 )
+from backend.shared.tracing.exception import exception_message, exception_stacktrace
 
 GENERATION_FAILURE_MESSAGE = (
     "回答生成に失敗しました。ユーザ指示を見直して再度お試しください。"
@@ -153,19 +154,12 @@ class ExecuteChatRunUseCase:
         execution_deadline_at = self._clock.now() + timedelta(
             seconds=self._timeout_seconds
         )
-        self._write_trace(
-            TraceLogRecord(
-                trace_id=trace_id,
-                event_name="execution_started",
-                stage="execution",
-                chat_id=chat_id,
-                run_id=run_id,
-                execution_deadline_at=execution_deadline_at,
-            )
-        )
         try:
             self._execute(chat_id, run_id, trace_id, execution_deadline_at)
         except RunTimeoutError as exc:
+            if self._is_canceled(chat_id, run_id):
+                self._finish_canceled(chat_id, run_id)
+                return
             self._finish_timeout(chat_id, run_id)
             self._write_trace(
                 TraceLogRecord(
@@ -176,24 +170,15 @@ class ExecuteChatRunUseCase:
                     run_id=run_id,
                     exception_type=type(exc).__name__,
                     run_state="タイムアウト",
+                    execution_deadline_at=execution_deadline_at,
                     timeout_state="codex_exec_timeout",
+                    stacktrace=exception_stacktrace(exc),
                     message=TIMEOUT_FAILURE_MESSAGE,
                 )
             )
         except ReferencePdfReadError as exc:
             if self._is_canceled(chat_id, run_id):
                 self._finish_canceled(chat_id, run_id)
-                self._write_trace(
-                    TraceLogRecord(
-                        trace_id=trace_id,
-                        event_name="execution_canceled",
-                        stage="execution",
-                        chat_id=chat_id,
-                        run_id=run_id,
-                        run_state="キャンセル済み",
-                        cancel_state="canceled",
-                    )
-                )
                 return
             self._finish_error(chat_id, run_id, exc.user_message)
             self._write_trace(
@@ -207,23 +192,13 @@ class ExecuteChatRunUseCase:
                     exception_type=type(exc).__name__,
                     run_state="エラー",
                     validation_failure_reason=exc.diagnostic_message,
+                    stacktrace=exception_stacktrace(exc),
                     message=exc.user_message,
                 )
             )
         except ValidationWorkspacePreparationError as exc:
             if self._is_canceled(chat_id, run_id):
                 self._finish_canceled(chat_id, run_id)
-                self._write_trace(
-                    TraceLogRecord(
-                        trace_id=trace_id,
-                        event_name="execution_canceled",
-                        stage="execution",
-                        chat_id=chat_id,
-                        run_id=run_id,
-                        run_state="キャンセル済み",
-                        cancel_state="canceled",
-                    )
-                )
                 return
             self._finish_error(chat_id, run_id, exc.user_message)
             self._write_trace(
@@ -237,23 +212,13 @@ class ExecuteChatRunUseCase:
                     exception_type=type(exc).__name__,
                     run_state="エラー",
                     validation_failure_reason=exc.diagnostic_message,
+                    stacktrace=exception_stacktrace(exc),
                     message=exc.user_message,
                 )
             )
         except AppError as exc:
             if self._is_canceled(chat_id, run_id):
                 self._finish_canceled(chat_id, run_id)
-                self._write_trace(
-                    TraceLogRecord(
-                        trace_id=trace_id,
-                        event_name="execution_canceled",
-                        stage="execution",
-                        chat_id=chat_id,
-                        run_id=run_id,
-                        run_state="キャンセル済み",
-                        cancel_state="canceled",
-                    )
-                )
                 return
             self._finish_error(chat_id, run_id, GENERATION_FAILURE_MESSAGE)
             self._write_trace(
@@ -266,23 +231,13 @@ class ExecuteChatRunUseCase:
                     error_class=exc.error_class.value,
                     exception_type=type(exc).__name__,
                     run_state="エラー",
+                    stacktrace=exception_stacktrace(exc),
                     message=exc.user_message,
                 )
             )
         except Exception as exc:
             if self._is_canceled(chat_id, run_id):
                 self._finish_canceled(chat_id, run_id)
-                self._write_trace(
-                    TraceLogRecord(
-                        trace_id=trace_id,
-                        event_name="execution_canceled",
-                        stage="execution",
-                        chat_id=chat_id,
-                        run_id=run_id,
-                        run_state="キャンセル済み",
-                        cancel_state="canceled",
-                    )
-                )
                 return
             self._finish_error(chat_id, run_id, UNEXPECTED_FAILURE_MESSAGE)
             self._write_trace(
@@ -295,7 +250,8 @@ class ExecuteChatRunUseCase:
                     error_class=ErrorClass.SYSTEM.value,
                     exception_type=type(exc).__name__,
                     run_state="エラー",
-                    message=str(exc),
+                    stacktrace=exception_stacktrace(exc),
+                    message=exception_message(exc),
                 )
             )
 
@@ -398,6 +354,27 @@ class ExecuteChatRunUseCase:
                         f"{user_instruction}\n\n{validation.regeneration_instruction}"
                     )
                 case "失敗":
+                    self._write_trace(
+                        TraceLogRecord(
+                            trace_id=trace_id,
+                            event_name="validation_retry_limit_reached",
+                            stage="validation",
+                            chat_id=chat_id,
+                            run_id=run_id,
+                            error_class=ErrorClass.SYSTEM.value,
+                            run_state="エラー",
+                            retry_count=retry_count,
+                            validation_failure_reason=(
+                                validation.regeneration_instruction
+                                or validation.user_message
+                                or "回答検証に失敗しました。"
+                            ),
+                            validation_comment=validation.regeneration_instruction
+                            or None,
+                            message=validation.user_message
+                            or "回答を検証できませんでした。",
+                        )
+                    )
                     self._finish_error(
                         chat_id,
                         run_id,
@@ -511,16 +488,6 @@ class ExecuteChatRunUseCase:
                 run_id=run_id,
                 state="完了",
                 answer=answer,
-            )
-        )
-        self._write_trace(
-            TraceLogRecord(
-                trace_id=trace_id,
-                event_name="execution_finished",
-                stage="execution",
-                chat_id=chat_id,
-                run_id=run_id,
-                run_state="完了",
             )
         )
 

@@ -398,11 +398,13 @@ def test_execute_chat_run_regenerates_when_validator_requests_retry() -> None:
         )
     )
     publisher = RecordingPublisher()
+    trace_logger = RecordingTraceLogger()
     use_case = ExecuteChatRunUseCase(
         repository=repository,
         codex_runner=runner,
         answer_validator=validator,
         event_publisher=publisher,
+        trace_logger=trace_logger,
     )
 
     use_case.execute(accepted.chat_id, accepted.run_id)
@@ -429,6 +431,58 @@ def test_execute_chat_run_regenerates_when_validator_requests_retry() -> None:
         "資料を要約してください",
         "資料を要約してください",
     ]
+    assert trace_logger.records == []
+
+
+def test_execute_chat_run_writes_trace_when_validation_reaches_retry_limit() -> None:
+    """観点：チャット実行処理の異常系。確認：検証不合格が上限到達した場合だけ記録する。"""
+    repository = InMemoryChatRepository()
+    accepted = repository.create_chat_with_first_run("資料を要約してください")
+    runner = FakeCodexRunner(
+        results=(
+            CodexRunResult(
+                conversation_id="codex-thread-1",
+                intermediate_messages=(),
+                final_answer_json='{"payload":{"kind":"final","answers":[]}}',
+            ),
+            CodexRunResult(
+                conversation_id="codex-thread-1",
+                intermediate_messages=(),
+                final_answer_json='{"payload":{"kind":"final","answers":[]}}',
+            ),
+        )
+    )
+    validator = QueuedAnswerValidator(
+        results=(
+            AnswerValidationResult(
+                status="再生成指示",
+                regeneration_instruction="1回目の検証不合格",
+            ),
+            AnswerValidationResult(
+                status="失敗",
+                regeneration_instruction="最後の検証不合格",
+                user_message="回答の確認に失敗しました。",
+            ),
+        )
+    )
+    trace_logger = RecordingTraceLogger()
+    use_case = ExecuteChatRunUseCase(
+        repository=repository,
+        codex_runner=runner,
+        answer_validator=validator,
+        event_publisher=RecordingPublisher(),
+        trace_logger=trace_logger,
+    )
+
+    use_case.execute(accepted.chat_id, accepted.run_id, trace_id="trace-validation")
+
+    assert [record.event_name for record in trace_logger.records] == [
+        "validation_retry_limit_reached"
+    ]
+    assert trace_logger.records[0].stage == "validation"
+    assert trace_logger.records[0].retry_count == 1
+    assert trace_logger.records[0].validation_failure_reason == "最後の検証不合格"
+    assert trace_logger.records[0].message == "回答の確認に失敗しました。"
 
 
 def test_execute_chat_run_publishes_revision_message_before_retry_generation() -> None:
@@ -874,7 +928,7 @@ def test_execute_chat_run_treats_app_error_after_cancel_as_canceled() -> None:
     assert detail.runs[0].state == "キャンセル済み"
     assert detail.runs[0].answer is None
     assert publisher.events[-1].event == "canceled"
-    assert trace_logger.records[-1].event_name == "execution_canceled"
+    assert trace_logger.records == []
 
 
 def test_execute_chat_run_marks_timeout_when_codex_times_out() -> None:
@@ -882,11 +936,13 @@ def test_execute_chat_run_marks_timeout_when_codex_times_out() -> None:
     repository = InMemoryChatRepository()
     accepted = repository.create_chat_with_first_run("資料を要約してください")
     publisher = RecordingPublisher()
+    trace_logger = RecordingTraceLogger()
     use_case = ExecuteChatRunUseCase(
         repository=repository,
         codex_runner=FailingCodexRunner(error=RunTimeoutError()),
         answer_validator=ParsingAnswerValidator(),
         event_publisher=publisher,
+        trace_logger=trace_logger,
     )
 
     use_case.execute(accepted.chat_id, accepted.run_id, trace_id="trace-503")
@@ -899,6 +955,9 @@ def test_execute_chat_run_marks_timeout_when_codex_times_out() -> None:
     )
     assert publisher.events[-1].event == "error"
     assert publisher.events[-1].state == "タイムアウト"
+    assert trace_logger.records[-1].event_name == "execution_timeout"
+    assert trace_logger.records[-1].exception_type == "RunTimeoutError"
+    assert trace_logger.records[-1].run_state == "タイムアウト"
 
 
 def test_execute_chat_run_keeps_cancel_when_timeout_races_with_cancel() -> None:

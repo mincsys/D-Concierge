@@ -1,7 +1,6 @@
 import asyncio
 import json
-from collections.abc import AsyncIterator, Callable, Iterator
-from contextlib import contextmanager
+from collections.abc import AsyncIterator, Callable
 from typing import Literal, Protocol, TypedDict
 from uuid import UUID
 
@@ -26,6 +25,10 @@ from backend.application.ports.trace_log.dto import TraceLogRecord
 from backend.application.references.get_reference_data import GetReferenceDataUseCase
 from backend.domain.execution.run_state_policy import RunState
 from backend.infrastructure.trace_log.trace_log_writer import TraceLogWriter
+from backend.presentation.rest.trace_context import (
+    ensure_request_trace_context,
+    request_trace_id,
+)
 from backend.presentation.schemas.api import (
     AnswerBlockResponseSchema,
     AnswerResponseSchema,
@@ -42,6 +45,7 @@ from backend.presentation.schemas.api import (
 )
 from backend.presentation.sse.run_event_broker import RunEventSubscription
 from backend.shared.errors import AppError, ErrorClass
+from backend.shared.tracing.exception import exception_message, exception_stacktrace
 
 
 class PdfLocatorPayload(TypedDict):
@@ -147,88 +151,98 @@ def create_api_router(
     router = APIRouter()
 
     @router.get("/api/app-config", response_model=AppConfigResponseSchema)
-    def get_app_config() -> AppConfigResponseSchema:
-        trace_id = trace_id_factory()
-        with _api_trace(trace_logger, trace_id, "app_config"):
-            return AppConfigResponseSchema(
-                welcome_message=welcome_message,
-                input_suggestions=list(input_suggestions),
-            )
+    def get_app_config(request: Request) -> AppConfigResponseSchema:
+        _set_request_trace(request, trace_id_factory, stage="app_config")
+        return AppConfigResponseSchema(
+            welcome_message=welcome_message,
+            input_suggestions=list(input_suggestions),
+        )
 
     @router.post("/api/chats/start", response_model=ChatStartResponseSchema)
-    def start_chat(request: ChatStartRequestSchema) -> ChatStartResponseSchema:
-        trace_id = trace_id_factory()
-        with _api_trace(trace_logger, trace_id, "start_chat"):
-            accepted = start_chat_usecase.execute(
-                request.user_instruction,
-                trace_id=trace_id,
-            )
-            return _accepted_response(accepted.chat_id, accepted.run_id)
+    def start_chat(
+        body: ChatStartRequestSchema, request: Request
+    ) -> ChatStartResponseSchema:
+        trace_id = _set_request_trace(request, trace_id_factory, stage="start_chat")
+        accepted = start_chat_usecase.execute(
+            body.user_instruction,
+            trace_id=trace_id,
+        )
+        context = ensure_request_trace_context(request)
+        context.chat_id = accepted.chat_id
+        context.run_id = accepted.run_id
+        return _accepted_response(accepted.chat_id, accepted.run_id)
 
     @router.post("/api/chats/{chat_id}/runs", response_model=ChatStartResponseSchema)
     def append_chat_run(
-        chat_id: UUID, request: ChatStartRequestSchema
+        chat_id: UUID, body: ChatStartRequestSchema, request: Request
     ) -> ChatStartResponseSchema:
-        trace_id = trace_id_factory()
-        with _api_trace(trace_logger, trace_id, "append_chat_run", chat_id=chat_id):
-            accepted = append_chat_run_usecase.execute(
-                chat_id=chat_id,
-                user_instruction=request.user_instruction,
-                trace_id=trace_id,
-            )
-            return _accepted_response(accepted.chat_id, accepted.run_id)
+        trace_id = _set_request_trace(
+            request, trace_id_factory, stage="append_chat_run", chat_id=chat_id
+        )
+        accepted = append_chat_run_usecase.execute(
+            chat_id=chat_id,
+            user_instruction=body.user_instruction,
+            trace_id=trace_id,
+        )
+        ensure_request_trace_context(request).run_id = accepted.run_id
+        return _accepted_response(accepted.chat_id, accepted.run_id)
 
     @router.get(
         "/api/chat-histories",
         response_model=list[ChatHistoryItemResponseSchema],
     )
-    def list_chat_histories() -> list[ChatHistoryItemResponseSchema]:
-        trace_id = trace_id_factory()
-        with _api_trace(trace_logger, trace_id, "chat_histories"):
-            return [
-                ChatHistoryItemResponseSchema(
-                    chat_id=str(item.chat_id),
-                    title=item.title,
-                    latest_run_id=(
-                        str(item.latest_run_id) if item.latest_run_id else None
-                    ),
-                    latest_state=item.latest_state,
-                    updated_at=item.updated_at.isoformat(),
-                )
-                for item in list_histories_usecase.execute()
-            ]
+    def list_chat_histories(request: Request) -> list[ChatHistoryItemResponseSchema]:
+        _set_request_trace(request, trace_id_factory, stage="chat_histories")
+        return [
+            ChatHistoryItemResponseSchema(
+                chat_id=str(item.chat_id),
+                title=item.title,
+                latest_run_id=(str(item.latest_run_id) if item.latest_run_id else None),
+                latest_state=item.latest_state,
+                updated_at=item.updated_at.isoformat(),
+            )
+            for item in list_histories_usecase.execute()
+        ]
 
     @router.get("/api/chats/{chat_id}", response_model=ChatDetailResponseSchema)
-    def get_chat_detail(chat_id: UUID) -> ChatDetailResponseSchema:
-        trace_id = trace_id_factory()
-        with _api_trace(trace_logger, trace_id, "chat_detail", chat_id=chat_id):
-            return _chat_detail_response(get_chat_detail_usecase.execute(chat_id))
+    def get_chat_detail(chat_id: UUID, request: Request) -> ChatDetailResponseSchema:
+        _set_request_trace(
+            request, trace_id_factory, stage="chat_detail", chat_id=chat_id
+        )
+        return _chat_detail_response(get_chat_detail_usecase.execute(chat_id))
 
     @router.post(
         "/api/chats/{chat_id}/runs/{run_id}/cancel",
         response_model=CancelChatRunResponseSchema,
     )
-    def cancel_chat_run(chat_id: UUID, run_id: UUID) -> CancelChatRunResponseSchema:
-        trace_id = trace_id_factory()
-        with _api_trace(
-            trace_logger, trace_id, "cancel_chat_run", chat_id=chat_id, run_id=run_id
-        ):
-            canceled = cancel_chat_run_usecase.request_cancel(
-                chat_id=chat_id,
-                run_id=run_id,
-                trace_id=trace_id,
-            )
-            return CancelChatRunResponseSchema(
-                run_id=str(canceled.run_id),
-                state=canceled.state,
-                user_message=canceled.user_message,
-            )
+    def cancel_chat_run(
+        chat_id: UUID, run_id: UUID, request: Request
+    ) -> CancelChatRunResponseSchema:
+        trace_id = _set_request_trace(
+            request,
+            trace_id_factory,
+            stage="cancel_chat_run",
+            chat_id=chat_id,
+            run_id=run_id,
+        )
+        canceled = cancel_chat_run_usecase.request_cancel(
+            chat_id=chat_id,
+            run_id=run_id,
+            trace_id=trace_id,
+        )
+        return CancelChatRunResponseSchema(
+            run_id=str(canceled.run_id),
+            state=canceled.state,
+            user_message=canceled.user_message,
+        )
 
     @router.get("/api/chats/{chat_id}/runs/{run_id}/sse")
     async def stream_run_events(
         chat_id: UUID, run_id: UUID, request: Request
     ) -> StreamingResponse:
-        trace_id = trace_id_factory()
+        trace_id = _set_request_trace(
+            request, trace_id_factory, stage="sse", chat_id=chat_id, run_id=run_id
+        )
         return StreamingResponse(
             _run_sse_events(
                 get_chat_detail_usecase,
@@ -243,18 +257,26 @@ def create_api_router(
         )
 
     @router.get("/api/references/{reference_id}")
-    def get_reference(reference_id: UUID) -> FileResponse:
-        trace_id = trace_id_factory()
-        with _api_trace(trace_logger, trace_id, "reference_delivery"):
-            opened = get_reference_data_usecase.execute(reference_id)
-            return FileResponse(opened.path, media_type=opened.mime_type)
+    def get_reference(reference_id: UUID, request: Request) -> FileResponse:
+        _set_request_trace(
+            request,
+            trace_id_factory,
+            stage="reference_delivery",
+            reference_id=reference_id,
+        )
+        opened = get_reference_data_usecase.execute(reference_id)
+        return FileResponse(opened.path, media_type=opened.mime_type)
 
     @router.get("/api/artifacts/{artifact_id}")
-    def get_artifact(artifact_id: UUID) -> FileResponse:
-        trace_id = trace_id_factory()
-        with _api_trace(trace_logger, trace_id, "artifact_delivery"):
-            opened = get_artifact_usecase.execute(artifact_id)
-            return FileResponse(opened.path, media_type=opened.mime_type)
+    def get_artifact(artifact_id: UUID, request: Request) -> FileResponse:
+        _set_request_trace(
+            request,
+            trace_id_factory,
+            stage="artifact_delivery",
+            artifact_id=artifact_id,
+        )
+        opened = get_artifact_usecase.execute(artifact_id)
+        return FileResponse(opened.path, media_type=opened.mime_type)
 
     return router
 
@@ -268,7 +290,7 @@ async def _run_sse_events(
     trace_id: str,
     request: DisconnectableRequest,
 ) -> AsyncIterator[bytes]:
-    with _api_trace(trace_logger, trace_id, "sse", chat_id=chat_id, run_id=run_id):
+    try:
         if run_event_source is None:
             state, saved_messages = _run_sse_snapshot(
                 get_chat_detail_usecase,
@@ -311,6 +333,42 @@ async def _run_sse_events(
                     return
         finally:
             run_event_source.unsubscribe(subscription)
+    except AppError as exc:
+        _write_sse_failure_trace(
+            trace_logger=trace_logger,
+            trace_id=trace_id,
+            chat_id=chat_id,
+            run_id=run_id,
+            exc=exc,
+            error_class=exc.error_class.value,
+            user_message=exc.user_message,
+        )
+        yield _sse_event_bytes(
+            "error",
+            EndEventPayload(
+                run_id=str(run_id),
+                state="エラー",
+                user_message=exc.user_message,
+            ),
+        )
+    except Exception as exc:
+        _write_sse_failure_trace(
+            trace_logger=trace_logger,
+            trace_id=trace_id,
+            chat_id=chat_id,
+            run_id=run_id,
+            exc=exc,
+            error_class=ErrorClass.SYSTEM.value,
+            user_message="処理中にエラーが発生しました。",
+        )
+        yield _sse_event_bytes(
+            "error",
+            EndEventPayload(
+                run_id=str(run_id),
+                state="エラー",
+                user_message="処理中にエラーが発生しました。",
+            ),
+        )
 
 
 def _run_sse_snapshot(
@@ -338,63 +396,50 @@ def _is_replayed_message_event(event: RunEvent, replayed_messages: list[str]) ->
     return True
 
 
-@contextmanager
-def _api_trace(
-    trace_logger: TraceLogWriter,
-    trace_id: str,
+def _set_request_trace(
+    request: Request,
+    trace_id_factory: Callable[[], str],
     stage: str,
     chat_id: UUID | None = None,
     run_id: UUID | None = None,
-) -> Iterator[None]:
+    reference_id: UUID | None = None,
+    artifact_id: UUID | None = None,
+) -> str:
+    trace_id = request_trace_id(request, trace_id_factory())
+    context = ensure_request_trace_context(request)
+    context.stage = stage
+    context.chat_id = chat_id
+    context.run_id = run_id
+    context.reference_id = reference_id
+    context.artifact_id = artifact_id
+    return trace_id
+
+
+def _write_sse_failure_trace(
+    trace_logger: TraceLogWriter,
+    trace_id: str,
+    chat_id: UUID,
+    run_id: UUID,
+    exc: Exception,
+    error_class: str,
+    user_message: str,
+) -> None:
     trace_logger.write(
         TraceLogRecord(
             trace_id=trace_id,
-            event_name="api_started",
-            stage=stage,
+            event_name="sse_failed",
+            stage="sse",
             chat_id=chat_id,
             run_id=run_id,
+            error_class=error_class,
+            exception_type=type(exc).__name__,
+            run_state="エラー",
+            stacktrace=exception_stacktrace(exc),
+            message=(
+                user_message if isinstance(exc, AppError) else exception_message(exc)
+            ),
         )
     )
-    try:
-        yield
-    except AppError as exc:
-        trace_logger.write(
-            TraceLogRecord(
-                trace_id=trace_id,
-                event_name="api_failed",
-                stage=stage,
-                chat_id=chat_id,
-                run_id=run_id,
-                error_class=exc.error_class.value,
-                exception_type=type(exc).__name__,
-                message=exc.user_message,
-            )
-        )
-        raise
-    except Exception as exc:
-        trace_logger.write(
-            TraceLogRecord(
-                trace_id=trace_id,
-                event_name="api_failed",
-                stage=stage,
-                chat_id=chat_id,
-                run_id=run_id,
-                error_class=ErrorClass.SYSTEM.value,
-                exception_type=type(exc).__name__,
-                message=str(exc),
-            )
-        )
-        raise
-    else:
-        trace_logger.write(
-            TraceLogRecord(
-                trace_id=trace_id,
-                event_name="api_finished",
-                stage=stage,
-                chat_id=chat_id,
-                run_id=run_id,
-            )
-        )
 
 
 def _sse_event_bytes(event_name: str, payload: SsePayload) -> bytes:

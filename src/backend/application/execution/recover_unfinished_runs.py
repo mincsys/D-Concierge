@@ -6,8 +6,11 @@ from backend.application.ports.database.interface import (
     TransactionManagerPort,
 )
 from backend.application.ports.runtime.interface import RunExecutionDispatcherPort
+from backend.application.ports.trace_log.dto import TraceLogRecord
+from backend.application.ports.trace_log.interface import TraceLoggerPort
 from backend.application.transactions import NoopTransactionManager
-from backend.shared.errors import AppError
+from backend.shared.errors import AppError, ErrorClass
+from backend.shared.tracing.exception import exception_stacktrace
 
 RECOVERY_ERROR_MESSAGE = "アプリ起動時に処理を再開できませんでした。"
 RECOVERY_CANCEL_MESSAGE = "処理をキャンセルしました。"
@@ -48,9 +51,11 @@ class RecoverUnfinishedRunsUseCase:
         repository: RecoveryRepositoryPort,
         run_dispatcher: RunExecutionDispatcherPort,
         transaction_manager: TransactionManagerPort | None = None,
+        trace_logger: TraceLoggerPort | None = None,
     ) -> None:
         self._repository = repository
         self._run_dispatcher = run_dispatcher
+        self._trace_logger = trace_logger
         self._transaction_manager = (
             transaction_manager
             if transaction_manager is not None
@@ -90,8 +95,22 @@ class RecoverUnfinishedRunsUseCase:
                     counter.canceled += 1
                 case _:
                     return
-        except AppError:
+        except AppError as exc:
             counter.failed += 1
+            self._write_trace(
+                TraceLogRecord(
+                    trace_id=trace_id,
+                    event_name="recovery_failed",
+                    stage="startup_recovery",
+                    chat_id=run.chat_id,
+                    run_id=run.run_id,
+                    error_class=exc.error_class.value,
+                    exception_type=type(exc).__name__,
+                    run_state="エラー",
+                    stacktrace=exception_stacktrace(exc),
+                    message=exc.user_message,
+                )
+            )
 
     def _recover_accepted(
         self,
@@ -107,6 +126,19 @@ class RecoverUnfinishedRunsUseCase:
         self._mark_error(run)
         counter.marked_error += 1
         counter.failed += 1
+        self._write_trace(
+            TraceLogRecord(
+                trace_id=trace_id,
+                event_name="recovery_failed",
+                stage="startup_recovery",
+                chat_id=run.chat_id,
+                run_id=run.run_id,
+                error_class=ErrorClass.SYSTEM.value,
+                run_state="エラー",
+                process_result=result.failure_reason,
+                message=RECOVERY_ERROR_MESSAGE,
+            )
+        )
 
     def _mark_error(self, run: UnfinishedRun) -> None:
         with self._transaction_manager.transaction():
@@ -116,3 +148,7 @@ class RecoverUnfinishedRunsUseCase:
                 "エラー",
                 RECOVERY_ERROR_MESSAGE,
             )
+
+    def _write_trace(self, record: TraceLogRecord) -> None:
+        if self._trace_logger is not None:
+            self._trace_logger.write(record)

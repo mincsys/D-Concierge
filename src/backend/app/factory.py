@@ -1,9 +1,13 @@
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Protocol
 from uuid import UUID
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from starlette.responses import Response
 
 from backend.app.router.registration import register_api_router
 from backend.app.static.spa import mount_spa_static_files
@@ -30,6 +34,7 @@ from backend.application.ports.runtime.interface import (
     IdGeneratorPort,
     RunExecutionDispatcherPort,
 )
+from backend.application.ports.trace_log.dto import TraceLogRecord
 from backend.application.references.get_reference_data import GetReferenceDataUseCase
 from backend.application.transactions import NoopTransactionManager
 from backend.application.validation.validate_answer import ValidateAnswerUseCase
@@ -65,8 +70,14 @@ from backend.infrastructure.runtime.uuid_generator import UuidGenerator
 from backend.infrastructure.trace_log.trace_log_writer import TraceLogWriter
 from backend.presentation.errors.http import error_response_payload, status_code
 from backend.presentation.rest.router import RunEventSource, create_api_router
+from backend.presentation.rest.trace_context import (
+    RequestTraceContext,
+    ensure_request_trace_context,
+    request_trace_id,
+)
 from backend.presentation.sse.run_event_broker import RunEventBroker
-from backend.shared.errors import AppError
+from backend.shared.errors import AppError, ErrorClass
+from backend.shared.tracing.exception import exception_message, exception_stacktrace
 
 
 class ApplicationCodexRunner(Protocol):
@@ -184,10 +195,12 @@ def create_app(
             repository=chat_repository,
             run_dispatcher=runtime_run_dispatcher,
             transaction_manager=runtime_transaction_manager,
+            trace_logger=trace_logger,
         ).execute(trace_id=_new_trace_id(runtime_id_generator))
 
     app = FastAPI(title="D-Concierge")
-    _register_error_handlers(app)
+    _register_trace_context_middleware(app, runtime_id_generator)
+    _register_error_handlers(app, trace_logger)
     register_api_router(
         app,
         create_api_router(
@@ -282,14 +295,114 @@ def _create_runtime_services(
     )
 
 
-def _register_error_handlers(app: FastAPI) -> None:
+def _register_trace_context_middleware(
+    app: FastAPI,
+    id_generator: IdGeneratorPort,
+) -> None:
+    @app.middleware("http")
+    async def attach_trace_context(
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
+        request.state.trace_id = _new_trace_id(id_generator)
+        request.state.trace_context = RequestTraceContext()
+        return await call_next(request)
+
+
+def _register_error_handlers(app: FastAPI, trace_logger: TraceLogWriter) -> None:
     @app.exception_handler(AppError)
-    async def handle_app_error(_request: object, exc: AppError) -> JSONResponse:
+    async def handle_app_error(request: Request, exc: AppError) -> JSONResponse:
+        http_status = status_code(exc.error_class)
+        _write_api_failure_trace(
+            trace_logger=trace_logger,
+            request=request,
+            exc=exc,
+            event_name="api_failed",
+            error_class=exc.error_class.value,
+            status=http_status,
+            message=exc.user_message,
+        )
         payload = error_response_payload(exc)
         return JSONResponse(
-            status_code=status_code(exc.error_class),
+            status_code=http_status,
             content=payload.model_dump(),
         )
+
+    @app.exception_handler(RequestValidationError)
+    async def handle_request_validation_error(
+        request: Request, exc: RequestValidationError
+    ) -> object:
+        _write_api_failure_trace(
+            trace_logger=trace_logger,
+            request=request,
+            exc=exc,
+            event_name="api_failed",
+            error_class=ErrorClass.INPUT.value,
+            status=422,
+            message="リクエストの形式が不正です。",
+            request_validation_errors=str(exc.errors()),
+        )
+        return await request_validation_exception_handler(request, exc)
+
+    @app.exception_handler(Exception)
+    async def handle_unexpected_error(request: Request, exc: Exception) -> JSONResponse:
+        _write_api_failure_trace(
+            trace_logger=trace_logger,
+            request=request,
+            exc=exc,
+            event_name="api_failed",
+            error_class=ErrorClass.SYSTEM.value,
+            status=500,
+            message=exception_message(exc),
+        )
+        payload = error_response_payload(
+            AppError(ErrorClass.SYSTEM, "処理中にエラーが発生しました。")
+        )
+        return JSONResponse(status_code=500, content=payload.model_dump())
+
+
+def _write_api_failure_trace(
+    trace_logger: TraceLogWriter,
+    request: Request,
+    exc: Exception,
+    event_name: str,
+    error_class: str,
+    status: int,
+    message: str,
+    request_validation_errors: str | None = None,
+) -> None:
+    context = ensure_request_trace_context(request)
+    client = request.client.host if request.client is not None else None
+    trace_logger.write(
+        TraceLogRecord(
+            trace_id=request_trace_id(request, "unavailable"),
+            event_name=event_name,
+            stage=_request_stage(request, context),
+            chat_id=context.chat_id,
+            run_id=context.run_id,
+            reference_id=context.reference_id,
+            artifact_id=context.artifact_id,
+            error_class=error_class,
+            exception_type=type(exc).__name__,
+            stacktrace=exception_stacktrace(exc),
+            http_method=request.method,
+            path=request.url.path,
+            status_code=status,
+            client=client,
+            request_validation_errors=request_validation_errors,
+            message=message,
+        )
+    )
+
+
+def _request_stage(request: Request, context: RequestTraceContext) -> str:
+    if context.stage != "api":
+        return context.stage
+    endpoint = request.scope.get("endpoint")
+    endpoint_name = getattr(endpoint, "__name__", None)
+    if isinstance(endpoint_name, str):
+        return endpoint_name
+    return "api"
 
 
 def _new_trace_id(id_generator: IdGeneratorPort) -> str:

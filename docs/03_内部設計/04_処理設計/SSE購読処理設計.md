@@ -23,7 +23,7 @@
 | `SubscribeRunEventsUseCase` | 対象run確認と現在状態取得 |
 | `RunEventBroker` | publish/subscribe |
 | `ChatRepository` | 現在状態と保存済み結果の取得 |
-| `TraceLogWriter` | 接続、切断、異常の記録 |
+| `TraceLogWriter` | 異常の記録 |
 
 ## 5. 処理シーケンス
 
@@ -63,7 +63,7 @@
 | DB読込 | Repository | 対象runと現在状態 |
 | SSE送信 | presentation/sse | state、message、answer、error、canceled |
 | メモリ上購読登録 | RunEventBroker | run ID単位 |
-| ログ出力 | TraceLogWriter | 接続開始、終了、異常 |
+| ログ出力 | TraceLogWriter | 異常 |
 
 ## 8. 例外処理
 
@@ -78,10 +78,7 @@
 
 | タイミング | ログ内容 |
 | --- | --- |
-| 接続開始 | trace_id、chat_id、run_id |
-| 初期状態送信 | trace_id、run_id、state |
-| 終端送信 | trace_id、run_id、event |
-| 切断 | trace_id、run_id、理由 |
+| 例外発生 | trace_id、chat_id、run_id、エラー分類、例外種別、スタックトレース |
 
 ## 10. トランザクション
 

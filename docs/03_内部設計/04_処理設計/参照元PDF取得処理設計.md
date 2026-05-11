@@ -21,7 +21,7 @@
 | `ChatRepository` | 参照元メタ情報取得 |
 | `FileReferenceStore` | PDFファイル取得 |
 | `PathSecurityService` | 許可範囲判定 |
-| `TraceLogWriter` | 取得開始、拒否、成功、例外の記録 |
+| `TraceLogWriter` | 例外の記録 |
 
 ## 5. 処理シーケンス
 
@@ -57,7 +57,7 @@
 | --- | --- | --- |
 | DB読込 | Repository | 参照元メタ情報 |
 | ファイル読込 | FileReferenceStore | PDFファイル |
-| ログ出力 | TraceLogWriter | 成功、拒否、失敗 |
+| ログ出力 | TraceLogWriter | 失敗 |
 
 ## 8. 例外処理
 
@@ -72,10 +72,7 @@
 
 | タイミング | ログ内容 |
 | --- | --- |
-| 取得開始 | trace_id、reference_id |
-| 安全検証失敗 | trace_id、reference_id、理由 |
-| 取得成功 | trace_id、reference_id、MIMEタイプ |
-| 例外発生 | trace_id、エラー分類 |
+| 例外発生 | trace_id、reference_id、エラー分類、例外種別、スタックトレース |
 
 ## 10. トランザクション
 

@@ -30,4 +30,4 @@
 | バックエンド application port | 参照元ファイルIF | `application/references`、`application/validation` | `infrastructure/filesystem/references` | PDF参照元の安全な取得と検証用パス解決を抽象化する。 | [参照元ファイルIF.md](参照元ファイルIF.md) |
 | バックエンド application port | 設定読込IF | `app`、`presentation`、`application`、`infrastructure` | `infrastructure/config` | `config.yaml` の読込結果を型付き設定として提供する。 | [設定読込IF.md](設定読込IF.md) |
 | バックエンド application port | Runtime Provider IF | `application`、`domain` | `infrastructure/runtime` | 現在時刻とID発番を差し替え可能にする。 | [RuntimeProviderIF.md](RuntimeProviderIF.md) |
-| バックエンド shared/application port | トレースログIF | `presentation`、`application` | `infrastructure/trace_log` | trace_id付きの処理開始、終了、例外、再生成、検証失敗をJSONLへ記録する。 | [トレースログIF.md](トレースログIF.md) |
+| バックエンド application port | トレースログIF | `presentation`、`application` | `infrastructure/trace_log` | trace_id付きの異常系調査情報を1異常1JSONファイルへ記録する。 | [トレースログIF.md](トレースログIF.md) |

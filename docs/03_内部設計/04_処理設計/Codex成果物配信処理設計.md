@@ -21,7 +21,7 @@
 | `ChatRepository` | 成果物メタ情報取得 |
 | `FileArtifactStore` | 保存済み成果物読込 |
 | `PathSecurityService` | 保存領域内パス確認 |
-| `TraceLogWriter` | 取得開始、拒否、成功、例外の記録 |
+| `TraceLogWriter` | 例外の記録 |
 
 ## 5. 処理シーケンス
 
@@ -57,7 +57,7 @@
 | --- | --- | --- |
 | DB読込 | Repository | 成果物メタ情報 |
 | ファイル読込 | FileArtifactStore | 保存済み成果物 |
-| ログ出力 | TraceLogWriter | 成功、拒否、失敗 |
+| ログ出力 | TraceLogWriter | 失敗 |
 
 ## 8. 例外処理
 
@@ -72,10 +72,7 @@
 
 | タイミング | ログ内容 |
 | --- | --- |
-| 取得開始 | trace_id、artifact_id |
-| 安全検証失敗 | trace_id、artifact_id、理由 |
-| 取得成功 | trace_id、artifact_id、MIMEタイプ、ファイル実体の読込結果 |
-| 例外発生 | trace_id、エラー分類 |
+| 例外発生 | trace_id、artifact_id、エラー分類、例外種別、スタックトレース |
 
 ## 10. トランザクション
 

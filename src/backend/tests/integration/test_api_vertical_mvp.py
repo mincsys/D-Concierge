@@ -553,12 +553,12 @@ def test_artifact_delivery_allows_jpeg(tmp_path: Path) -> None:
     assert response.content == b"jpeg"
 
 
-def test_api_sse_reference_and_artifact_boundaries_write_trace_logs(
+def test_api_sse_reference_and_artifact_boundaries_do_not_write_success_trace_logs(
     tmp_path: Path,
 ) -> None:
     """観点：トレースログ。
 
-    確認：REST、SSE、参照元PDF配信、Codex成果物配信の境界で開始・終了ログを保存する。
+    確認：REST、SSE、参照元PDF配信、Codex成果物配信の正常系ではトレースログを保存しない。
     """
     client, repository = _make_client_with_repository(tmp_path)
     pdf_path = tmp_path / "readonly" / "manual.pdf"
@@ -589,15 +589,7 @@ def test_api_sse_reference_and_artifact_boundaries_write_trace_logs(
     client.get(f"/api/references/{reference_id}")
     client.get(f"/api/artifacts/{artifact_id}")
 
-    events = _trace_event_names(tmp_path)
-    assert "api_started:chat_detail" in events
-    assert "api_finished:chat_detail" in events
-    assert "api_started:sse" in events
-    assert "api_finished:sse" in events
-    assert "api_started:reference_delivery" in events
-    assert "api_finished:reference_delivery" in events
-    assert "api_started:artifact_delivery" in events
-    assert "api_finished:artifact_delivery" in events
+    assert _trace_records(tmp_path) == []
 
 
 def test_api_failure_writes_trace_log(tmp_path: Path) -> None:
@@ -612,6 +604,26 @@ def test_api_failure_writes_trace_log(tmp_path: Path) -> None:
         record["event_name"] == "api_failed"
         and record["stage"] == "start_chat"
         and record["error_class"] == "input"
+        and record["status_code"] == "400"
+        for record in records
+    )
+
+
+def test_request_validation_failure_writes_trace_log(tmp_path: Path) -> None:
+    """観点：トレースログ。確認：リクエストバリデーション例外を保存する。"""
+    client = _make_client(tmp_path)
+
+    response = client.post("/api/chats/start", json={})
+
+    assert response.status_code == 422
+    records = _trace_records(tmp_path)
+    assert any(
+        record["event_name"] == "api_failed"
+        and record["stage"] == "start_chat"
+        and record["error_class"] == "input"
+        and record["status_code"] == "422"
+        and "request_validation_errors" in record
+        and "stacktrace" in record
         for record in records
     )
 
@@ -776,6 +788,7 @@ def test_unexpected_api_error_writes_system_trace_log(tmp_path: Path) -> None:
         and record["stage"] == "chat_histories"
         and record["error_class"] == "system"
         and record["exception_type"] == "RuntimeError"
+        and "stacktrace" in record
         for record in records
     )
 
@@ -1131,13 +1144,12 @@ def _make_config(tmp_path: Path) -> AppConfig:
 
 
 def _trace_records(tmp_path: Path) -> list[dict[str, str]]:
-    log_files = sorted((tmp_path / "logs/trace").glob("trace-*.jsonl"))
+    log_files = sorted((tmp_path / "logs/trace").glob("*/*.json"))
     records: list[dict[str, str]] = []
     for log_file in log_files:
-        for line in log_file.read_text(encoding="utf-8").splitlines():
-            loaded = json.loads(line)
-            assert isinstance(loaded, dict)
-            records.append({str(key): str(value) for key, value in loaded.items()})
+        loaded = json.loads(log_file.read_text(encoding="utf-8"))
+        assert isinstance(loaded, dict)
+        records.append({str(key): str(value) for key, value in loaded.items()})
     return records
 
 
