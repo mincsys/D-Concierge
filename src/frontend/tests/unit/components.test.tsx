@@ -896,7 +896,44 @@ describe("frontend components", () => {
         />
       </Providers>,
     );
-    expect(screen.getByText("キャンセルしました。")).toBeInTheDocument();
+    expect(screen.getByText("キャンセルしました。")).toHaveClass(
+      "rounded-lg",
+      "border",
+      "text-[var(--dc-muted-strong)]",
+    );
+
+    rerender(
+      <Providers>
+        <ChatThread
+          cancelingRunId={null}
+          openThoughtRunIds={new Set()}
+          session={{
+            id: "chat-1",
+            runs: [
+              {
+                intermediateMessages: [],
+                runId: "run-1",
+                state: "キャンセル要求中",
+                statusMessage: "キャンセルしています。",
+                userInstruction: "キャンセル対象",
+              },
+            ],
+            title: "キャンセル要求中",
+          }}
+          sidebarCollapsed={false}
+          onCancelRun={vi.fn()}
+          onOpenPdf={vi.fn()}
+          onScrollTargetHandled={vi.fn()}
+          onSubmitInstruction={vi.fn()}
+          onToggleThought={vi.fn()}
+        />
+      </Providers>,
+    );
+    expect(screen.getByText("キャンセルしています。")).toHaveClass(
+      "rounded-lg",
+      "border",
+      "text-[var(--dc-muted-strong)]",
+    );
   });
 
   it("観点：ユーティリティ。確認：classNameを結合しTailwind競合を解決する。", () => {

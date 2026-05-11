@@ -105,13 +105,7 @@ export function ChatThread({
                 onToggle={() => onToggleThought(run.runId)}
               />
               {run.answer ? <AnswerContent answer={run.answer} onOpenPdf={onOpenPdf} /> : null}
-              {run.statusMessage &&
-              (run.state === "キャンセル要求中" || run.state === "キャンセル済み") ? (
-                <AnswerContent
-                  answer={{ blocks: [{ markdown: run.statusMessage, references: [] }] }}
-                  onOpenPdf={onOpenPdf}
-                />
-              ) : run.statusMessage ? (
+              {run.statusMessage ? (
                 <div className="ml-20 mt-5 rounded-lg border border-[var(--dc-border-soft)] bg-white px-4 py-3 text-sm font-[650] text-[var(--dc-muted-strong)] max-[1100px]:ml-0">
                   {run.statusMessage}
                 </div>
