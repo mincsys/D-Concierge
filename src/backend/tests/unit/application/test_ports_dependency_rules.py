@@ -5,7 +5,7 @@ _COMPOSITION_ROOT_PARTS = {"app"}
 _COMPOSITION_ROOT_FILES = {"main.py"}
 
 _ALLOWED_LAYER_IMPORTS: dict[str, set[str]] = {
-    "presentation": {"presentation", "application", "shared"},
+    "presentation": {"presentation", "application", "domain", "shared"},
     "application": {"application", "domain", "shared"},
     "domain": {"domain", "shared"},
     "infrastructure": {"infrastructure", "domain", "shared"},

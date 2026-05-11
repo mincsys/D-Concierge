@@ -8,6 +8,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import FileResponse, StreamingResponse
 
 from backend.application.artifacts.get_artifact import GetArtifactUseCase
+from backend.application.chat.acceptance import AcceptedChatRunResult
 from backend.application.chat.append_chat_run import AppendChatRunUseCase
 from backend.application.chat.get_chat_detail import GetChatDetailUseCase
 from backend.application.chat.start_chat import StartChatUseCase
@@ -25,6 +26,7 @@ from backend.application.ports.database.dto import (
 from backend.application.ports.trace_log.dto import TraceLogRecord
 from backend.application.ports.trace_log.interface import TraceLoggerPort
 from backend.application.references.get_reference_data import GetReferenceDataUseCase
+from backend.domain.execution.run_state import RunState
 from backend.presentation.rest.trace_context import (
     ensure_request_trace_context,
     request_trace_id,
@@ -131,8 +133,6 @@ class DisconnectableRequest(Protocol):
 
 
 _SSE_IDLE_POLL_INTERVAL_SECONDS = 0.1
-_ACCEPTED_STATE_VALUE = "受付"
-_ERROR_STATE_VALUE = "エラー"
 
 
 def create_api_router(
@@ -173,7 +173,7 @@ def create_api_router(
         context = ensure_request_trace_context(request)
         context.chat_id = accepted.chat_id
         context.run_id = accepted.run_id
-        return _accepted_response(accepted.chat_id, accepted.run_id)
+        return _accepted_response(accepted)
 
     @router.post("/api/chats/{chat_id}/runs", response_model=ChatStartResponseSchema)
     def append_chat_run(
@@ -188,7 +188,7 @@ def create_api_router(
             trace_id=trace_id,
         )
         ensure_request_trace_context(request).run_id = accepted.run_id
-        return _accepted_response(accepted.chat_id, accepted.run_id)
+        return _accepted_response(accepted)
 
     @router.get(
         "/api/chat-histories",
@@ -362,7 +362,7 @@ async def _run_sse_events(
             RunEventType.ERROR.value,
             EndEventPayload(
                 run_id=str(run_id),
-                state=_ERROR_STATE_VALUE,
+                state=RunState.ERROR.value,
                 user_message=exc.user_message,
             ),
         )
@@ -380,7 +380,7 @@ async def _run_sse_events(
             RunEventType.ERROR.value,
             EndEventPayload(
                 run_id=str(run_id),
-                state=_ERROR_STATE_VALUE,
+                state=RunState.ERROR.value,
                 user_message="処理中にエラーが発生しました。",
             ),
         )
@@ -448,7 +448,7 @@ def _write_sse_failure_trace(
             run_id=run_id,
             error_class=error_class,
             exception_type=type(exc).__name__,
-            run_state=_ERROR_STATE_VALUE,
+            run_state=RunState.ERROR.value,
             stacktrace=exception_stacktrace(exc),
             message=(
                 user_message if isinstance(exc, AppError) else exception_message(exc)
@@ -517,12 +517,12 @@ def _answer_payload(answer: AnswerData) -> AnswerPayload:
     )
 
 
-def _accepted_response(chat_id: UUID, run_id: UUID) -> ChatStartResponseSchema:
+def _accepted_response(accepted: AcceptedChatRunResult) -> ChatStartResponseSchema:
     return ChatStartResponseSchema(
-        chat_id=str(chat_id),
-        run_id=str(run_id),
-        sse_url=f"/api/chats/{chat_id}/runs/{run_id}/sse",
-        state=_ACCEPTED_STATE_VALUE,
+        chat_id=str(accepted.chat_id),
+        run_id=str(accepted.run_id),
+        sse_url=accepted.sse_url,
+        state=accepted.state.value,
     )
 
 

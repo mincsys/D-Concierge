@@ -93,7 +93,7 @@ def test_start_chat_persists_initial_run_and_history(tmp_path: Path) -> None:
     accepted = TypeAdapter(ChatStartResponseSchema).validate_json(start_response.text)
     assert UUID(accepted.chat_id)
     assert UUID(accepted.run_id)
-    assert accepted.state == "受付"
+    assert accepted.state == RunState.ACCEPTED.value
     assert (
         accepted.sse_url == f"/api/chats/{accepted.chat_id}/runs/{accepted.run_id}/sse"
     )
@@ -182,7 +182,7 @@ def test_append_run_accepts_after_previous_run_is_terminal(tmp_path: Path) -> No
     assert response.status_code == 200
     appended = TypeAdapter(ChatStartResponseSchema).validate_json(response.text)
     assert appended.chat_id == accepted.chat_id
-    assert appended.state == "受付"
+    assert appended.state == RunState.ACCEPTED.value
 
 
 def test_cancel_accepted_run_returns_cancel_request_and_terminal_history(
