@@ -9,6 +9,7 @@
 - 本クラスは `クラス一覧.md` で詳細設計対象としたクラスである。
 - REST受付後の非同期実行またはバックグラウンド実行から呼び出される。
 - 生成用codex exec、検証用codex exec、DB、ファイル保存、トレースログはport経由で利用する。
+- 現在時刻取得とID発番は `ClockPort`、`IdGeneratorPort` としてcomposition rootから注入され、本クラス内でruntime具象実装を生成しない。
 - `server.timeout_seconds` は実行全体の上限として扱い、個々のcodex execには全体deadlineから算出した残り秒数を渡す。
 
 ## 3. 責務
@@ -37,6 +38,7 @@
 - 再生成は `ExecuteChatRunUseCase` だけが起動し、`ValidateAnswerUseCase` は生成用codex execを起動しない。
 - 全体deadlineを超過した場合、以後の再生成または検証用codex execを起動しない。
 - 参照元PDF読み取り失敗は検証段階のシステムエラーとして扱い、生成用codex execの再実行へ戻さない。
+- runtime、DB、Codex、ファイル保存、トレースログの副作用は注入されたportだけを通じて利用する。
 
 ## 5. 公開メソッド
 

@@ -9,7 +9,6 @@ from backend.application.ports.filesystem.dto import (
 )
 from backend.application.ports.filesystem.interface import AdoptedArtifactStorePort
 from backend.application.ports.runtime.interface import IdGeneratorPort
-from backend.infrastructure.runtime.uuid_generator import UuidGenerator
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,11 +45,10 @@ class SaveAdoptedArtifactsUseCase:
         self._artifact_store = artifact_store
         if artifact_id_factory is not None:
             self._artifact_id_factory = artifact_id_factory
+        elif id_generator is not None:
+            self._artifact_id_factory = id_generator.new_uuid
         else:
-            runtime_id_generator = (
-                id_generator if id_generator is not None else UuidGenerator()
-            )
-            self._artifact_id_factory = runtime_id_generator.new_uuid
+            raise ValueError("成果物ID発番境界が指定されていません。")
 
     def save_for_answer_blocks(
         self,

@@ -6,6 +6,10 @@ import pytest
 from pypdf import PdfWriter
 
 from backend.application.ports.codex.dto import ReferenceValidationResult
+from backend.application.ports.database.interface import (
+    ChatRuntimeRepositoryPort,
+    TransactionManagerPort,
+)
 from backend.domain.answer.answer_candidate import (
     ParsedAnswerBlock,
     ParsedAnswerCandidate,
@@ -21,7 +25,10 @@ from backend.infrastructure.codex.codex_runner import (
 from backend.infrastructure.codex.jsonl_event_parser import (
     ParsedCodexEvent,
 )
-from backend.infrastructure.codex.reference_validator import CodexReferenceValidator
+from backend.infrastructure.codex.reference_validator import (
+    CodexReferenceValidator as _CodexReferenceValidator,
+)
+from backend.infrastructure.codex.reference_validator import InfrastructureCodexRunner
 from backend.infrastructure.config.models import CodexConfig
 from backend.shared.error_class import ErrorClass
 from backend.shared.errors import (
@@ -30,6 +37,27 @@ from backend.shared.errors import (
     ValidationResultFormatError,
 )
 from backend.tests.support.memory_repository import InMemoryChatRepository
+from backend.tests.support.transaction_manager import NoopTransactionManager
+
+
+def CodexReferenceValidator(
+    *,
+    repository: ChatRuntimeRepositoryPort,
+    codex_runner: InfrastructureCodexRunner,
+    validator_config: CodexConfig,
+    datasource_dir: Path,
+    timeout_seconds: int,
+    transaction_manager: TransactionManagerPort | None = None,
+) -> _CodexReferenceValidator:
+    """テスト用TransactionManagerを補って検証アダプタを生成する。"""
+    return _CodexReferenceValidator(
+        repository=repository,
+        codex_runner=codex_runner,
+        validator_config=validator_config,
+        datasource_dir=datasource_dir,
+        timeout_seconds=timeout_seconds,
+        transaction_manager=transaction_manager or NoopTransactionManager(),
+    )
 
 
 def test_codex_reference_validator_runs_validation_and_saves_resume_id(
@@ -629,7 +657,7 @@ def _reference_validator(
     codex_runner: RecordingCodexRunner,
     datasource_dir: Path,
     tmp_path: Path,
-) -> CodexReferenceValidator:
+) -> _CodexReferenceValidator:
     return CodexReferenceValidator(
         repository=repository,
         codex_runner=codex_runner,

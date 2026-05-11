@@ -10,13 +10,28 @@ from backend.application.artifacts.save_adopted_artifacts import (
     SavedAnswerBlocksArtifacts,
 )
 from backend.application.execution.execute_chat_run import (
-    ExecuteChatRunUseCase,
+    AdoptedArtifactSaver,
+    AnswerValidator,
     RunEvent,
+    RunEventPublisher,
+)
+from backend.application.execution.execute_chat_run import (
+    ExecuteChatRunUseCase as _ExecuteChatRunUseCase,
 )
 from backend.application.execution.run_event_type import RunEventType
 from backend.application.ports.codex.dto import CodexRunResult
+from backend.application.ports.codex.interface import (
+    CodexGenerationRunnerPort,
+    SessionWorkdirResolverPort,
+)
+from backend.application.ports.database.interface import (
+    ChatExecutionRepositoryPort,
+    TransactionManagerPort,
+)
 from backend.application.ports.filesystem.dto import SavedArtifactFile
+from backend.application.ports.runtime.interface import ClockPort, IdGeneratorPort
 from backend.application.ports.trace_log.dto import TraceLogRecord
+from backend.application.ports.trace_log.interface import TraceLoggerPort
 from backend.application.validation.validate_answer import AnswerValidationResult
 from backend.application.validation.validation_status import ValidationStatus
 from backend.domain.answer.answer_candidate import (
@@ -35,6 +50,40 @@ from backend.shared.errors import (
     ValidationResultFormatError,
 )
 from backend.tests.support.memory_repository import InMemoryChatRepository
+
+
+def ExecuteChatRunUseCase(
+    *,
+    repository: ChatExecutionRepositoryPort,
+    codex_runner: CodexGenerationRunnerPort,
+    answer_validator: AnswerValidator,
+    event_publisher: RunEventPublisher,
+    clock: ClockPort | None = None,
+    id_generator: IdGeneratorPort | None = None,
+    artifact_saver: AdoptedArtifactSaver | None = None,
+    session_workdir: Path | None = None,
+    session_workdir_resolver: SessionWorkdirResolverPort | None = None,
+    trace_logger: TraceLoggerPort | None = None,
+    timeout_seconds: int = 300,
+    transaction_manager: TransactionManagerPort | None = None,
+) -> _ExecuteChatRunUseCase:
+    """テスト用既定Runtime境界を補ってUseCaseを生成する。"""
+    runtime_clock = clock or SequenceClock((datetime(2026, 5, 9, 10, 0, tzinfo=UTC),))
+    runtime_id_generator = id_generator or SequenceIdGenerator()
+    return _ExecuteChatRunUseCase(
+        repository=repository,
+        codex_runner=codex_runner,
+        answer_validator=answer_validator,
+        event_publisher=event_publisher,
+        clock=runtime_clock,
+        id_generator=runtime_id_generator,
+        artifact_saver=artifact_saver,
+        session_workdir=session_workdir,
+        session_workdir_resolver=session_workdir_resolver,
+        trace_logger=trace_logger,
+        timeout_seconds=timeout_seconds,
+        transaction_manager=transaction_manager,
+    )
 
 
 def test_execute_chat_run_saves_verified_answer_and_publishes_events() -> None:
@@ -1756,6 +1805,19 @@ class SequenceClock:
     def now_app_timezone(self) -> datetime:
         """登録済み時刻をアプリタイムゾーン現在時刻として順番に返す。"""
         return self.now()
+
+
+@dataclass(slots=True)
+class SequenceIdGenerator:
+    """テスト用にUUIDを順番に返すID発番器。"""
+
+    next_int: int = 1
+
+    def new_uuid(self) -> UUID:
+        """連番からUUIDを生成する。"""
+        generated = UUID(int=self.next_int)
+        self.next_int += 1
+        return generated
 
 
 @dataclass(slots=True)

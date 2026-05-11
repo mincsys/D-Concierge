@@ -8,7 +8,6 @@ from backend.application.ports.database.interface import (
     ChatRuntimeRepositoryPort,
     TransactionManagerPort,
 )
-from backend.application.transactions import NoopTransactionManager
 from backend.infrastructure.codex.codex_runner import (
     CodexRunRequest,
 )
@@ -41,18 +40,14 @@ class CodexGenerationRunnerAdapter:
         codex_config: CodexConfig,
         datasource_dir: Path,
         timeout_seconds: int,
-        transaction_manager: TransactionManagerPort | None = None,
+        transaction_manager: TransactionManagerPort,
     ) -> None:
         self._repository = repository
         self._codex_runner = codex_runner
         self._codex_config = codex_config
         self._datasource_dir = datasource_dir
         self._timeout_seconds = timeout_seconds
-        self._transaction_manager = (
-            transaction_manager
-            if transaction_manager is not None
-            else NoopTransactionManager()
-        )
+        self._transaction_manager = transaction_manager
 
     def run_generation(
         self,

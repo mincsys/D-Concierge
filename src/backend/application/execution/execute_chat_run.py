@@ -38,8 +38,6 @@ from backend.domain.answer.answer_candidate import (
 )
 from backend.domain.execution.run_state import RunState
 from backend.domain.references.source_type import SourceType
-from backend.infrastructure.runtime.system_clock import SystemClock
-from backend.infrastructure.runtime.uuid_generator import UuidGenerator
 from backend.shared.error_class import ErrorClass
 from backend.shared.errors import (
     AppError,
@@ -123,13 +121,13 @@ class ExecuteChatRunUseCase:
         codex_runner: CodexGenerationRunnerPort,
         answer_validator: AnswerValidator,
         event_publisher: RunEventPublisher,
+        clock: ClockPort,
+        id_generator: IdGeneratorPort,
         artifact_saver: AdoptedArtifactSaver | None = None,
         session_workdir: Path | None = None,
         session_workdir_resolver: SessionWorkdirResolverPort | None = None,
         trace_logger: TraceLoggerPort | None = None,
         timeout_seconds: int = 300,
-        clock: ClockPort | None = None,
-        id_generator: IdGeneratorPort | None = None,
         transaction_manager: TransactionManagerPort | None = None,
     ) -> None:
         if timeout_seconds <= 0:
@@ -143,10 +141,8 @@ class ExecuteChatRunUseCase:
         self._session_workdir_resolver = session_workdir_resolver
         self._trace_logger = trace_logger
         self._timeout_seconds = timeout_seconds
-        self._clock = clock if clock is not None else SystemClock()
-        self._id_generator = (
-            id_generator if id_generator is not None else UuidGenerator()
-        )
+        self._clock = clock
+        self._id_generator = id_generator
         self._transaction_manager = (
             transaction_manager
             if transaction_manager is not None

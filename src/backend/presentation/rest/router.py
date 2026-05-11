@@ -23,10 +23,8 @@ from backend.application.ports.database.dto import (
     RunDetail,
 )
 from backend.application.ports.trace_log.dto import TraceLogRecord
+from backend.application.ports.trace_log.interface import TraceLoggerPort
 from backend.application.references.get_reference_data import GetReferenceDataUseCase
-from backend.domain.execution.run_state import RunState
-from backend.domain.references.source_type import SourceType
-from backend.infrastructure.trace_log.trace_log_writer import TraceLogWriter
 from backend.presentation.rest.trace_context import (
     ensure_request_trace_context,
     request_trace_id,
@@ -133,6 +131,8 @@ class DisconnectableRequest(Protocol):
 
 
 _SSE_IDLE_POLL_INTERVAL_SECONDS = 0.1
+_ACCEPTED_STATE_VALUE = "受付"
+_ERROR_STATE_VALUE = "エラー"
 
 
 def create_api_router(
@@ -147,7 +147,7 @@ def create_api_router(
     get_reference_data_usecase: GetReferenceDataUseCase,
     get_artifact_usecase: GetArtifactUseCase,
     run_event_source: RunEventSource | None,
-    trace_logger: TraceLogWriter,
+    trace_logger: TraceLoggerPort,
     trace_id_factory: Callable[[], str],
 ) -> APIRouter:
     """チャットAPIルートを生成する。"""
@@ -289,7 +289,7 @@ async def _run_sse_events(
     run_event_source: RunEventSource | None,
     chat_id: UUID,
     run_id: UUID,
-    trace_logger: TraceLogWriter,
+    trace_logger: TraceLoggerPort,
     trace_id: str,
     request: DisconnectableRequest,
 ) -> AsyncIterator[bytes]:
@@ -362,7 +362,7 @@ async def _run_sse_events(
             RunEventType.ERROR.value,
             EndEventPayload(
                 run_id=str(run_id),
-                state=RunState.ERROR.value,
+                state=_ERROR_STATE_VALUE,
                 user_message=exc.user_message,
             ),
         )
@@ -380,7 +380,7 @@ async def _run_sse_events(
             RunEventType.ERROR.value,
             EndEventPayload(
                 run_id=str(run_id),
-                state=RunState.ERROR.value,
+                state=_ERROR_STATE_VALUE,
                 user_message="処理中にエラーが発生しました。",
             ),
         )
@@ -388,12 +388,12 @@ async def _run_sse_events(
 
 def _run_sse_snapshot(
     get_chat_detail_usecase: GetChatDetailUseCase, chat_id: UUID, run_id: UUID
-) -> tuple[RunState, tuple[str, ...]]:
+) -> tuple[str, tuple[str, ...]]:
     detail = get_chat_detail_usecase.execute(chat_id)
     for run in detail.runs:
         if run.run_id == run_id:
             return (
-                run.state,
+                run.state.value,
                 tuple(message.text for message in run.intermediate_messages),
             )
     raise AppError(ErrorClass.NOT_FOUND, "対象のチャット実行処理が見つかりません。")
@@ -431,7 +431,7 @@ def _set_request_trace(
 
 
 def _write_sse_failure_trace(
-    trace_logger: TraceLogWriter,
+    trace_logger: TraceLoggerPort,
     trace_id: str,
     chat_id: UUID,
     run_id: UUID,
@@ -448,7 +448,7 @@ def _write_sse_failure_trace(
             run_id=run_id,
             error_class=error_class,
             exception_type=type(exc).__name__,
-            run_state=RunState.ERROR.value,
+            run_state=_ERROR_STATE_VALUE,
             stacktrace=exception_stacktrace(exc),
             message=(
                 user_message if isinstance(exc, AppError) else exception_message(exc)
@@ -465,7 +465,7 @@ def _sse_event_bytes(event_name: str, payload: SsePayload) -> bytes:
 def _run_event_payload(event: RunEvent) -> SsePayload:
     match event.event:
         case RunEventType.STATE:
-            return _state_payload(event.run_id, _required_state(event))
+            return _state_payload(event.run_id, _required_state_value(event))
         case RunEventType.MESSAGE:
             return MessageEventPayload(run_id=str(event.run_id), text=event.text or "")
         case RunEventType.ANSWER:
@@ -473,25 +473,25 @@ def _run_event_payload(event: RunEvent) -> SsePayload:
                 raise AppError(ErrorClass.SYSTEM, "回答イベントの内容が不正です。")
             return AnswerEventPayload(
                 run_id=str(event.run_id),
-                state=_required_state(event).value,
+                state=_required_state_value(event),
                 answer=_answer_payload(event.answer),
             )
         case RunEventType.ERROR | RunEventType.CANCELED:
             return EndEventPayload(
                 run_id=str(event.run_id),
-                state=_required_state(event).value,
+                state=_required_state_value(event),
                 user_message=event.user_message or "",
             )
 
 
-def _state_payload(run_id: UUID, state: RunState) -> StateEventPayload:
-    return StateEventPayload(run_id=str(run_id), state=state.value)
+def _state_payload(run_id: UUID, state: str) -> StateEventPayload:
+    return StateEventPayload(run_id=str(run_id), state=state)
 
 
-def _required_state(event: RunEvent) -> RunState:
+def _required_state_value(event: RunEvent) -> str:
     if event.state is None:
         raise AppError(ErrorClass.SYSTEM, "状態イベントの内容が不正です。")
-    return event.state
+    return event.state.value
 
 
 def _answer_payload(answer: AnswerData) -> AnswerPayload:
@@ -501,7 +501,7 @@ def _answer_payload(answer: AnswerData) -> AnswerPayload:
                 markdown=block.markdown,
                 references=[
                     DisplayReferencePayload(
-                        source_type=SourceType.PDF.value,
+                        source_type=reference.source_type.value,
                         label=reference.label,
                         url=f"/api/references/{reference.reference_id}",
                         locator=PdfLocatorPayload(
@@ -522,7 +522,7 @@ def _accepted_response(chat_id: UUID, run_id: UUID) -> ChatStartResponseSchema:
         chat_id=str(chat_id),
         run_id=str(run_id),
         sse_url=f"/api/chats/{chat_id}/runs/{run_id}/sse",
-        state=RunState.ACCEPTED.value,
+        state=_ACCEPTED_STATE_VALUE,
     )
 
 
@@ -563,7 +563,7 @@ def _answer_block_response(block: AnswerBlockData) -> AnswerBlockResponseSchema:
 
 def _reference_response(reference: DisplayReferenceData) -> DisplayReferenceSchema:
     return DisplayReferenceSchema(
-        source_type=SourceType.PDF.value,
+        source_type=reference.source_type.value,
         label=reference.label,
         url=f"/api/references/{reference.reference_id}",
         locator=PdfLocatorSchema(

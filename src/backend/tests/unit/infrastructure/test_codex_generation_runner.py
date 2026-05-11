@@ -20,6 +20,7 @@ from backend.infrastructure.codex.jsonl_event_parser import (
 )
 from backend.infrastructure.config.models import CodexConfig
 from backend.tests.support.memory_repository import InMemoryChatRepository
+from backend.tests.support.transaction_manager import NoopTransactionManager
 
 
 def test_codex_generation_runner_builds_request_and_saves_resume_id(
@@ -71,6 +72,7 @@ def test_codex_generation_runner_builds_request_and_saves_resume_id(
         ),
         datasource_dir=datasource_dir,
         timeout_seconds=300,
+        transaction_manager=NoopTransactionManager(),
     )
 
     result = adapter.run_generation(
@@ -135,6 +137,7 @@ def test_codex_generation_runner_prepares_readonly_datasource(
         ),
         datasource_dir=datasource_dir,
         timeout_seconds=300,
+        transaction_manager=NoopTransactionManager(),
     )
 
     adapter.run_generation(
@@ -201,6 +204,7 @@ def test_codex_generation_runner_streams_intermediate_messages(
         ),
         datasource_dir=datasource_dir,
         timeout_seconds=300,
+        transaction_manager=NoopTransactionManager(),
     )
     streamed_messages: list[str] = []
 
