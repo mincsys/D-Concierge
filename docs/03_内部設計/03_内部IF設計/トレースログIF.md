@@ -2,7 +2,7 @@
 
 ## 1. 文書の目的
 
-本書は、`presentation`、`application` と `infrastructure/trace_log` の間で利用する内部IFの契約を定義することを目的とする。
+本書は、`presentation`、`application` と `infrastructure/trace_log` の間で、`application/ports/trace_log/interface.py` を通じて利用する内部IFの契約を定義することを目的とする。
 
 ## 2. 前提
 
@@ -17,9 +17,16 @@
 | --- | --- |
 | IF名 | トレースログIF |
 | 呼出元 | `presentation`、`application` |
-| 呼出先 | `TraceLogWriter` |
+| 呼出先 | `src/backend/application/ports/trace_log/interface.py`。具象実装は `TraceLogWriter` |
 | 目的 | 異常系発生時に、trace_id、エラー分類、処理段階、関連ID、例外詳細を記録する。 |
 | 冪等性 | ログ出力は非冪等。同一事象の重複出力は呼出元が抑制する。 |
+
+### 3.1. Port構成
+
+| Port / DTO | 役割 |
+| --- | --- |
+| `TraceLoggerPort` | `TraceLogRecord` を受け取り、1異常1YAMLファイルとして保存する。 |
+| `TraceLogRecord` | トレースログへ保存する異常調査項目を保持するDTO。 |
 
 ## 4. 呼出シーケンス
 
@@ -31,7 +38,7 @@ sequenceDiagram
 
     caller->>caller: 処理実行
     caller-->>handler: 例外または異常終端
-    handler->>logger: write(trace_record)
+    handler->>logger: write(TraceLogRecord)
     handler-->>caller: HTTPエラー、SSEエラー、run終端状態へ変換
 ```
 
@@ -99,7 +106,7 @@ sequenceDiagram
 
 | 項目 | 内容 |
 | --- | --- |
-| `trace_record` | `<trace_log.dir>/<yyyy-MM-dd>/<HH-mm-ss>_<microseconds>_<event_name>.yaml` に保存された1異常分のYAML。日時部分は `app.timezone` 基準。 |
+| `trace_record` | `TraceLogRecord` の内容を `<trace_log.dir>/<yyyy-MM-dd>/<HH-mm-ss>_<microseconds>_<event_name>.yaml` に保存した1異常分のYAML。日時部分は `app.timezone` 基準。 |
 | `write_result` | 呼出元へは返さない。書込失敗は元処理へ波及させない。 |
 
 ### 6.3. 保持設定

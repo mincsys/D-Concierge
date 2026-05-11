@@ -2,12 +2,12 @@
 
 ## 1. 文書の目的
 
-本書は、`application/artifacts`、`application/validation` と `infrastructure/filesystem/artifacts` の間で利用する内部IFの契約を定義することを目的とする。
+本書は、`application/artifacts` と `infrastructure/filesystem/artifacts` の間で、`application/ports/filesystem/interface.py` を通じて利用する内部IFの契約を定義することを目的とする。
 
 ## 2. 前提
 
 - 呼出方式: Pythonメソッド呼出。
-- 呼出主体: `SaveAdoptedArtifactsUseCase`、`ValidateAnswerUseCase`、`GetArtifactUseCase`。
+- 呼出主体: `SaveAdoptedArtifactsUseCase`、`GetArtifactUseCase`。
 - 本IFはCodex作業領域内の成果物候補と、保存済み成果物領域を分離して扱う。
 - セッション内 `artifacts/` は採用前の一時領域であり、履歴表示やブラウザ配信では直接参照しない。
 - 回答本文内の成果物リンクは固定検証で `artifacts/...` または `./artifacts/...` 形式に限定される。
@@ -17,10 +17,17 @@
 | 項目 | 内容 |
 | --- | --- |
 | IF名 | 成果物ファイルIF |
-| 呼出元 | 成果物保存、検証、成果物配信ユースケース |
-| 呼出先 | `FileArtifactStore` |
+| 呼出元 | 成果物保存、成果物配信ユースケース |
+| 呼出先 | `src/backend/application/ports/filesystem/interface.py`。具象実装は `FileArtifactStore` |
 | 目的 | 許可されたCodex成果物だけを採用済み領域へ保存し、配信時に安全に読み込む。 |
 | 冪等性 | 同一artifact IDへの保存は重複不可。配信用読込は冪等。 |
+
+### 3.1. Port構成
+
+| Port | 役割 |
+| --- | --- |
+| `AdoptedArtifactStorePort` | 採用済み回答が参照したCodex成果物候補を保存済み成果物領域へコピーする。 |
+| `ArtifactStorePort` | `AdoptedArtifactStorePort` の保存責務に加え、保存済み成果物を配信用に開く。 |
 
 ## 4. 呼出シーケンス
 
@@ -30,13 +37,11 @@ sequenceDiagram
     participant store as FileArtifactStore
     participant fs as FileSystem
 
-    usecase->>store: validate_candidate(session_id, relative_path)
+    usecase->>store: save_adopted_file(session_workdir, candidate_relative_path, run_id, artifact_id)
     store->>fs: resolve under codex session artifacts
     fs-->>store: candidate file
-    store-->>usecase: validated candidate
-    usecase->>store: save_artifact(run_id, artifact_id, candidate)
     store->>fs: copy to saved_artifacts
-    store-->>usecase: saved artifact reference
+    store-->>usecase: SavedArtifactFile
 ```
 
 ## 5. 事前条件 / 事後条件 / 不変条件
@@ -70,19 +75,18 @@ sequenceDiagram
 
 | 項目 | 内容 |
 | --- | --- |
-| `session_id` | Codex作業領域を特定する内部ID |
+| `session_workdir` | Codexセッション作業領域 |
 | `candidate_relative_path` | Codex作業領域からの成果物候補相対パス |
 | `run_id` | 保存先run ID |
 | `artifact_id` | 保存済み成果物ID |
-| `allowed_mime_types` | 配信を許可するMIMEタイプ一覧 |
+| `relative_path` | 保存済み成果物領域からの相対パス。読込時に使用する |
 
 ### 6.2. 出力
 
 | 項目 | 内容 |
 | --- | --- |
-| `validated_candidate` | 安全確認済みの成果物候補 |
-| `saved_artifact_reference` | 保存先相対参照、MIMEタイプ、サイズ |
-| `artifact_stream` | 配信用ファイル内容とMIMEタイプ |
+| `SavedArtifactFile` | 保存先相対参照、MIMEタイプ |
+| `OpenedArtifactFile` | 配信用ファイルパスとMIMEタイプ |
 
 ### 6.3. パス検証対象
 
@@ -115,3 +119,4 @@ sequenceDiagram
 ## 8. 留意事項
 
 - 回答ブロック本文内の成果物URL置換はapplication層が行い、ファイルコピーは本IFが行う。
+- 回答本文内の成果物リンク形式、拡張子、実ファイル存在の固定検証はapplication層の成果物リンク検証で行い、本IFは保存と配信用読込のファイル操作に集中する。

@@ -22,12 +22,12 @@
 | 区分 | IF名 | 呼出元 | 呼出先 | 目的 | 詳細ファイル |
 | --- | --- | --- | --- | --- | --- |
 | フロントエンド | チャットAPIクライアントIF | `ChatPage` | `chatApi` | 画面状態管理とREST/SSE通信を分離する。 | [チャットAPIクライアントIF.md](チャットAPIクライアントIF.md) |
-| バックエンド application port | チャットRepository IF | `application` | `infrastructure/database/repositories` | チャット、run、指示、回答、参照元、成果物メタ情報の永続化を抽象化する。 | [チャットRepositoryIF.md](チャットRepositoryIF.md) |
-| バックエンド application/runtime | RunExecutionDispatcher IF | `application/chat`、`app` | `application/execution` | 受付済みrunをバックグラウンド実行へ登録し、起動時に未完了runを整合させる。 | [RunExecutionDispatcherIF.md](RunExecutionDispatcherIF.md) |
-| バックエンド application port | Codex実行IF | `application/execution`、`application/validation` | `infrastructure/codex` | 生成用/検証用codex execの起動、イベント取得、終了制御を抽象化する。 | [Codex実行IF.md](Codex実行IF.md) |
+| バックエンド application port | チャットRepository IF | `application` | `application/ports/database/interface.py`、実装は `infrastructure/database/repositories` | チャット、run、指示、回答、参照元、成果物メタ情報の永続化とトランザクション境界を抽象化する。 | [チャットRepositoryIF.md](チャットRepositoryIF.md) |
+| バックエンド application/runtime | RunExecutionDispatcher IF | `application/chat`、`app` | `application/ports/runtime/interface.py`、実装は `infrastructure/runtime` | 受付済みrunをバックグラウンド実行へ登録し、起動時に未完了runを整合させる。 | [RunExecutionDispatcherIF.md](RunExecutionDispatcherIF.md) |
+| バックエンド application port | Codex実行IF | `application/execution`、`application/validation`、`application/chat` | `application/ports/codex/interface.py`、実装は `infrastructure/codex` | 生成用Codex実行、参照元検証、終了制御、作業領域解決を抽象化する。 | [Codex実行IF.md](Codex実行IF.md) |
 | バックエンド presentation/application | SSEイベント配信IF | `application/execution` | `presentation/sse` | run状態、中間メッセージ、回答、エラー、キャンセルをSSE購読者へ配信する。 | [SSEイベント配信IF.md](SSEイベント配信IF.md) |
-| バックエンド application port | 成果物ファイルIF | `application/artifacts`、`application/validation` | `infrastructure/filesystem/artifacts` | 採用済みCodex成果物の検証、保存、配信用読込を抽象化する。 | [成果物ファイルIF.md](成果物ファイルIF.md) |
-| バックエンド application port | 参照元ファイルIF | `application/references`、`application/validation` | `infrastructure/filesystem/references` | PDF参照元の安全な取得と検証用パス解決を抽象化する。 | [参照元ファイルIF.md](参照元ファイルIF.md) |
+| バックエンド application port | 成果物ファイルIF | `application/artifacts` | `application/ports/filesystem/interface.py`、実装は `infrastructure/filesystem/artifacts` | 採用済みCodex成果物の保存と配信用読込を抽象化する。 | [成果物ファイルIF.md](成果物ファイルIF.md) |
+| バックエンド application port | 参照元ファイルIF | `application/references` | `application/ports/filesystem/interface.py`、実装は `infrastructure/filesystem/references` | 保存済みPDF参照元の安全な取得を抽象化する。 | [参照元ファイルIF.md](参照元ファイルIF.md) |
 | バックエンド application port | 設定読込IF | `app`、`presentation`、`application`、`infrastructure` | `infrastructure/config` | `config.yaml` の読込結果を型付き設定として提供する。 | [設定読込IF.md](設定読込IF.md) |
-| バックエンド application port | Runtime Provider IF | `application`、`domain` | `infrastructure/runtime` | 現在時刻とID発番を差し替え可能にする。 | [RuntimeProviderIF.md](RuntimeProviderIF.md) |
-| バックエンド application port | トレースログIF | `presentation`、`application` | `infrastructure/trace_log` | trace_id付きの異常系調査情報を1異常1YAMLファイルへ記録する。 | [トレースログIF.md](トレースログIF.md) |
+| バックエンド application port | Runtime Provider IF | `application` | `application/ports/runtime/interface.py`、実装は `infrastructure/runtime` | 現在時刻とID発番を差し替え可能にする。 | [RuntimeProviderIF.md](RuntimeProviderIF.md) |
+| バックエンド application port | トレースログIF | `presentation`、`application` | `application/ports/trace_log/interface.py`、実装は `infrastructure/trace_log` | trace_id付きの異常系調査情報を1異常1YAMLファイルへ記録する。 | [トレースログIF.md](トレースログIF.md) |

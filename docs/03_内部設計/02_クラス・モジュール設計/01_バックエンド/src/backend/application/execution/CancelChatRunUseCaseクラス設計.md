@@ -14,9 +14,10 @@
 - キャンセル対象実行処理の存在とキャンセル可能状態を確認する。
 - 状態条件付き更新により `キャンセル要求中` へ遷移させる。
 - 変更前状態が `受付` の場合はcodex execプロセスへ終了要求を出さず、同一処理内で `キャンセル済み` へ遷移させる。
-- 変更前状態が `実行中` または `検証中` の場合はcodex execプロセスへ終了要求を出し、`sent`、`already_exited`、`not_registered` の結果を状態整合へ反映する。
+- 変更前状態が `実行中` または `検証中` の場合は `CancelRequesterPort` でcodex execプロセスへ終了要求を出し、`sent`、`already_exited`、`not_registered` の結果を状態整合へ反映する。
 - プロセス終了後、状態条件付き更新により `キャンセル済み` へ遷移させる。
 - キャンセル失敗時に利用者向けメッセージとトレースログを保存する。
+- DB更新は `TransactionManagerPort` と `CancelChatRunRepositoryPort` を通じて行い、異常系調査情報は `TraceLoggerPort` へ渡す。
 
 ## 4. 不変条件
 

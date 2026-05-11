@@ -8,21 +8,21 @@
 
 - 本クラスは `クラス一覧.md` で詳細設計対象としたクラスである。
 - REST受付後の非同期実行またはバックグラウンド実行から呼び出される。
-- 生成用codex exec、検証用codex exec、DB、ファイル保存、トレースログはport経由で利用する。
+- 生成用codex execは `CodexGenerationRunnerPort`、検証は `ValidateAnswerUseCase`、DBは `TransactionManagerPort` と `ChatExecutionRepositoryPort`、作業領域解決は `SessionWorkdirResolverPort`、トレースログは `TraceLoggerPort` 経由で利用する。
 - 現在時刻取得とID発番は `ClockPort`、`IdGeneratorPort` としてcomposition rootから注入され、本クラス内でruntime具象実装を生成しない。
 - `server.timeout_seconds` は実行全体の上限として扱い、個々のcodex execには全体deadlineから算出した残り秒数を渡す。
 
 ## 3. 責務
 
 - チャット実行処理を `実行中`、`検証中`、`完了`、`エラー`、`タイムアウト` の各状態へ遷移させる。
-- 生成用codex execを起動し、JSONL中間メッセージをSSE配信へ渡す。
+- `CodexGenerationRunnerPort` で生成用codex execを起動し、JSONL中間メッセージをSSE配信へ渡す。
 - 検証用codex execのJSONL中間メッセージ通知先を `ValidateAnswerUseCase` へ渡し、検証中の中間メッセージもSSE配信へ渡す。
 - 生成開始、生成完了、検証開始、検証完了、再生成開始の節目でシステム固定の中間メッセージを保存し、SSE `message` として即時配信する。
 - 回答候補を `ValidateAnswerUseCase` へ渡し、検証成功時だけ回答採用へ進める。
 - `ValidateAnswerUseCase` から再生成指示を受けた場合、retry回数を処理中カウンタとして進め、`実行中` と `検証中` をSSE `state` で通知しながら生成用codex execを再実行する。
 - 検証済み回答ブロック、ブロックごとの参照元、保存済みCodex成果物情報を状態条件付き更新で保存する。
 - 検証済み回答を保存する前に、各回答ブロック内で同一PDF内の重複または隣接する参照ページ範囲を結合し、PDFパスと開始ページ順に整列する。
-- 生成用/検証用codex execから返ったCodex側resume用IDをRepositoryへ保存する。
+- 生成用/検証用codex execから返ったCodex側resume用IDを `ChatRuntimeRepositoryPort` へ保存する。
 - `実行中` 遷移時に `execution_deadline_at` を計算して保存し、再生成を含む処理全体で同じdeadlineを使う。
 - 生成失敗、検証上限超過、参照元PDF読み取り失敗、タイムアウト、設定不備、検証完了後の回答採用失敗を利用者向けエラーとトレースログへ変換する。
 

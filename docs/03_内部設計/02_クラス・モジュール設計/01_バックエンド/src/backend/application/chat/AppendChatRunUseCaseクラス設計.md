@@ -13,8 +13,8 @@
 
 - 指定されたチャットの存在を確認する。
 - 対象チャットに未完了のチャット実行処理がないことを確認する。
-- 新しいチャット実行処理とユーザ指示を受付状態で保存する。
-- `RunExecutionDispatcher` へ受付済みrunを登録する。
+- `TransactionManagerPort` と `AppendChatRunRepositoryPort` を使い、新しいチャット実行処理とユーザ指示を受付状態で保存する。
+- `RunExecutionDispatcherPort` へ受付済みrunを登録する。
 - 継続指示の受付結果として、チャットID、チャット実行処理ID、SSE URL、受付状態を返す。
 
 ## 4. 不変条件

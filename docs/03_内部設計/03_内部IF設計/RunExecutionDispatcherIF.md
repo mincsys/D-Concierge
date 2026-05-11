@@ -2,13 +2,13 @@
 
 ## 1. 文書の目的
 
-本書は、REST受付処理、アプリ起動処理と `application/execution` の間で利用する内部IFの契約を定義することを目的とする。
+本書は、REST受付処理、アプリ起動処理とバックグラウンド実行基盤の間で、`application/ports/runtime/interface.py` を通じて利用する内部IFの契約を定義することを目的とする。
 
 ## 2. 前提
 
 - 呼出方式: Pythonメソッド呼出。
 - 呼出主体: `StartChatUseCase`、`AppendChatRunUseCase`、アプリ起動時の回復処理。
-- 呼出先: アプリ内バックグラウンド実行基盤。
+- 呼出先: アプリ内バックグラウンド実行基盤。具象実装は `InProcessRunExecutionDispatcher`。
 - MVPでは外部の永続ジョブキューを導入せず、アプリ内dispatcherで受付済みrunを `ExecuteChatRunUseCase.execute` へ登録する。
 - dispatcher登録結果は内部では通常Enumの `DispatchStatus` として扱う。
 
@@ -18,9 +18,17 @@
 | --- | --- |
 | IF名 | RunExecutionDispatcher IF |
 | 呼出元 | `application/chat`、`app` |
-| 呼出先 | `ExecuteChatRunUseCase` |
+| 呼出先 | `src/backend/application/ports/runtime/interface.py`。具象実装は `src/backend/infrastructure/runtime/run_execution_dispatcher.py` |
 | 目的 | HTTP受付完了後のチャット実行処理をバックグラウンドへ登録し、起動時に未完了runを整合させる。 |
 | 冪等性 | 同一runの多重登録は拒否または単一実行へ集約する。起動時回復は同一DB状態に対して冪等。 |
+
+### 3.1. Port構成
+
+| Port | 役割 |
+| --- | --- |
+| `RunExecutionDispatcherPort` | 受付済みrunをバックグラウンド実行へ登録し、登録結果を返す。 |
+| `ChatRunExecutorPort` | dispatcherが呼び出すチャット実行処理の抽象IF。 |
+| `BackgroundExecutorPort` | 実行関数をバックグラウンドへ投入する抽象IF。 |
 
 ## 4. 呼出シーケンス
 
@@ -30,7 +38,7 @@ sequenceDiagram
     participant dispatcher as RunExecutionDispatcher
     participant usecase as ExecuteChatRunUseCase
 
-    rest->>dispatcher: enqueue(chat_id, run_id, trace_id)
+    rest->>dispatcher: register(chat_id, run_id, trace_id)
     dispatcher->>usecase: execute(chat_id, run_id, trace_id)
 ```
 

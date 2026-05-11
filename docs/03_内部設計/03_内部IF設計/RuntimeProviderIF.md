@@ -2,23 +2,31 @@
 
 ## 1. 文書の目的
 
-本書は、`application`、`domain` と `infrastructure/runtime` の間で利用する内部IFの契約を定義することを目的とする。
+本書は、`application` と `infrastructure/runtime` の間で、`application/ports/runtime/interface.py` を通じて利用する現在時刻取得とID発番の内部IF契約を定義することを目的とする。
 
 ## 2. 前提
 
 - 呼出方式: application ports経由のメソッド呼出。
 - 呼出主体: ID採番、タイムスタンプ付与、状態更新、テスト用固定値を必要とするユースケース。
-- 本番実装は `infrastructure/runtime` に置き、抽象IFは `application/ports` に置く。
+- 本番実装は `infrastructure/runtime` に置き、抽象IFは `application/ports/runtime/interface.py` に置く。
 
 ## 3. IF概要
 
 | 項目 | 内容 |
 | --- | --- |
 | IF名 | Runtime Provider IF |
-| 呼出元 | `application`、必要に応じてdomain service |
-| 呼出先 | `SystemClock`、`UuidGenerator` |
+| 呼出元 | `application` |
+| 呼出先 | `src/backend/application/ports/runtime/interface.py`。具象実装は `SystemClock`、`UuidGenerator` |
 | 目的 | 現在時刻とID発番を副作用として隔離し、実装とテスト支援を差し替え可能にする。 |
 | 冪等性 | 現在時刻取得とID発番は非冪等。固定実装はテスト時のみ決定的に振る舞う。 |
+
+### 3.1. Port構成
+
+| Port | 役割 |
+| --- | --- |
+| `ClockPort` | UTC現在日時とアプリ共通タイムゾーン現在日時を提供する。 |
+| `IdGeneratorPort` | UUIDを新規発番する。 |
+| `UuidGeneratorPort` | UUID発番IFの用途を明示する派生Protocol。 |
 
 ## 4. 呼出シーケンス
 
@@ -28,10 +36,8 @@ sequenceDiagram
     participant clock as ClockPort
     participant ids as IdGeneratorPort
 
-    usecase->>ids: new_chat_id()
-    ids-->>usecase: ChatId
-    usecase->>ids: new_run_id()
-    ids-->>usecase: RunId
+    usecase->>ids: new_uuid()
+    ids-->>usecase: UUID
     usecase->>clock: now()
     clock-->>usecase: UTC aware datetime
     usecase->>clock: now_app_timezone()
@@ -43,11 +49,11 @@ sequenceDiagram
 ### 5.1. 事前条件
 
 - DIでClockとID Generatorの実装が注入済みである。
-- 生成するID種別が呼出元の用途に一致している。
+- 呼出元は受け取ったUUIDを用途に応じたID値として扱う。
 
 ### 5.2. 事後条件
 
-- ID発番は対象種別の値オブジェクトとして返る。
+- ID発番はUUIDとして返る。
 - 内部処理向け現在時刻はUTCのタイムゾーン付き日時として返る。
 - 運用者向け日時が必要な場合はアプリ共通タイムゾーンのタイムゾーン付き日時として返る。
 
@@ -64,14 +70,13 @@ sequenceDiagram
 
 | 項目 | 内容 |
 | --- | --- |
-| `id_kind` | チャット、run、参照元、成果物、traceなどのID種別 |
 | `app.timezone` | 運用者向け日時に使用するIANA timezone名 |
 
 ### 6.2. 出力
 
 | 項目 | 内容 |
 | --- | --- |
-| `ChatId`、`RunId`、`ReferenceId`、`ArtifactId`、`TraceId` | 種別ごとのID値 |
+| `UUID` | 呼出元がチャット、run、参照元、成果物、traceなどのIDへ割り当てるUUID |
 | `now`、`now_utc` | UTCのタイムゾーン付き現在日時 |
 | `now_app_timezone` | アプリ共通タイムゾーンのタイムゾーン付き現在日時 |
 

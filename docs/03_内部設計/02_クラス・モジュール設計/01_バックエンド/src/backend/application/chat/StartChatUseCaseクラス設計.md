@@ -13,9 +13,9 @@
 
 - 空でないユーザ指示本文を新規チャットの初回ユーザ指示として受け付ける。
 - チャットID、チャット実行処理ID、セッションIDを発番する。
-- チャット、チャット実行処理、ユーザ指示を同一トランザクションで保存する。
+- `TransactionManagerPort` と `StartChatRepositoryPort` を使い、チャット、チャット実行処理、ユーザ指示を同一トランザクションで保存する。
 - 履歴タイトルを最初のユーザ指示本文から生成する。
-- `RunExecutionDispatcher` へ受付済みrunを登録する。
+- `RunExecutionDispatcherPort` へ受付済みrunを登録する。
 - 画面がSSEへ接続できる受付結果を返す。
 
 ## 4. 不変条件

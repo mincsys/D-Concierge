@@ -2,12 +2,13 @@
 
 ## 1. 文書の目的
 
-本書は、`application/execution`、`application/validation` と `infrastructure/codex` の間で利用する内部IFの契約を定義することを目的とする。
+本書は、`application/execution`、`application/validation`、`application/chat` と `infrastructure/codex` の間で、`application/ports/codex/interface.py` を通じて利用する内部IFの契約を定義することを目的とする。
 
 ## 2. 前提
 
 - 呼出方式: 非同期メソッド呼出と非同期イベントストリーム。
 - 呼出主体: `ExecuteChatRunUseCase`、`ValidateAnswerUseCase`、`CancelChatRunUseCase`。
+- 生成用Codex実行、参照元検証、終了要求、作業領域解決は別々のProtocolとして定義する。
 - 生成用と検証用でCodexホーム、作業ディレクトリ、出力スキーマ、Codex側resume用IDを分離する。
 - 生成用Codexは `codex/sessions/<user-id>/<session-id>/` を作業領域とし、検証用Codexは `codex/sessions_validator/<user-id>/<session-id>/` を作業領域とする。
 - `session_id` はD-Conciergeが作業領域を決定するための内部IDであり、Codex側resume用IDは `codex_conversation_id` として別に受け渡す。
@@ -20,9 +21,18 @@
 | --- | --- |
 | IF名 | Codex実行IF |
 | 呼出元 | 実行、検証、キャンセルのユースケース |
-| 呼出先 | `CodexRunner`、`JsonlEventParser` |
-| 目的 | codex exec起動、resume、JSONLイベント解析、タイムアウト、終了要求をapplication層から抽象化する。 |
+| 呼出先 | `src/backend/application/ports/codex/interface.py`。具象実装は `CodexGenerationRunnerAdapter`、`CodexReferenceValidator`、`CodexCancelRequester`、`CodexSessionWorkdirResolver` |
+| 目的 | 生成用Codex実行、参照元検証、resume、JSONLイベント解析、タイムアウト、終了要求、作業領域解決をapplication層から抽象化する。 |
 | 冪等性 | codex exec起動は非冪等。JSONL解析は同一行に対して冪等。終了要求は対象プロセスが生存している場合に限り効果を持つ。 |
+
+### 3.1. Port構成
+
+| Port | 役割 |
+| --- | --- |
+| `CodexGenerationRunnerPort` | 生成用codex execを起動し、中間メッセージと最終回答JSONを返す。 |
+| `ReferenceValidatorPort` | 検証用Codex入力を受け取り、参照元検証結果を返す。 |
+| `CancelRequesterPort` | 実行中codex execへ終了要求を送る。 |
+| `SessionWorkdirResolverPort` | 生成用Codex作業領域をチャットIDから解決する。 |
 
 ## 4. 呼出シーケンス
 
@@ -33,14 +43,14 @@ sequenceDiagram
     participant parser as JsonlEventParser
     participant codex as codex exec
 
-    usecase->>runner: run_generation / run_validation(session_id, codex_conversation_id, prompt, timeout_seconds)
+    usecase->>runner: run_generation(chat_id, run_id, user_instruction, timeout_seconds)
     runner->>codex: codex exec --json --output-schema
     codex-->>runner: JSONL stdout
     runner->>parser: parse(line)
     parser-->>runner: CodexEvent
-    runner-->>usecase: stream CodexEvent
+    runner-->>usecase: on_intermediate_message(progress)
     codex-->>runner: exit status
-    runner-->>usecase: final result
+    runner-->>usecase: CodexRunResult
 ```
 
 ## 5. 事前条件 / 事後条件 / 不変条件
@@ -77,15 +87,15 @@ sequenceDiagram
 
 | 項目 | 内容 |
 | --- | --- |
-| `session_id` | D-Conciergeの作業領域を識別する内部ID |
+| `chat_id` | 対象チャットID |
+| `run_id` | 対象チャット実行処理ID。キャンセル対象プロセスの特定にも使う |
+| `user_instruction` | 生成用Codexへ渡すユーザ指示本文。検証時は `ValidatorCodexInput.instruction` に入れる元のユーザ指示 |
+| `candidate` | 検証対象の回答候補 |
 | `codex_conversation_id` | `codex exec resume` に渡すCodex側resume用ID。初回起動時は未指定 |
-| `prompt` | 生成または検証に渡す指示本文。検証用では `ValidatorCodexInput` JSON |
-| `output_schema_path` | codex execに渡すJSON Schemaファイルパス |
 | `timeout_seconds` | 全体deadlineから算出した当該codex execの残り秒数 |
 | `trace_id` | 実行ログとAPI呼出を関連付けるID |
-| `run_id` | キャンセル対象プロセスを特定する実行処理ID |
-| `codex_home` | 生成用または検証用のCodexホーム |
-| `work_dir` | 生成用または検証用のセッション作業領域 |
+| `session_workdir` | 生成用または検証用のセッション作業領域 |
+| `on_intermediate_message` | 生成用または検証用Codex由来の中間メッセージを即時配信するコールバック |
 
 ### 6.2. 検証用Codex入力
 
@@ -104,11 +114,10 @@ sequenceDiagram
 
 | 項目 | 内容 |
 | --- | --- |
-| `CodexEvent` | 中間メッセージ、最終回答候補、検証結果、エラーを表す構造化イベント。イベント種別は内部では `CodexEventKind` |
-| `exit_status` | codex exec終了コードと終了理由 |
-| `codex_conversation_id` | `thread.started.thread_id` から取得した、次回resumeに使うCodex側resume用ID |
-| `artifact_candidates` | 生成結果が参照したCodex成果物候補 |
-| `cancel_result` | 終了要求結果。内部では `CancelRequestResult`、外部境界では `sent`、`already_exited`、`not_registered` のいずれか |
+| `CodexRunResult` | 生成用CodexのCodex側resume用ID、中間メッセージ一覧、最終回答JSON |
+| `ReferenceValidationResult` | 検証用Codexの合否と指摘コメント |
+| `CancelRequestResult` | 終了要求結果。内部では通常Enum、境界では `sent`、`already_exited`、`not_registered` のいずれか |
+| `Path` | `SessionWorkdirResolverPort` が返す生成用Codex作業領域 |
 
 ### 6.4. Codex作業領域
 
