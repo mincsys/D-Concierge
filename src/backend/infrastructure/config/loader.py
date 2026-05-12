@@ -14,8 +14,8 @@ from backend.infrastructure.config.models import (
     UiConfig,
     ValidatorConfig,
 )
-from backend.shared.error_class import ErrorClass
-from backend.shared.errors import AppError
+from backend.shared.errors.error_type import ErrorType
+from backend.shared.errors.errors import AppError
 
 type YamlScalar = str | int | float | bool | None
 type YamlValue = YamlScalar | Mapping[str, YamlValue] | Sequence[YamlValue]
@@ -31,44 +31,34 @@ class ConfigLoader:
         try:
             loaded = yaml.safe_load(config_path.read_text(encoding="utf-8"))
         except OSError as exc:
-            raise AppError(
-                ErrorClass.CONFIGURATION, "設定ファイルを読み込めません。"
-            ) from exc
+            raise _configuration_error("設定ファイルを読み込めません。", exc) from exc
         except yaml.YAMLError as exc:
-            raise AppError(
-                ErrorClass.CONFIGURATION, "設定ファイルの形式が不正です。"
-            ) from exc
+            raise _configuration_error("設定ファイルの形式が不正です。", exc) from exc
 
         if not isinstance(loaded, Mapping):
-            raise AppError(
-                ErrorClass.CONFIGURATION, "設定ファイルのルート形式が不正です。"
-            )
+            raise _configuration_error("設定ファイルのルート形式が不正です。")
 
         data: Mapping[str, YamlValue] = loaded
         app_timezone = _required_timezone(data, ("app", "timezone"))
 
         timeout_seconds = _required_int(data, ("server", "timeout_seconds"))
         if timeout_seconds <= 0:
-            raise AppError(ErrorClass.CONFIGURATION, "タイムアウト設定が不正です。")
+            raise _configuration_error("タイムアウト設定が不正です。")
 
         max_retries = _required_int(data, ("validator", "max_retries"))
         if max_retries < 0:
-            raise AppError(ErrorClass.CONFIGURATION, "検証再試行上限が不正です。")
+            raise _configuration_error("検証再試行上限が不正です。")
 
         trace_log_retention_days = _required_int(data, ("trace_log", "retention_days"))
         if trace_log_retention_days <= 0:
-            raise AppError(
-                ErrorClass.CONFIGURATION,
-                "必須設定 trace_log.retention_days が不正です。",
-            )
+            raise _configuration_error("必須設定 trace_log.retention_days が不正です。")
 
         trace_log_max_files_per_day = _required_int(
             data, ("trace_log", "max_files_per_day")
         )
         if trace_log_max_files_per_day <= 0:
-            raise AppError(
-                ErrorClass.CONFIGURATION,
-                "必須設定 trace_log.max_files_per_day が不正です。",
+            raise _configuration_error(
+                "必須設定 trace_log.max_files_per_day が不正です。"
             )
 
         return AppConfig(
@@ -130,9 +120,7 @@ def _nested(data: Mapping[str, YamlValue], path: tuple[str, ...]) -> YamlValue:
     for key in path:
         if not isinstance(current, Mapping) or key not in current:
             dotted = ".".join(path)
-            raise AppError(
-                ErrorClass.CONFIGURATION, f"必須設定 {dotted} が不足しています。"
-            )
+            raise _configuration_error(f"必須設定 {dotted} が不足しています。")
         current = current[key]
     return current
 
@@ -141,7 +129,7 @@ def _required_str(data: Mapping[str, YamlValue], path: tuple[str, ...]) -> str:
     value = _nested(data, path)
     if not isinstance(value, str) or value.strip() == "":
         dotted = ".".join(path)
-        raise AppError(ErrorClass.CONFIGURATION, f"必須設定 {dotted} が不正です。")
+        raise _configuration_error(f"必須設定 {dotted} が不正です。")
     return value
 
 
@@ -154,7 +142,7 @@ def _optional_str(data: Mapping[str, YamlValue], path: tuple[str, ...]) -> str |
         return None
     if not isinstance(value, str):
         dotted = ".".join(path)
-        raise AppError(ErrorClass.CONFIGURATION, f"任意設定 {dotted} が不正です。")
+        raise _configuration_error(f"任意設定 {dotted} が不正です。")
     return value
 
 
@@ -162,7 +150,7 @@ def _required_int(data: Mapping[str, YamlValue], path: tuple[str, ...]) -> int:
     value = _nested(data, path)
     if type(value) is not int:
         dotted = ".".join(path)
-        raise AppError(ErrorClass.CONFIGURATION, f"必須設定 {dotted} が不正です。")
+        raise _configuration_error(f"必須設定 {dotted} が不正です。")
     return value
 
 
@@ -174,9 +162,7 @@ def _required_timezone(
         return ZoneInfo(timezone_name)
     except ZoneInfoNotFoundError as exc:
         dotted = ".".join(path)
-        raise AppError(
-            ErrorClass.CONFIGURATION, f"必須設定 {dotted} が不正です。"
-        ) from exc
+        raise _configuration_error(f"必須設定 {dotted} が不正です。", exc) from exc
 
 
 def _optional_str_list(
@@ -190,11 +176,22 @@ def _optional_str_list(
         return []
     if not isinstance(value, Sequence) or isinstance(value, str):
         dotted = ".".join(path)
-        raise AppError(ErrorClass.CONFIGURATION, f"任意設定 {dotted} が不正です。")
+        raise _configuration_error(f"任意設定 {dotted} が不正です。")
     suggestions: list[str] = []
     for item in value:
         if not isinstance(item, str):
             dotted = ".".join(path)
-            raise AppError(ErrorClass.CONFIGURATION, f"任意設定 {dotted} が不正です。")
+            raise _configuration_error(f"任意設定 {dotted} が不正です。")
         suggestions.append(item)
     return suggestions
+
+
+def _configuration_error(
+    diagnostic_message: str, cause: Exception | None = None
+) -> AppError:
+    return AppError(
+        ErrorType.CONFIGURATION,
+        trace=True,
+        diagnostic_message=diagnostic_message,
+        cause=cause,
+    )

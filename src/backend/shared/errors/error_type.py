@@ -1,7 +1,7 @@
 from enum import Enum
 
 
-class ErrorClass(Enum):
+class ErrorType(Enum):
     """アプリケーション全体で扱うエラー分類。"""
 
     INPUT = "input"

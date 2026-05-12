@@ -12,7 +12,7 @@
 ## 3. 責務
 
 - API、ユースケース、infrastructureで発生した障害調査用情報をYAMLへ変換する。
-- trace_id、chat_id、run_id、user_id、stage、error_class、exception_type、stacktrace、retry_count、run_state、execution_deadline_at、timeout_state、cancel_state、os_name、runner_type、codex_exit_status、process_result、validation_failure_reason、validation_comment、messageを出力する。
+- trace_id、chat_id、run_id、user_id、stage、error_type、exception_type、stacktrace、retry_count、run_state、execution_deadline_at、timeout_state、cancel_state、os_name、runner_type、codex_exit_status、process_result、validation_failure_reason、validation_comment、messageを出力する。
 - `app.timezone` 基準の日時で、発生日時、日付ディレクトリ、ファイル名、保存期間削除日を決定する。
 - 開発者向け調査情報はマスクせず、巨大な文字列だけを上限長で切り詰める。
 - 保存期間を過ぎた日付ディレクトリを起動時に削除する。

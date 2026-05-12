@@ -46,12 +46,19 @@ from backend.infrastructure.database.models.chat import (
 )
 from backend.infrastructure.runtime.system_clock import SystemClock
 from backend.infrastructure.runtime.uuid_generator import UuidGenerator
-from backend.shared.error_class import ErrorClass
-from backend.shared.errors import AppError
+from backend.shared.errors.error_type import ErrorType
+from backend.shared.errors.errors import (
+    ActiveRunConflictError,
+    AppError,
+    ArtifactNotFoundError,
+    CancelNotAllowedError,
+    ChatNotFoundError,
+    ReferenceNotFoundError,
+    RunNotFoundError,
+    UserInstructionRequiredError,
+)
 from backend.shared.user_messages import (
-    CANCEL_NOT_ALLOWED_MESSAGE,
     CANCELED_MESSAGE,
-    USER_INSTRUCTION_REQUIRED_MESSAGE,
 )
 
 
@@ -133,10 +140,7 @@ class SqlAlchemyChatRepository:
             )
         )
         if unfinished is not None:
-            raise AppError(
-                ErrorClass.CONFLICT,
-                "実行中の処理があるため送信できません。",
-            )
+            raise ActiveRunConflictError()
         chat.updated_at = now
         session.add(
             ChatRunModel(
@@ -356,7 +360,7 @@ class SqlAlchemyChatRepository:
         session = self._session()
         run = self._get_run(session, chat_id, run_id)
         if not RunStatePolicy.is_cancelable(_run_state(run)):
-            raise AppError(ErrorClass.CONFLICT, CANCEL_NOT_ALLOWED_MESSAGE)
+            raise CancelNotAllowedError()
         run.state = RunState.CANCELED.value
         run.user_message = CANCELED_MESSAGE
         chat = self._get_chat(session, chat_id)
@@ -367,7 +371,7 @@ class SqlAlchemyChatRepository:
         session = self._session()
         reference = session.get(ReferenceModel, reference_id)
         if reference is None:
-            raise AppError(ErrorClass.NOT_FOUND, "対象の参照元が見つかりません。")
+            raise ReferenceNotFoundError()
         path_value = reference.locator.get("path")
         page_start_value = reference.locator.get("page_start")
         page_end_value = reference.locator.get("page_end")
@@ -376,7 +380,7 @@ class SqlAlchemyChatRepository:
             or not isinstance(page_start_value, int)
             or not isinstance(page_end_value, int)
         ):
-            raise AppError(ErrorClass.SYSTEM, "参照元データが不整合です。")
+            raise _system_error("参照元データが不整合です。")
         return DisplayReferenceData(
             reference_id=reference.id,
             source_type=_source_type(reference.source_type),
@@ -391,7 +395,7 @@ class SqlAlchemyChatRepository:
         session = self._session()
         artifact = session.get(ArtifactModel, artifact_id)
         if artifact is None:
-            raise AppError(ErrorClass.NOT_FOUND, "対象の成果物が見つかりません。")
+            raise ArtifactNotFoundError()
         return ArtifactData(
             artifact_id=artifact.id,
             mime_type=artifact.mime_type,
@@ -487,7 +491,7 @@ class SqlAlchemyChatRepository:
             or not isinstance(page_start_value, int)
             or not isinstance(page_end_value, int)
         ):
-            raise AppError(ErrorClass.SYSTEM, "参照元データが不整合です。")
+            raise _system_error("参照元データが不整合です。")
         return DisplayReferenceData(
             reference_id=reference.id,
             source_type=_source_type(reference.source_type),
@@ -511,14 +515,14 @@ class SqlAlchemyChatRepository:
     def _get_chat(self, session: Session, chat_id: UUID) -> ChatModel:
         chat = session.get(ChatModel, chat_id)
         if chat is None:
-            raise AppError(ErrorClass.NOT_FOUND, "対象のチャットが見つかりません。")
+            raise ChatNotFoundError()
         return chat
 
     def _get_run(self, session: Session, chat_id: UUID, run_id: UUID) -> ChatRunModel:
         self._get_chat(session, chat_id)
         run = session.get(ChatRunModel, run_id)
         if run is None or run.chat_id != chat_id:
-            raise AppError(ErrorClass.NOT_FOUND, "対象の実行処理が見つかりません。")
+            raise RunNotFoundError()
         return run
 
     def _get_instruction(self, session: Session, run_id: UUID) -> UserInstructionModel:
@@ -526,7 +530,7 @@ class SqlAlchemyChatRepository:
             sa.select(UserInstructionModel).where(UserInstructionModel.run_id == run_id)
         )
         if instruction is None:
-            raise AppError(ErrorClass.SYSTEM, "履歴データが不整合です。")
+            raise _system_error("履歴データが不整合です。")
         return instruction
 
 
@@ -534,18 +538,27 @@ def _user_instruction(user_instruction: str) -> UserInstruction:
     try:
         return UserInstruction(user_instruction)
     except InvalidUserInstructionError as exc:
-        raise AppError(ErrorClass.INPUT, USER_INSTRUCTION_REQUIRED_MESSAGE) from exc
+        raise UserInstructionRequiredError() from exc
 
 
 def _run_state(run: ChatRunModel) -> RunState:
     try:
         return RunState(run.state)
     except ValueError as exc:
-        raise AppError(ErrorClass.SYSTEM, "履歴データが不整合です。") from exc
+        raise _system_error("履歴データが不整合です。", exc) from exc
 
 
 def _source_type(value: str) -> SourceType:
     try:
         return SourceType(value)
     except ValueError as exc:
-        raise AppError(ErrorClass.SYSTEM, "参照元データが不整合です。") from exc
+        raise _system_error("参照元データが不整合です。", exc) from exc
+
+
+def _system_error(diagnostic_message: str, cause: Exception | None = None) -> AppError:
+    return AppError(
+        ErrorType.SYSTEM,
+        trace=True,
+        diagnostic_message=diagnostic_message,
+        cause=cause,
+    )

@@ -5,8 +5,8 @@ from uuid import UUID
 from backend.application.execution.execute_chat_run import RunEvent
 from backend.application.execution.run_event_type import RunEventType
 from backend.application.ports.database.dto import AnswerData
-from backend.shared.error_class import ErrorClass
-from backend.shared.errors import AppError
+from backend.shared.errors.error_type import ErrorType
+from backend.shared.errors.errors import AppError
 
 
 class PdfLocatorPayload(TypedDict):
@@ -88,7 +88,11 @@ def run_event_payload(event: RunEvent) -> SsePayload:
             return message_payload(event.run_id, event.text or "")
         case RunEventType.ANSWER:
             if event.answer is None:
-                raise AppError(ErrorClass.SYSTEM, "回答イベントの内容が不正です。")
+                raise AppError(
+                    ErrorType.SYSTEM,
+                    trace=True,
+                    diagnostic_message="回答イベントの内容が不正です。",
+                )
             return AnswerEventPayload(
                 run_id=str(event.run_id),
                 state=_required_state_value(event),
@@ -123,7 +127,11 @@ def end_payload(run_id: UUID, state: str, user_message: str) -> EndEventPayload:
 
 def _required_state_value(event: RunEvent) -> str:
     if event.state is None:
-        raise AppError(ErrorClass.SYSTEM, "状態イベントの内容が不正です。")
+        raise AppError(
+            ErrorType.SYSTEM,
+            trace=True,
+            diagnostic_message="状態イベントの内容が不正です。",
+        )
     return event.state.value
 
 

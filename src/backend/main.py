@@ -11,7 +11,7 @@ from backend.infrastructure.config.loader import ConfigLoader
 from backend.infrastructure.config.models import TraceLogConfig
 from backend.infrastructure.runtime.system_clock import SystemClock
 from backend.infrastructure.trace_log.trace_log_writer import TraceLogWriter
-from backend.shared.error_class import ErrorClass
+from backend.shared.errors.error_type import ErrorType
 from backend.shared.tracing.exception import exception_message, exception_stacktrace
 
 _CONFIG_PATH = Path("config.yaml")
@@ -43,7 +43,7 @@ def _create_app_with_bootstrap_trace() -> FastAPI:
                 trace_id=str(uuid4()),
                 event_name="app_bootstrap_failed",
                 stage="app_bootstrap",
-                error_class=ErrorClass.SYSTEM.value,
+                error_type=ErrorType.SYSTEM.value,
                 exception_type=type(exc).__name__,
                 stacktrace=exception_stacktrace(exc),
                 config_path=str(_CONFIG_PATH),

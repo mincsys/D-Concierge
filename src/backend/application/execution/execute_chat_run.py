@@ -37,10 +37,12 @@ from backend.domain.answer.answer_candidate import (
 )
 from backend.domain.execution.run_state import RunState
 from backend.domain.references.pdf_reference import PdfLocator, PdfReference
-from backend.shared.error_class import ErrorClass
-from backend.shared.errors import (
+from backend.shared.errors.error_type import ErrorType
+from backend.shared.errors.errors import (
     AppError,
+    ProcessCanceledConflictError,
     ReferencePdfReadError,
+    RunStateChangedError,
     RunTimeoutError,
     ValidationResultFormatError,
     ValidationWorkspacePreparationError,
@@ -48,12 +50,14 @@ from backend.shared.errors import (
 from backend.shared.tracing.exception import exception_message, exception_stacktrace
 from backend.shared.user_messages import (
     ANSWER_REVISION_MESSAGE,
+    ANSWER_VALIDATION_FAILED_MESSAGE,
     CANCELED_MESSAGE,
     GENERATION_FAILURE_MESSAGE,
-    PROCESS_CANCELED_CONFLICT_MESSAGE,
+    PDF_READ_FAILURE_MESSAGE,
     TIMEOUT_FAILURE_MESSAGE,
     UNEXPECTED_FAILURE_MESSAGE,
     VALIDATION_COMPLETED_MESSAGE,
+    VALIDATION_RESULT_FAILURE_MESSAGE,
     VALIDATION_STARTED_MESSAGE,
     WORK_COMPLETED_MESSAGE,
     WORK_STARTED_MESSAGE,
@@ -172,14 +176,14 @@ class ExecuteChatRunUseCase:
                     execution_deadline_at=execution_deadline_at,
                     timeout_state="codex_exec_timeout",
                     stacktrace=exception_stacktrace(exc),
-                    message=TIMEOUT_FAILURE_MESSAGE,
+                    message="Codex実行がタイムアウトしました。",
                 )
             )
         except ReferencePdfReadError as exc:
             if self._is_canceled(chat_id, run_id):
                 self._finish_canceled(chat_id, run_id)
                 return
-            self._finish_error(chat_id, run_id, exc.user_message)
+            self._finish_error(chat_id, run_id, PDF_READ_FAILURE_MESSAGE)
             self._write_trace(
                 TraceLogRecord(
                     trace_id=trace_id,
@@ -187,19 +191,19 @@ class ExecuteChatRunUseCase:
                     stage="validation",
                     chat_id=chat_id,
                     run_id=run_id,
-                    error_class=exc.error_class.value,
+                    error_type=exc.error_type.value,
                     exception_type=type(exc).__name__,
                     run_state=RunState.ERROR.value,
                     validation_failure_reason=exc.diagnostic_message,
                     stacktrace=exception_stacktrace(exc),
-                    message=exc.user_message,
+                    message=exc.diagnostic_message,
                 )
             )
         except ValidationWorkspacePreparationError as exc:
             if self._is_canceled(chat_id, run_id):
                 self._finish_canceled(chat_id, run_id)
                 return
-            self._finish_error(chat_id, run_id, exc.user_message)
+            self._finish_error(chat_id, run_id, UNEXPECTED_FAILURE_MESSAGE)
             self._write_trace(
                 TraceLogRecord(
                     trace_id=trace_id,
@@ -207,19 +211,19 @@ class ExecuteChatRunUseCase:
                     stage="validation",
                     chat_id=chat_id,
                     run_id=run_id,
-                    error_class=exc.error_class.value,
+                    error_type=exc.error_type.value,
                     exception_type=type(exc).__name__,
                     run_state=RunState.ERROR.value,
                     validation_failure_reason=exc.diagnostic_message,
                     stacktrace=exception_stacktrace(exc),
-                    message=exc.user_message,
+                    message=exc.diagnostic_message,
                 )
             )
         except ValidationResultFormatError as exc:
             if self._is_canceled(chat_id, run_id):
                 self._finish_canceled(chat_id, run_id)
                 return
-            self._finish_error(chat_id, run_id, exc.user_message)
+            self._finish_error(chat_id, run_id, VALIDATION_RESULT_FAILURE_MESSAGE)
             self._write_trace(
                 TraceLogRecord(
                     trace_id=trace_id,
@@ -227,12 +231,12 @@ class ExecuteChatRunUseCase:
                     stage="validation",
                     chat_id=chat_id,
                     run_id=run_id,
-                    error_class=exc.error_class.value,
+                    error_type=exc.error_type.value,
                     exception_type=type(exc).__name__,
                     run_state=RunState.ERROR.value,
                     validation_failure_reason=exc.diagnostic_message,
                     stacktrace=exception_stacktrace(exc),
-                    message=exc.user_message,
+                    message=exc.diagnostic_message,
                 )
             )
         except AppError as exc:
@@ -240,20 +244,21 @@ class ExecuteChatRunUseCase:
                 self._finish_canceled(chat_id, run_id)
                 return
             self._finish_error(chat_id, run_id, GENERATION_FAILURE_MESSAGE)
-            self._write_trace(
-                TraceLogRecord(
-                    trace_id=trace_id,
-                    event_name="execution_failed",
-                    stage="generation",
-                    chat_id=chat_id,
-                    run_id=run_id,
-                    error_class=exc.error_class.value,
-                    exception_type=type(exc).__name__,
-                    run_state=RunState.ERROR.value,
-                    stacktrace=exception_stacktrace(exc),
-                    message=exc.user_message,
+            if exc.trace:
+                self._write_trace(
+                    TraceLogRecord(
+                        trace_id=trace_id,
+                        event_name="execution_failed",
+                        stage="generation",
+                        chat_id=chat_id,
+                        run_id=run_id,
+                        error_type=exc.error_type.value,
+                        exception_type=type(exc).__name__,
+                        run_state=RunState.ERROR.value,
+                        stacktrace=exception_stacktrace(exc),
+                        message=exc.diagnostic_message,
+                    )
                 )
-            )
         except Exception as exc:
             if self._is_canceled(chat_id, run_id):
                 self._finish_canceled(chat_id, run_id)
@@ -266,7 +271,7 @@ class ExecuteChatRunUseCase:
                     stage="execution",
                     chat_id=chat_id,
                     run_id=run_id,
-                    error_class=ErrorClass.SYSTEM.value,
+                    error_type=ErrorType.SYSTEM.value,
                     exception_type=type(exc).__name__,
                     run_state=RunState.ERROR.value,
                     stacktrace=exception_stacktrace(exc),
@@ -356,7 +361,7 @@ class ExecuteChatRunUseCase:
                 case ValidationStatus.ACCEPTED:
                     if validation.candidate is None:
                         self._finish_error(
-                            chat_id, run_id, "回答を検証できませんでした。"
+                            chat_id, run_id, ANSWER_VALIDATION_FAILED_MESSAGE
                         )
                         return
                     self._record_intermediate_message(
@@ -382,24 +387,26 @@ class ExecuteChatRunUseCase:
                             stage="validation",
                             chat_id=chat_id,
                             run_id=run_id,
-                            error_class=ErrorClass.SYSTEM.value,
+                            error_type=ErrorType.SYSTEM.value,
                             run_state=RunState.ERROR.value,
                             retry_count=retry_count,
                             validation_failure_reason=(
                                 validation.regeneration_instruction
                                 or validation.user_message
-                                or "回答検証に失敗しました。"
+                                or "回答検証の最大試行回数に到達しました。"
                             ),
                             validation_comment=validation.regeneration_instruction
                             or None,
-                            message=validation.user_message
-                            or "回答を検証できませんでした。",
+                            message=(
+                                validation.regeneration_instruction
+                                or "回答検証の最大試行回数に到達しました。"
+                            ),
                         )
                     )
                     self._finish_error(
                         chat_id,
                         run_id,
-                        validation.user_message or "回答を検証できませんでした。",
+                        validation.user_message or ANSWER_VALIDATION_FAILED_MESSAGE,
                     )
                     return
 
@@ -422,8 +429,8 @@ class ExecuteChatRunUseCase:
         if not updated:
             if self._is_canceled(chat_id, run_id):
                 self._finish_canceled(chat_id, run_id)
-                raise AppError(ErrorClass.CONFLICT, PROCESS_CANCELED_CONFLICT_MESSAGE)
-            raise AppError(ErrorClass.CONFLICT, "実行状態が変更されています。")
+                raise ProcessCanceledConflictError()
+            raise RunStateChangedError()
         self._event_publisher.publish(
             RunEvent(
                 event=RunEventType.STATE,

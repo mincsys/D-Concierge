@@ -2,8 +2,7 @@ from pathlib import Path
 
 from backend.application.ports.filesystem.dto import OpenedReferenceFile
 from backend.infrastructure.filesystem.path_security import PathSecurityService
-from backend.shared.error_class import ErrorClass
-from backend.shared.errors import AppError
+from backend.shared.errors.errors import ReferenceNotFoundError
 
 
 class FileReferenceStore:
@@ -20,5 +19,5 @@ class FileReferenceStore:
             allowed_suffixes=(".pdf",),
         )
         if not path.exists() or not path.is_file():
-            raise AppError(ErrorClass.NOT_FOUND, "対象の参照元が見つかりません。")
+            raise ReferenceNotFoundError()
         return OpenedReferenceFile(path=path, mime_type="application/pdf")

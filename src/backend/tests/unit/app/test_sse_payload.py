@@ -13,8 +13,8 @@ from backend.presentation.sse.payload import (
     run_event_payload,
     sse_event_bytes,
 )
-from backend.shared.error_class import ErrorClass
-from backend.shared.errors import AppError
+from backend.shared.errors.error_type import ErrorType
+from backend.shared.errors.errors import AppError
 
 
 def test_sse_payload_converts_canceled_event() -> None:
@@ -47,7 +47,7 @@ def test_sse_error_payload_uses_run_state_error_value() -> None:
     payload = EndEventPayload(
         run_id="00000000-0000-0000-0000-000000000709",
         state=RunState.ERROR.value,
-        user_message="処理中にエラーが発生しました。",
+        user_message="予期しないエラーが発生しました。開発者にお問い合わせください。",
     )
 
     assert payload["state"] == RunState.ERROR.value
@@ -61,7 +61,7 @@ def test_sse_event_bytes_keeps_wire_format() -> None:
     payload = EndEventPayload(
         run_id="00000000-0000-0000-0000-000000000709",
         state=RunState.ERROR.value,
-        user_message="処理中にエラーが発生しました。",
+        user_message="予期しないエラーが発生しました。開発者にお問い合わせください。",
     )
 
     assert (
@@ -70,7 +70,7 @@ def test_sse_event_bytes_keeps_wire_format() -> None:
             "event: error\n"
             'data: {"run_id":"00000000-0000-0000-0000-000000000709",'
             f'"state":"{RunState.ERROR.value}",'
-            '"user_message":"処理中にエラーが発生しました。"}\n\n'
+            '"user_message":"予期しないエラーが発生しました。開発者にお問い合わせください。"}\n\n'
         ).encode()
     )
 
@@ -87,9 +87,13 @@ def test_sse_failure_trace_uses_run_state_error_value() -> None:
         trace_id="trace-sse-error",
         chat_id=UUID("00000000-0000-0000-0000-000000000710"),
         run_id=UUID("00000000-0000-0000-0000-000000000711"),
-        exc=AppError(ErrorClass.SYSTEM, "処理中にエラーが発生しました。"),
-        error_class=ErrorClass.SYSTEM.value,
-        user_message="処理中にエラーが発生しました。",
+        exc=AppError(
+            ErrorType.SYSTEM,
+            trace=True,
+            diagnostic_message="SSE配信に失敗しました。",
+        ),
+        error_type=ErrorType.SYSTEM.value,
+        message="SSE配信に失敗しました。",
     )
 
     assert logger.records[-1].run_state == RunState.ERROR.value
@@ -125,7 +129,7 @@ def test_sse_payload_rejects_invalid_event_content(event: RunEvent) -> None:
     with pytest.raises(AppError) as error_info:
         run_event_payload(event)
 
-    assert error_info.value.error_class is ErrorClass.SYSTEM
+    assert error_info.value.error_type is ErrorType.SYSTEM
 
 
 class RecordingTraceLogger:

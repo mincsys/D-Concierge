@@ -10,8 +10,8 @@ from backend.application.chat.start_chat import StartChatUseCase
 from backend.application.ports.runtime.dispatch_status import DispatchStatus
 from backend.application.ports.runtime.dto import DispatchResult
 from backend.domain.execution.run_state import RunState
-from backend.shared.error_class import ErrorClass
-from backend.shared.errors import AppError
+from backend.shared.errors.error_type import ErrorType
+from backend.shared.errors.errors import AppError
 from backend.tests.support.memory_repository import InMemoryChatRepository
 
 
@@ -39,7 +39,7 @@ def test_start_chat_use_case_rejects_blank_instruction_without_dispatch() -> Non
     with pytest.raises(AppError) as error_info:
         usecase.execute("   ", trace_id="trace-102")
 
-    assert error_info.value.error_class is ErrorClass.INPUT
+    assert error_info.value.error_type is ErrorType.INPUT
     assert dispatcher.registered == []
     assert repository.list_histories() == ()
 
@@ -53,7 +53,7 @@ def test_start_chat_use_case_marks_run_error_when_dispatcher_fails() -> None:
     with pytest.raises(AppError) as error_info:
         usecase.execute("資料を要約してください", trace_id="trace-103")
 
-    assert error_info.value.error_class is ErrorClass.SYSTEM
+    assert error_info.value.error_type is ErrorType.SYSTEM
     assert dispatcher.registered_run_id is not None
     detail = repository.get_chat_detail(dispatcher.registered_chat_id)
     assert detail.runs[0].run_id == dispatcher.registered_run_id
@@ -133,8 +133,8 @@ def test_append_chat_run_use_case_rejects_missing_chat_and_unfinished_run() -> N
             trace_id="trace-106",
         )
 
-    assert missing_error.value.error_class is ErrorClass.NOT_FOUND
-    assert conflict_error.value.error_class is ErrorClass.CONFLICT
+    assert missing_error.value.error_type is ErrorType.NOT_FOUND
+    assert conflict_error.value.error_type is ErrorType.CONFLICT
     assert dispatcher.registered == []
 
 
@@ -153,7 +153,7 @@ def test_append_chat_run_use_case_marks_run_error_when_dispatcher_fails() -> Non
             trace_id="trace-107",
         )
 
-    assert error_info.value.error_class is ErrorClass.SYSTEM
+    assert error_info.value.error_type is ErrorType.SYSTEM
     assert dispatcher.registered_run_id is not None
     detail = repository.get_chat_detail(first.chat_id)
     appended_run = detail.runs[-1]

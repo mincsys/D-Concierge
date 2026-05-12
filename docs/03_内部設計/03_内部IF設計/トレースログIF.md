@@ -10,6 +10,7 @@
 - 呼出主体: REST/SSE例外ハンドラ、チャット実行処理、起動時回復処理、アプリ生成入口。
 - トレースログは開発者向けの異常調査ログであり、利用者へ直接表示しない。
 - 正常終了、処理開始、処理完了、ユーザキャンセル、検証不合格による通常の再生成は記録しない。
+- REST/SSE共通ハンドラでは、`AppError.trace=True` の場合だけ `diagnostic_message` を記録し、`trace=False` の入力不正、対象なし、表示不可、通常の競合は記録しない。
 
 ## 3. IF概要
 
@@ -51,7 +52,7 @@ sequenceDiagram
 
 ### 5.2. 事後条件
 
-- 異常発生時はエラー分類、例外型、スタックトレース、関連ID、処理段階が記録される。
+- 記録対象の異常発生時はエラー分類、例外型、スタックトレース、関連ID、処理段階が記録される。
 - 最大試行回数まで検証が不合格になった場合は、最後の検証情報だけが記録される。
 - ログ出力失敗は元処理のHTTP応答、SSEイベント、run終端状態を上書きしない。
 
@@ -74,7 +75,7 @@ sequenceDiagram
 | `trace_id` | API、ユースケース、ログを関連付けるID |
 | `event_name` | `api_failed`、`sse_failed`、`execution_failed`、`execution_timeout`、`validation_retry_limit_reached`、`recovery_failed`、`app_bootstrap_failed` など |
 | `stage` | API、SSE、生成、検証、実行、起動時回復、アプリ生成などの処理段階 |
-| `error_class` | エラー分類 |
+| `error_type` | エラー分類 |
 | `exception_type` | 捕捉した例外型名 |
 | `stacktrace` | 捕捉した例外のスタックトレース |
 | `message` | 調査用メッセージ |

@@ -194,7 +194,7 @@ def test_validate_answer_fails_when_retry_limit_reached() -> None:
     )
 
     assert result.status is ValidationStatus.FAILED
-    assert result.user_message == "回答生成に失敗しました。再度お試しください。"
+    assert result.user_message == "回答の生成に失敗しました。再度お試しください。"
     assert result.candidate is None
 
 

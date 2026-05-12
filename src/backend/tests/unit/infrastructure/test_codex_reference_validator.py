@@ -32,8 +32,8 @@ from backend.infrastructure.codex.reference_validator import (
 )
 from backend.infrastructure.codex.reference_validator import InfrastructureCodexRunner
 from backend.infrastructure.config.models import CodexConfig
-from backend.shared.error_class import ErrorClass
-from backend.shared.errors import (
+from backend.shared.errors.error_type import ErrorType
+from backend.shared.errors.errors import (
     AppError,
     ReferencePdfReadError,
     ValidationResultFormatError,
@@ -428,8 +428,8 @@ def test_codex_reference_validator_rejects_invalid_context_or_payload(
             trace_id="trace-602",
         )
 
-    assert context_error.value.error_class is ErrorClass.SYSTEM
-    assert payload_error.value.error_class is ErrorClass.SYSTEM
+    assert context_error.value.error_type is ErrorType.SYSTEM
+    assert payload_error.value.error_type is ErrorType.SYSTEM
     assert payload_error.value.diagnostic_message == "検証結果の形式が不正です。"
 
 

@@ -10,8 +10,8 @@ from backend.application.ports.filesystem.dto import (
 from backend.infrastructure.filesystem.artifacts.file_artifact_store import (
     FileArtifactStore,
 )
-from backend.shared.error_class import ErrorClass
-from backend.shared.errors import AppError
+from backend.shared.errors.error_type import ErrorType
+from backend.shared.errors.errors import AppError
 from backend.tests.support.symlink import require_symlink_support
 
 
@@ -118,7 +118,7 @@ def test_file_artifact_store_rejects_invalid_candidate_path(
             artifact_id=UUID("00000000-0000-0000-0000-000000000612"),
         )
 
-    assert error_info.value.error_class is ErrorClass.FORBIDDEN
+    assert error_info.value.error_type is ErrorType.FORBIDDEN
 
 
 def test_file_artifact_store_rejects_missing_candidate(tmp_path: Path) -> None:
@@ -135,7 +135,7 @@ def test_file_artifact_store_rejects_missing_candidate(tmp_path: Path) -> None:
             artifact_id=UUID("00000000-0000-0000-0000-000000000613"),
         )
 
-    assert error_info.value.error_class is ErrorClass.NOT_FOUND
+    assert error_info.value.error_type is ErrorType.NOT_FOUND
 
 
 def test_file_artifact_store_rejects_existing_saved_artifact(tmp_path: Path) -> None:
@@ -159,7 +159,7 @@ def test_file_artifact_store_rejects_existing_saved_artifact(tmp_path: Path) -> 
             artifact_id=artifact_id,
         )
 
-    assert error_info.value.error_class is ErrorClass.CONFLICT
+    assert error_info.value.error_type is ErrorType.CONFLICT
 
 
 def test_file_artifact_store_rejects_symlink_to_outside_candidate(
@@ -183,26 +183,26 @@ def test_file_artifact_store_rejects_symlink_to_outside_candidate(
             artifact_id=UUID("00000000-0000-0000-0000-000000000614"),
         )
 
-    assert error_info.value.error_class is ErrorClass.FORBIDDEN
+    assert error_info.value.error_type is ErrorType.FORBIDDEN
 
 
 @pytest.mark.parametrize(
-    ("relative_path", "mime_type", "expected_error_class"),
+    ("relative_path", "mime_type", "expected_error_type"),
     [
-        ("../run/artifact.html", "text/html", ErrorClass.FORBIDDEN),
-        ("run/artifact.exe", "application/octet-stream", ErrorClass.FORBIDDEN),
-        ("run/deep/artifact.html", "text/html", ErrorClass.FORBIDDEN),
-        ("run/artifact.html", "image/png", ErrorClass.FORBIDDEN),
-        ("run/missing.png", "image/png", ErrorClass.NOT_FOUND),
-        ("run/\x00artifact.png", "image/png", ErrorClass.FORBIDDEN),
-        ("C:/run/artifact.png", "image/png", ErrorClass.FORBIDDEN),
+        ("../run/artifact.html", "text/html", ErrorType.FORBIDDEN),
+        ("run/artifact.exe", "application/octet-stream", ErrorType.FORBIDDEN),
+        ("run/deep/artifact.html", "text/html", ErrorType.FORBIDDEN),
+        ("run/artifact.html", "image/png", ErrorType.FORBIDDEN),
+        ("run/missing.png", "image/png", ErrorType.NOT_FOUND),
+        ("run/\x00artifact.png", "image/png", ErrorType.FORBIDDEN),
+        ("C:/run/artifact.png", "image/png", ErrorType.FORBIDDEN),
     ],
 )
 def test_file_artifact_store_rejects_invalid_saved_metadata(
     tmp_path: Path,
     relative_path: str,
     mime_type: str,
-    expected_error_class: ErrorClass,
+    expected_error_type: ErrorType,
 ) -> None:
     """観点：成果物配信。確認：不正な保存済みメタ情報を拒否する。"""
     store = FileArtifactStore(saved_artifacts_dir=tmp_path / "saved_artifacts")
@@ -216,7 +216,7 @@ def test_file_artifact_store_rejects_invalid_saved_metadata(
             mime_type=mime_type,
         )
 
-    assert error_info.value.error_class is expected_error_class
+    assert error_info.value.error_type is expected_error_type
 
 
 def test_file_artifact_store_rejects_saved_symlink_to_outside(
@@ -237,4 +237,4 @@ def test_file_artifact_store_rejects_saved_symlink_to_outside(
             mime_type="image/png",
         )
 
-    assert error_info.value.error_class is ErrorClass.FORBIDDEN
+    assert error_info.value.error_type is ErrorType.FORBIDDEN

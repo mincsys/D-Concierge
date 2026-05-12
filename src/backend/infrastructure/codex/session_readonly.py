@@ -2,7 +2,7 @@ import os
 import shutil
 from pathlib import Path
 
-from backend.shared.errors import ValidationWorkspacePreparationError
+from backend.shared.errors.errors import ValidationWorkspacePreparationError
 
 
 def prepare_generation_session_readonly(

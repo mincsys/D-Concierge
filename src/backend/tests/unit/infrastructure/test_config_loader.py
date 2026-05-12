@@ -5,8 +5,8 @@ import pytest
 from pytest import MonkeyPatch
 
 from backend.infrastructure.config.loader import ConfigLoader
-from backend.shared.error_class import ErrorClass
-from backend.shared.errors import AppError
+from backend.shared.errors.error_type import ErrorType
+from backend.shared.errors.errors import AppError
 
 VALID_CONFIG = """
 app:
@@ -93,7 +93,7 @@ def test_config_loader_rejects_invalid_timeout(tmp_path: Path) -> None:
     with pytest.raises(AppError) as error_info:
         ConfigLoader.load(config_path, base_dir=tmp_path)
 
-    assert error_info.value.error_class is ErrorClass.CONFIGURATION
+    assert error_info.value.error_type is ErrorType.CONFIGURATION
 
 
 def test_config_loader_uses_absolute_paths_without_base_dir_join(
@@ -233,8 +233,9 @@ def test_config_loader_rejects_invalid_yaml_values(
     with pytest.raises(AppError) as error_info:
         ConfigLoader.load(config_path, base_dir=tmp_path)
 
-    assert error_info.value.error_class is ErrorClass.CONFIGURATION
-    assert message_part in error_info.value.user_message
+    assert error_info.value.error_type is ErrorType.CONFIGURATION
+    assert error_info.value.trace is True
+    assert message_part in error_info.value.diagnostic_message
 
 
 def test_config_loader_uses_empty_optional_ui_defaults(tmp_path: Path) -> None:
@@ -290,4 +291,4 @@ def test_config_loader_rejects_missing_file(tmp_path: Path) -> None:
     with pytest.raises(AppError) as error_info:
         ConfigLoader.load(tmp_path / "missing.yaml", base_dir=tmp_path)
 
-    assert error_info.value.error_class is ErrorClass.CONFIGURATION
+    assert error_info.value.error_type is ErrorType.CONFIGURATION

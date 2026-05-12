@@ -10,8 +10,8 @@ from backend.application.ports.database.dto import (
 )
 from backend.domain.execution.run_state import RunState
 from backend.domain.references.source_type import SourceType
-from backend.shared.error_class import ErrorClass
-from backend.shared.errors import AppError
+from backend.shared.errors.error_type import ErrorType
+from backend.shared.errors.errors import AppError
 from backend.tests.support.memory_repository import InMemoryChatRepository
 
 
@@ -68,7 +68,7 @@ def test_memory_repository_rejects_cancel_for_terminal_run() -> None:
     try:
         repository.cancel_run(accepted.chat_id, accepted.run_id)
     except AppError as exc:
-        assert exc.error_class is ErrorClass.CONFLICT
+        assert exc.error_type is ErrorType.CONFLICT
     else:
         raise AssertionError("終端済みrunのキャンセル競合が発生しませんでした。")
 
@@ -83,21 +83,21 @@ def test_memory_repository_rejects_missing_reference_artifact_and_latest() -> No
     try:
         repository.get_reference(uuid4())
     except AppError as exc:
-        assert exc.error_class is ErrorClass.NOT_FOUND
+        assert exc.error_type is ErrorType.NOT_FOUND
     else:
         raise AssertionError("対象なし参照元の例外が発生しませんでした。")
 
     try:
         repository.get_artifact(uuid4())
     except AppError as exc:
-        assert exc.error_class is ErrorClass.NOT_FOUND
+        assert exc.error_type is ErrorType.NOT_FOUND
     else:
         raise AssertionError("対象なし成果物の例外が発生しませんでした。")
 
     try:
         repository.latest_artifact_id_for_test()
     except AppError as exc:
-        assert exc.error_class is ErrorClass.NOT_FOUND
+        assert exc.error_type is ErrorType.NOT_FOUND
     else:
         raise AssertionError("直近成果物なしの例外が発生しませんでした。")
 
@@ -110,7 +110,7 @@ def test_memory_repository_rejects_missing_chat_and_run() -> None:
     try:
         repository.get_chat_detail(missing_chat_id)
     except AppError as exc:
-        assert exc.error_class is ErrorClass.NOT_FOUND
+        assert exc.error_type is ErrorType.NOT_FOUND
     else:
         raise AssertionError("対象なしチャットの例外が発生しませんでした。")
 
@@ -118,7 +118,7 @@ def test_memory_repository_rejects_missing_chat_and_run() -> None:
     try:
         repository.get_run_state(accepted.chat_id, uuid4())
     except AppError as exc:
-        assert exc.error_class is ErrorClass.NOT_FOUND
+        assert exc.error_type is ErrorType.NOT_FOUND
     else:
         raise AssertionError("対象なしrunの例外が発生しませんでした。")
 

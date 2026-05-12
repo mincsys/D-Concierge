@@ -26,13 +26,18 @@ from backend.domain.chat.user_instruction import (
 from backend.domain.execution.run_state import RunState
 from backend.domain.execution.run_state_policy import RunStatePolicy
 from backend.domain.references.source_type import SourceType
-from backend.shared.error_class import ErrorClass
-from backend.shared.errors import AppError
+from backend.shared.errors.errors import (
+    ActiveRunConflictError,
+    ArtifactNotFoundError,
+    CancelNotAllowedError,
+    ChatNotFoundError,
+    ReferenceNotFoundError,
+    RunNotFoundError,
+    UserInstructionRequiredError,
+)
 from backend.shared.user_messages import (
-    CANCEL_NOT_ALLOWED_MESSAGE,
     CANCEL_REQUESTED_MESSAGE,
     CANCELED_MESSAGE,
-    USER_INSTRUCTION_REQUIRED_MESSAGE,
 )
 
 
@@ -108,9 +113,7 @@ class InMemoryChatRepository:
             chat = self._get_chat_locked(chat_id)
             for existing_run_id in chat.run_ids:
                 if RunStatePolicy.is_unfinished(self._runs[existing_run_id].state):
-                    raise AppError(
-                        ErrorClass.CONFLICT, "実行中の処理があるため送信できません。"
-                    )
+                    raise ActiveRunConflictError()
             run = _RunRecord(
                 id=run_id,
                 chat_id=chat_id,
@@ -265,7 +268,7 @@ class InMemoryChatRepository:
         with self._lock:
             run = self._get_run_locked(chat_id, run_id)
             if not RunStatePolicy.is_cancelable(run.state):
-                raise AppError(ErrorClass.CONFLICT, CANCEL_NOT_ALLOWED_MESSAGE)
+                raise CancelNotAllowedError()
             run.state = RunState.CANCEL_REQUESTED
             run.user_message = CANCEL_REQUESTED_MESSAGE
             run.state = RunState.CANCELED
@@ -276,14 +279,14 @@ class InMemoryChatRepository:
         """参照元IDに対応する配信メタ情報を返す。"""
         reference = self._references.get(reference_id)
         if reference is None:
-            raise AppError(ErrorClass.NOT_FOUND, "対象の参照元が見つかりません。")
+            raise ReferenceNotFoundError()
         return reference
 
     def get_artifact(self, artifact_id: UUID) -> ArtifactData:
         """成果物IDに対応する配信メタ情報を返す。"""
         artifact = self._artifacts.get(artifact_id)
         if artifact is None:
-            raise AppError(ErrorClass.NOT_FOUND, "対象の成果物が見つかりません。")
+            raise ArtifactNotFoundError()
         return artifact
 
     def save_completed_answer_for_test(
@@ -330,7 +333,7 @@ class InMemoryChatRepository:
     def latest_artifact_id_for_test(self) -> UUID:
         """テストで直近登録した成果物IDを返す。"""
         if self._latest_artifact_id is None:
-            raise AppError(ErrorClass.NOT_FOUND, "対象の成果物が見つかりません。")
+            raise ArtifactNotFoundError()
         return self._latest_artifact_id
 
     def run_execution_deadline_for_test(
@@ -367,14 +370,14 @@ class InMemoryChatRepository:
     def _get_chat_locked(self, chat_id: UUID) -> _ChatRecord:
         chat = self._chats.get(chat_id)
         if chat is None:
-            raise AppError(ErrorClass.NOT_FOUND, "対象のチャットが見つかりません。")
+            raise ChatNotFoundError()
         return chat
 
     def _get_run_locked(self, chat_id: UUID, run_id: UUID) -> _RunRecord:
         self._get_chat_locked(chat_id)
         run = self._runs.get(run_id)
         if run is None or run.chat_id != chat_id:
-            raise AppError(ErrorClass.NOT_FOUND, "対象の実行処理が見つかりません。")
+            raise RunNotFoundError()
         return run
 
     def _now(self) -> datetime:
@@ -387,4 +390,4 @@ def _user_instruction(user_instruction: str) -> UserInstruction:
     try:
         return UserInstruction(user_instruction)
     except InvalidUserInstructionError as exc:
-        raise AppError(ErrorClass.INPUT, USER_INSTRUCTION_REQUIRED_MESSAGE) from exc
+        raise UserInstructionRequiredError() from exc

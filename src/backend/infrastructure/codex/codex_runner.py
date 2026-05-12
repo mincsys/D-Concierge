@@ -15,8 +15,8 @@ from backend.infrastructure.codex.jsonl_event_parser import (
     JsonlParseError,
     ParsedCodexEvent,
 )
-from backend.shared.error_class import ErrorClass
-from backend.shared.errors import AppError, RunTimeoutError
+from backend.shared.errors.error_type import ErrorType
+from backend.shared.errors.errors import AppError, RunTimeoutError
 
 CancelResult = CancelRequestResult
 _WINDOWS_CREATE_NEW_PROCESS_GROUP = 0x00000200
@@ -173,7 +173,7 @@ class CodexRunner:
 
     def _run(self, request: CodexRunRequest) -> CodexRunResult:
         if request.timeout_seconds <= 0:
-            raise AppError(ErrorClass.SYSTEM, "Codex実行時間が不正です。")
+            raise _codex_system_error("Codex実行時間が不正です。")
 
         _ = request.trace_id
         request.workdir.mkdir(parents=True, exist_ok=True)
@@ -182,9 +182,7 @@ class CodexRunner:
         try:
             process = self._process_factory.start(command, request.workdir, env)
         except OSError as exc:
-            raise AppError(
-                ErrorClass.SYSTEM, "Codex実行を開始できませんでした。"
-            ) from exc
+            raise _codex_system_error("Codex実行を開始できませんでした。", exc) from exc
 
         self._register_process(request.run_id, process)
         try:
@@ -204,11 +202,11 @@ class CodexRunner:
                     on_stdout_line=handle_stdout_line,
                 )
             except JsonlParseError as exc:
-                raise AppError(
-                    ErrorClass.SYSTEM, "Codex出力を解析できませんでした。"
+                raise _codex_system_error(
+                    "Codex出力を解析できませんでした。", exc
                 ) from exc
             if output.return_code != 0:
-                raise AppError(ErrorClass.SYSTEM, "Codex実行が失敗しました。")
+                raise _codex_system_error("Codex実行が失敗しました。")
             return _to_run_result(events)
         except CodexProcessTimeout as exc:
             process.kill()
@@ -431,15 +429,26 @@ def _to_run_result(events: list[ParsedCodexEvent]) -> CodexRunResult:
             case CodexEventKind.TURN_COMPLETED:
                 final_message = latest_agent_message
             case CodexEventKind.TURN_FAILED | CodexEventKind.ERROR:
-                raise AppError(ErrorClass.SYSTEM, "Codex実行が失敗しました。")
+                raise _codex_system_error("Codex実行が失敗しました。")
             case _:
                 continue
 
     if codex_conversation_id is None or final_message is None:
-        raise AppError(ErrorClass.SYSTEM, "Codex最終出力が不正です。")
+        raise _codex_system_error("Codex最終出力が不正です。")
 
     return CodexRunResult(
         events=tuple(events),
         final_message=final_message,
         codex_conversation_id=codex_conversation_id,
+    )
+
+
+def _codex_system_error(
+    diagnostic_message: str, cause: Exception | None = None
+) -> AppError:
+    return AppError(
+        ErrorType.SYSTEM,
+        trace=True,
+        diagnostic_message=diagnostic_message,
+        cause=cause,
     )

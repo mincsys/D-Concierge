@@ -38,8 +38,8 @@ from backend.infrastructure.database.repositories.sqlalchemy_chat_repository imp
 from backend.infrastructure.database.session.transaction_manager import (
     SqlAlchemyTransactionManager,
 )
-from backend.shared.error_class import ErrorClass
-from backend.shared.errors import AppError
+from backend.shared.errors.error_type import ErrorType
+from backend.shared.errors.errors import AppError
 
 
 def test_sqlalchemy_repository_persists_chat_run_and_detail() -> None:
@@ -67,7 +67,7 @@ def test_sqlalchemy_repository_rejects_append_when_unfinished_run_exists() -> No
     try:
         repository.append_run(accepted.chat_id, "追加")
     except AppError as exc:
-        assert exc.error_class is ErrorClass.CONFLICT
+        assert exc.error_type is ErrorType.CONFLICT
     else:
         raise AssertionError("未完了runの競合が発生しませんでした。")
 
@@ -218,7 +218,7 @@ def test_sqlalchemy_repository_rejects_cancel_for_terminal_run() -> None:
     try:
         repository.cancel_run(accepted.chat_id, accepted.run_id)
     except AppError as exc:
-        assert exc.error_class is ErrorClass.CONFLICT
+        assert exc.error_type is ErrorType.CONFLICT
     else:
         raise AssertionError("終端済みrunのキャンセル競合が発生しませんでした。")
 
@@ -278,7 +278,7 @@ def test_sqlalchemy_repository_rejects_missing_records() -> None:
     try:
         repository.get_chat_detail(missing_chat_id)
     except AppError as exc:
-        assert exc.error_class is ErrorClass.NOT_FOUND
+        assert exc.error_type is ErrorType.NOT_FOUND
     else:
         raise AssertionError("対象なしチャットの例外が発生しませんでした。")
 
@@ -286,7 +286,7 @@ def test_sqlalchemy_repository_rejects_missing_records() -> None:
     try:
         repository.get_run_state(accepted.chat_id, missing_run_id)
     except AppError as exc:
-        assert exc.error_class is ErrorClass.NOT_FOUND
+        assert exc.error_type is ErrorType.NOT_FOUND
     else:
         raise AssertionError("対象なしrunの例外が発生しませんでした。")
 
@@ -348,14 +348,14 @@ def test_sqlalchemy_repository_rejects_missing_reference_and_artifact() -> None:
     try:
         repository.get_reference(uuid4())
     except AppError as exc:
-        assert exc.error_class is ErrorClass.NOT_FOUND
+        assert exc.error_type is ErrorType.NOT_FOUND
     else:
         raise AssertionError("対象なし参照元の例外が発生しませんでした。")
 
     try:
         repository.get_artifact(uuid4())
     except AppError as exc:
-        assert exc.error_class is ErrorClass.NOT_FOUND
+        assert exc.error_type is ErrorType.NOT_FOUND
     else:
         raise AssertionError("対象なし成果物の例外が発生しませんでした。")
 
@@ -367,7 +367,7 @@ def test_sqlalchemy_repository_rejects_blank_instruction() -> None:
     try:
         repository.create_chat_with_first_run("   ")
     except AppError as exc:
-        assert exc.error_class is ErrorClass.INPUT
+        assert exc.error_type is ErrorType.INPUT
     else:
         raise AssertionError("空白指示の例外が発生しませんでした。")
 
@@ -405,14 +405,14 @@ def test_sqlalchemy_repository_rejects_corrupted_reference_locator() -> None:
     try:
         repository.get_reference(reference_id)
     except AppError as exc:
-        assert exc.error_class is ErrorClass.SYSTEM
+        assert exc.error_type is ErrorType.SYSTEM
     else:
         raise AssertionError("不正locatorの例外が発生しませんでした。")
 
     try:
         repository.get_chat_detail(accepted.chat_id)
     except AppError as exc:
-        assert exc.error_class is ErrorClass.SYSTEM
+        assert exc.error_type is ErrorType.SYSTEM
     else:
         raise AssertionError("不正locator詳細取得の例外が発生しませんでした。")
 
@@ -435,7 +435,7 @@ def test_sqlalchemy_repository_rejects_run_without_instruction() -> None:
     try:
         repository.get_chat_detail(accepted.chat_id)
     except AppError as exc:
-        assert exc.error_class is ErrorClass.SYSTEM
+        assert exc.error_type is ErrorType.SYSTEM
     else:
         raise AssertionError("指示なしrunの例外が発生しませんでした。")
 

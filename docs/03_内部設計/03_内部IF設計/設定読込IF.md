@@ -88,11 +88,11 @@ sequenceDiagram
 
 | 条件 | 扱い |
 | --- | --- |
-| 設定ファイルが存在しない | 設定不備分類の `AppError` として起動を失敗させる |
-| YAML構文不正 | 設定不備分類の `AppError` として起動を失敗させる |
-| 必須項目欠落 | 欠落項目名を含む設定不備エラーとして扱う |
-| タイムゾーン名不正 | 設定不備分類の `AppError` として起動を失敗させる |
-| パスが許可外または作成不可 | 設定不備エラーとして扱う |
+| 設定ファイルが存在しない | `ErrorType.CONFIGURATION` かつ `trace=True` の `AppError` として起動を失敗させる |
+| YAML構文不正 | `ErrorType.CONFIGURATION` かつ `trace=True` の `AppError` として起動を失敗させる |
+| 必須項目欠落 | 欠落項目名を `diagnostic_message` に含む設定不備エラーとして扱う |
+| タイムゾーン名不正 | `ErrorType.CONFIGURATION` かつ `trace=True` の `AppError` として起動を失敗させる |
+| パスが許可外または作成不可 | `diagnostic_message` に対象項目を含む設定不備エラーとして扱う |
 
 ## 8. 留意事項
 

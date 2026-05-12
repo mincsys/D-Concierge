@@ -11,12 +11,10 @@ from backend.application.ports.trace_log.dto import TraceLogRecord
 from backend.application.ports.trace_log.interface import TraceLoggerPort
 from backend.application.transactions import NoopTransactionManager
 from backend.domain.execution.run_state import RunState
-from backend.shared.error_class import ErrorClass
-from backend.shared.errors import AppError
+from backend.shared.errors.error_type import ErrorType
+from backend.shared.errors.errors import AppError
 from backend.shared.tracing.exception import exception_stacktrace
-from backend.shared.user_messages import CANCELED_MESSAGE
-
-RECOVERY_ERROR_MESSAGE = "アプリ起動時に処理を再開できませんでした。"
+from backend.shared.user_messages import CANCELED_MESSAGE, RECOVERY_ERROR_MESSAGE
 
 
 @dataclass(frozen=True, slots=True)
@@ -107,11 +105,15 @@ class RecoverUnfinishedRunsUseCase:
                     stage="startup_recovery",
                     chat_id=run.chat_id,
                     run_id=run.run_id,
-                    error_class=exc.error_class.value,
+                    error_type=exc.error_type.value,
                     exception_type=type(exc).__name__,
                     run_state=RunState.ERROR.value,
                     stacktrace=exception_stacktrace(exc),
-                    message=exc.user_message,
+                    message=(
+                        exc.diagnostic_message
+                        if exc.trace
+                        else "起動時回復処理でエラーが発生しました。"
+                    ),
                 )
             )
 
@@ -139,10 +141,10 @@ class RecoverUnfinishedRunsUseCase:
                 stage="startup_recovery",
                 chat_id=run.chat_id,
                 run_id=run.run_id,
-                error_class=ErrorClass.SYSTEM.value,
+                error_type=ErrorType.SYSTEM.value,
                 run_state=RunState.ERROR.value,
                 process_result=result.failure_reason,
-                message=RECOVERY_ERROR_MESSAGE,
+                message="受付済みrunの起動時再登録に失敗しました。",
             )
         )
 

@@ -9,7 +9,7 @@ from backend.infrastructure.codex.session_readonly import (
     prepare_validation_session_artifacts,
     prepare_validation_session_readonly,
 )
-from backend.shared.errors import ValidationWorkspacePreparationError
+from backend.shared.errors.errors import ValidationWorkspacePreparationError
 from backend.tests.support.symlink import require_symlink_support
 
 type ReadonlyPreparer = Callable[[Path, Path], None]

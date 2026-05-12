@@ -8,8 +8,7 @@ from backend.application.ports.filesystem.dto import OpenedReferenceFile
 from backend.application.ports.filesystem.interface import ReferenceStorePort
 from backend.application.transactions import NoopTransactionManager
 from backend.domain.references.source_type import SourceType
-from backend.shared.error_class import ErrorClass
-from backend.shared.errors import AppError
+from backend.shared.errors.errors import ReferenceNotDisplayableError
 
 
 class GetReferenceDataUseCase:
@@ -34,5 +33,5 @@ class GetReferenceDataUseCase:
         with self._transaction_manager.transaction():
             reference = self._repository.get_reference(reference_id)
         if reference.source_type is not SourceType.PDF:
-            raise AppError(ErrorClass.FORBIDDEN, "対象の参照元は表示できません。")
+            raise ReferenceNotDisplayableError()
         return self._reference_store.open_reference_file(reference.relative_path)

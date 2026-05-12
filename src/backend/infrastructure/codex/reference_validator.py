@@ -40,8 +40,8 @@ from backend.infrastructure.codex.validator_codex_input import (
 )
 from backend.infrastructure.config.models import CodexConfig
 from backend.infrastructure.filesystem.path_security import PathSecurityService
-from backend.shared.error_class import ErrorClass
-from backend.shared.errors import (
+from backend.shared.errors.error_type import ErrorType
+from backend.shared.errors.errors import (
     AppError,
     ReferencePdfReadError,
     ValidationResultFormatError,
@@ -95,7 +95,11 @@ class CodexReferenceValidator:
     ) -> ReferenceValidationResult:
         """検証用codex execで回答候補の参照元妥当性を検証する。"""
         if chat_id is None or run_id is None:
-            raise AppError(ErrorClass.SYSTEM, "検証対象の実行文脈が不正です。")
+            raise AppError(
+                ErrorType.SYSTEM,
+                trace=True,
+                diagnostic_message="検証対象の実行文脈が不正です。",
+            )
 
         with self._transaction_manager.transaction():
             context = self._repository.get_chat_runtime_context(chat_id)

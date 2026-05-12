@@ -4,8 +4,8 @@ from contextvars import ContextVar
 
 from sqlalchemy.orm import Session, sessionmaker
 
-from backend.shared.error_class import ErrorClass
-from backend.shared.errors import AppError
+from backend.shared.errors.error_type import ErrorType
+from backend.shared.errors.errors import AppError
 
 _NO_ACTIVE_TRANSACTION_MESSAGE = "DBトランザクションが開始されていません。"
 
@@ -41,5 +41,9 @@ class SqlAlchemyTransactionManager:
         """現在のトランザクションSessionを返す。"""
         session = self._current_session.get()
         if session is None:
-            raise AppError(ErrorClass.SYSTEM, _NO_ACTIVE_TRANSACTION_MESSAGE)
+            raise AppError(
+                ErrorType.SYSTEM,
+                trace=True,
+                diagnostic_message=_NO_ACTIVE_TRANSACTION_MESSAGE,
+            )
         return session

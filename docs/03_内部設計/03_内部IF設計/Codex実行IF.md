@@ -142,7 +142,7 @@ sequenceDiagram
 
 | 条件 | 扱い |
 | --- | --- |
-| codex exec起動失敗 | 生成失敗または検証失敗分類の `AppError` へ変換する |
+| codex exec起動失敗 | `ErrorType.SYSTEM` かつ `trace=True` の `AppError` へ変換し、Application層が生成フェーズまたは検証フェーズの利用者向けメッセージへ変換する |
 | JSONL解析失敗 | 解析失敗行をtraceログ対象にし、実行をエラー終端へ変換する |
 | タイムアウト | プロセスへ終了要求を送り、run状態を `タイムアウト` へ更新できる結果を返す |
 | キャンセル要求 | ユーザキャンセル要求、`sent` / `already_exited` / `not_registered` の終了要求結果、プロセス終了結果を合わせて判定し、run状態を `キャンセル済み` へ更新できる結果を返す |

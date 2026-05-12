@@ -10,8 +10,8 @@ from backend.application.execution.execute_chat_run import RunEvent
 from backend.application.execution.run_event_type import RunEventType
 from backend.application.ports.codex.cancel_request_result import CancelRequestResult
 from backend.domain.execution.run_state import RunState
-from backend.shared.error_class import ErrorClass
-from backend.shared.errors import AppError
+from backend.shared.errors.error_type import ErrorType
+from backend.shared.errors.errors import AppError
 from backend.tests.support.memory_repository import InMemoryChatRepository
 
 
@@ -64,7 +64,7 @@ def test_cancel_chat_run_use_case_rejects_terminal_run() -> None:
             trace_id="trace-202",
         )
 
-    assert error_info.value.error_class is ErrorClass.CONFLICT
+    assert error_info.value.error_type is ErrorType.CONFLICT
     assert requester.requested == []
 
 
@@ -82,7 +82,7 @@ def test_cancel_chat_run_use_case_rejects_stale_state_update() -> None:
             trace_id="trace-205",
         )
 
-    assert error_info.value.error_class is ErrorClass.CONFLICT
+    assert error_info.value.error_type is ErrorType.CONFLICT
 
 
 def test_cancel_chat_run_use_case_allows_missing_event_publisher() -> None:

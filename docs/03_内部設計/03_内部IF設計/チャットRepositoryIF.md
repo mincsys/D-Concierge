@@ -145,9 +145,9 @@ sequenceDiagram
 | 対象チャットまたはrunが存在しない | `AppError` の対象なし分類へ変換できる例外を返す |
 | 状態条件付き更新が不成立 | 例外ではなく不成立結果を返し、呼出元がキャンセル済み等の扱いを判断する |
 | 未完了run一意制約違反 | トランザクションをrollbackし、競合分類の `AppError` へ変換する |
-| その他のDB制約違反 | トランザクションをrollbackし、データ不整合分類の `AppError` へ変換する |
-| DB接続失敗 | rollbackし、システムエラー分類として上位へ返す |
-| DB上の状態値または参照元種別が未定義 | データ不整合分類の `AppError` へ変換する |
+| その他のDB制約違反 | トランザクションをrollbackし、`ErrorType.SYSTEM` かつ `trace=True` の `AppError` へ変換する |
+| DB接続失敗 | rollbackし、`ErrorType.SYSTEM` かつ `trace=True` の `AppError` として上位へ返す |
+| DB上の状態値または参照元種別が未定義 | `ErrorType.SYSTEM` かつ `trace=True` の `AppError` へ変換する |
 
 ## 8. 留意事項
 

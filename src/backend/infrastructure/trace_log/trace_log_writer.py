@@ -32,7 +32,7 @@ class TraceLogPayload(TypedDict, total=False):
     user_id: str
     reference_id: str
     artifact_id: str
-    error_class: str
+    error_type: str
     exception_type: str
     stacktrace: str
     http_method: str
@@ -181,8 +181,8 @@ def _to_payload(record: TraceLogRecord, now: datetime) -> TraceLogPayload:
         payload["reference_id"] = str(record.reference_id)
     if record.artifact_id is not None:
         payload["artifact_id"] = str(record.artifact_id)
-    if record.error_class is not None:
-        payload["error_class"] = limit_trace_text(record.error_class)
+    if record.error_type is not None:
+        payload["error_type"] = limit_trace_text(record.error_type)
     if record.exception_type is not None:
         payload["exception_type"] = limit_trace_text(record.exception_type)
     if record.stacktrace is not None:

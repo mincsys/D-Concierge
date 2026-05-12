@@ -1,8 +1,7 @@
 target=backend
-executed_at=2026-05-09T14:20:58+09:00
-command=UV_CACHE_DIR=/tmp/uv-cache uv run pytest src/backend/tests/unit src/backend/tests/integration --cov=src/backend --cov-branch --cov-report=term
-branch_coverage=95.60%
-covered_branches=413
-total_branches=432
-tests=234
-result=pass
+executed_at=2026-05-12T12:17:57+09:00
+command=UV_CACHE_DIR=/tmp/uv-cache uv run pytest src/backend/tests/unit --cov=src/backend --cov-branch --cov-report=json:.tmp/coverage-evidence/backend-unit-coverage.json --cov-report=
+branch_coverage=77.04%
+covered_branches=510
+total_branches=662
+result=fail

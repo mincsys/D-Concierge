@@ -26,8 +26,8 @@ from backend.infrastructure.codex.codex_runner import (
 from backend.infrastructure.codex.jsonl_event_parser import (
     ParsedCodexEvent,
 )
-from backend.shared.error_class import ErrorClass
-from backend.shared.errors import AppError, RunTimeoutError
+from backend.shared.errors.error_type import ErrorType
+from backend.shared.errors.errors import AppError, RunTimeoutError
 
 
 def test_codex_runner_starts_generation_and_parses_final_message(
@@ -124,7 +124,7 @@ def test_codex_runner_rejects_invalid_timeout_before_starting_process(
     with pytest.raises(AppError) as error_info:
         runner.run_generation(_make_request(tmp_path, timeout_seconds=0))
 
-    assert error_info.value.error_class is ErrorClass.SYSTEM
+    assert error_info.value.error_type is ErrorType.SYSTEM
     assert factory.command is None
 
 
@@ -143,8 +143,8 @@ def test_codex_runner_converts_process_start_and_exit_failures(
             )
         ).run_generation(_make_request(tmp_path))
 
-    assert start_error.value.error_class is ErrorClass.SYSTEM
-    assert exit_error.value.error_class is ErrorClass.SYSTEM
+    assert start_error.value.error_type is ErrorType.SYSTEM
+    assert exit_error.value.error_type is ErrorType.SYSTEM
 
 
 def test_codex_runner_kills_process_when_timeout_occurs(tmp_path: Path) -> None:
@@ -182,8 +182,8 @@ def test_codex_runner_rejects_failed_or_incomplete_jsonl(
             )
         ).run_generation(_make_request(tmp_path))
 
-    assert failed_event_error.value.error_class is ErrorClass.SYSTEM
-    assert incomplete_error.value.error_class is ErrorClass.SYSTEM
+    assert failed_event_error.value.error_type is ErrorType.SYSTEM
+    assert incomplete_error.value.error_type is ErrorType.SYSTEM
 
 
 def test_codex_runner_handles_blank_and_unknown_events(tmp_path: Path) -> None:

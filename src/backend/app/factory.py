@@ -4,7 +4,6 @@ from typing import Protocol
 from uuid import UUID
 
 from fastapi import FastAPI, Request
-from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.responses import Response
@@ -68,7 +67,11 @@ from backend.infrastructure.runtime.run_execution_dispatcher import (
 from backend.infrastructure.runtime.system_clock import SystemClock
 from backend.infrastructure.runtime.uuid_generator import UuidGenerator
 from backend.infrastructure.trace_log.trace_log_writer import TraceLogWriter
-from backend.presentation.errors.http import error_response_payload, status_code
+from backend.presentation.errors.http import (
+    error_response_payload,
+    status_code,
+    user_message_for_error,
+)
 from backend.presentation.rest.router import RunEventSource, create_api_router
 from backend.presentation.rest.trace_context import (
     RequestTraceContext,
@@ -76,10 +79,13 @@ from backend.presentation.rest.trace_context import (
     request_trace_id,
 )
 from backend.presentation.sse.run_event_broker import RunEventBroker
-from backend.shared.error_class import ErrorClass
-from backend.shared.errors import AppError
+from backend.shared.errors.error_type import ErrorType
+from backend.shared.errors.errors import AppError
 from backend.shared.tracing.exception import exception_message, exception_stacktrace
-from backend.shared.user_messages import UNEXPECTED_FAILURE_MESSAGE
+from backend.shared.user_messages import (
+    REQUEST_VALIDATION_FAILURE_MESSAGE,
+    UNEXPECTED_FAILURE_MESSAGE,
+)
 
 
 class ApplicationCodexRunner(Protocol):
@@ -320,17 +326,19 @@ def _register_trace_context_middleware(
 def _register_error_handlers(app: FastAPI, trace_logger: TraceLogWriter) -> None:
     @app.exception_handler(AppError)
     async def handle_app_error(request: Request, exc: AppError) -> JSONResponse:
-        http_status = status_code(exc.error_class)
-        _write_api_failure_trace(
-            trace_logger=trace_logger,
-            request=request,
-            exc=exc,
-            event_name="api_failed",
-            error_class=exc.error_class.value,
-            status=http_status,
-            message=exc.user_message,
-        )
-        payload = error_response_payload(exc)
+        http_status = status_code(exc.error_type)
+        user_message = user_message_for_error(exc)
+        if exc.trace:
+            _write_api_failure_trace(
+                trace_logger=trace_logger,
+                request=request,
+                exc=exc,
+                event_name="api_failed",
+                error_type=exc.error_type.value,
+                status=http_status,
+                message=exc.diagnostic_message,
+            )
+        payload = error_response_payload(exc.error_type, user_message)
         return JSONResponse(
             status_code=http_status,
             content=payload.model_dump(),
@@ -339,18 +347,13 @@ def _register_error_handlers(app: FastAPI, trace_logger: TraceLogWriter) -> None
     @app.exception_handler(RequestValidationError)
     async def handle_request_validation_error(
         request: Request, exc: RequestValidationError
-    ) -> object:
-        _write_api_failure_trace(
-            trace_logger=trace_logger,
-            request=request,
-            exc=exc,
-            event_name="api_failed",
-            error_class=ErrorClass.INPUT.value,
-            status=422,
-            message="リクエストの形式が不正です。",
-            request_validation_errors=str(exc.errors()),
+    ) -> JSONResponse:
+        _ = trace_logger, request, exc
+        payload = error_response_payload(
+            ErrorType.INPUT,
+            REQUEST_VALIDATION_FAILURE_MESSAGE,
         )
-        return await request_validation_exception_handler(request, exc)
+        return JSONResponse(status_code=422, content=payload.model_dump())
 
     @app.exception_handler(Exception)
     async def handle_unexpected_error(request: Request, exc: Exception) -> JSONResponse:
@@ -359,12 +362,13 @@ def _register_error_handlers(app: FastAPI, trace_logger: TraceLogWriter) -> None
             request=request,
             exc=exc,
             event_name="api_failed",
-            error_class=ErrorClass.SYSTEM.value,
+            error_type=ErrorType.SYSTEM.value,
             status=500,
             message=exception_message(exc),
         )
         payload = error_response_payload(
-            AppError(ErrorClass.SYSTEM, UNEXPECTED_FAILURE_MESSAGE)
+            ErrorType.SYSTEM,
+            UNEXPECTED_FAILURE_MESSAGE,
         )
         return JSONResponse(status_code=500, content=payload.model_dump())
 
@@ -374,7 +378,7 @@ def _write_api_failure_trace(
     request: Request,
     exc: Exception,
     event_name: str,
-    error_class: str,
+    error_type: str,
     status: int,
     message: str,
     request_validation_errors: str | None = None,
@@ -390,7 +394,7 @@ def _write_api_failure_trace(
             run_id=context.run_id,
             reference_id=context.reference_id,
             artifact_id=context.artifact_id,
-            error_class=error_class,
+            error_type=error_type,
             exception_type=type(exc).__name__,
             stacktrace=exception_stacktrace(exc),
             http_method=request.method,

@@ -3,8 +3,8 @@ from pathlib import Path
 import pytest
 
 from backend.infrastructure.filesystem.path_security import PathSecurityService
-from backend.shared.error_class import ErrorClass
-from backend.shared.errors import AppError
+from backend.shared.errors.error_type import ErrorType
+from backend.shared.errors.errors import AppError
 
 
 def test_path_security_resolves_relative_file_under_allowed_root(
@@ -43,7 +43,7 @@ def test_path_security_rejects_paths_outside_allowed_root(
             allowed_suffixes=(".pdf",),
         )
 
-    assert error_info.value.error_class is ErrorClass.FORBIDDEN
+    assert error_info.value.error_type is ErrorType.FORBIDDEN
 
 
 def test_path_security_rejects_unexpected_suffix(tmp_path: Path) -> None:
@@ -58,7 +58,7 @@ def test_path_security_rejects_unexpected_suffix(tmp_path: Path) -> None:
             allowed_suffixes=(".pdf",),
         )
 
-    assert error_info.value.error_class is ErrorClass.FORBIDDEN
+    assert error_info.value.error_type is ErrorType.FORBIDDEN
 
 
 def test_path_security_rejects_null_byte_path(tmp_path: Path) -> None:
@@ -73,4 +73,4 @@ def test_path_security_rejects_null_byte_path(tmp_path: Path) -> None:
             allowed_suffixes=(".pdf",),
         )
 
-    assert error_info.value.error_class is ErrorClass.FORBIDDEN
+    assert error_info.value.error_type is ErrorType.FORBIDDEN

@@ -26,6 +26,7 @@ from backend.application.ports.trace_log.dto import TraceLogRecord
 from backend.application.ports.trace_log.interface import TraceLoggerPort
 from backend.application.references.get_reference_data import GetReferenceDataUseCase
 from backend.domain.execution.run_state import RunState
+from backend.presentation.errors.http import user_message_for_error
 from backend.presentation.rest.trace_context import (
     ensure_request_trace_context,
     request_trace_id,
@@ -52,8 +53,8 @@ from backend.presentation.sse.payload import (
     state_payload,
 )
 from backend.presentation.sse.run_event_broker import RunEventSubscription
-from backend.shared.error_class import ErrorClass
-from backend.shared.errors import AppError
+from backend.shared.errors.error_type import ErrorType
+from backend.shared.errors.errors import AppError, ChatRunNotFoundError
 from backend.shared.tracing.exception import exception_message, exception_stacktrace
 from backend.shared.user_messages import UNEXPECTED_FAILURE_MESSAGE
 
@@ -292,18 +293,20 @@ async def _run_sse_events(
         finally:
             run_event_source.unsubscribe(subscription)
     except AppError as exc:
-        _write_sse_failure_trace(
-            trace_logger=trace_logger,
-            trace_id=trace_id,
-            chat_id=chat_id,
-            run_id=run_id,
-            exc=exc,
-            error_class=exc.error_class.value,
-            user_message=exc.user_message,
-        )
+        user_message = user_message_for_error(exc)
+        if exc.trace:
+            _write_sse_failure_trace(
+                trace_logger=trace_logger,
+                trace_id=trace_id,
+                chat_id=chat_id,
+                run_id=run_id,
+                exc=exc,
+                error_type=exc.error_type.value,
+                message=exc.diagnostic_message,
+            )
         yield sse_event_bytes(
             RunEventType.ERROR.value,
-            end_payload(run_id, RunState.ERROR.value, exc.user_message),
+            end_payload(run_id, RunState.ERROR.value, user_message),
         )
     except Exception as exc:
         _write_sse_failure_trace(
@@ -312,8 +315,8 @@ async def _run_sse_events(
             chat_id=chat_id,
             run_id=run_id,
             exc=exc,
-            error_class=ErrorClass.SYSTEM.value,
-            user_message=UNEXPECTED_FAILURE_MESSAGE,
+            error_type=ErrorType.SYSTEM.value,
+            message=exception_message(exc),
         )
         yield sse_event_bytes(
             RunEventType.ERROR.value,
@@ -335,7 +338,7 @@ def _run_sse_snapshot(
                 run.state.value,
                 tuple(message.text for message in run.intermediate_messages),
             )
-    raise AppError(ErrorClass.NOT_FOUND, "対象のチャット実行処理が見つかりません。")
+    raise ChatRunNotFoundError()
 
 
 def _is_replayed_message_event(event: RunEvent, replayed_messages: list[str]) -> bool:
@@ -375,8 +378,8 @@ def _write_sse_failure_trace(
     chat_id: UUID,
     run_id: UUID,
     exc: Exception,
-    error_class: str,
-    user_message: str,
+    error_type: str,
+    message: str,
 ) -> None:
     trace_logger.write(
         TraceLogRecord(
@@ -385,13 +388,11 @@ def _write_sse_failure_trace(
             stage="sse",
             chat_id=chat_id,
             run_id=run_id,
-            error_class=error_class,
+            error_type=error_type,
             exception_type=type(exc).__name__,
             run_state=RunState.ERROR.value,
             stacktrace=exception_stacktrace(exc),
-            message=(
-                user_message if isinstance(exc, AppError) else exception_message(exc)
-            ),
+            message=message,
         )
     )
 

@@ -14,8 +14,8 @@ from backend.application.ports.filesystem.dto import (
     SavedArtifactFile,
 )
 from backend.domain.artifacts.artifact_reference import ArtifactReference
-from backend.shared.error_class import ErrorClass
-from backend.shared.errors import AppError
+from backend.shared.errors.error_type import ErrorType
+from backend.shared.errors.errors import AppError, ArtifactNotFoundError
 
 
 def test_save_adopted_artifacts_replaces_markdown_and_html_paths() -> None:
@@ -224,7 +224,7 @@ def test_save_adopted_artifacts_propagates_store_rejection() -> None:
             trace_id="trace-004",
         )
 
-    assert error_info.value.error_class is ErrorClass.NOT_FOUND
+    assert error_info.value.error_type is ErrorType.NOT_FOUND
 
 
 @dataclass(frozen=True, slots=True)
@@ -273,7 +273,7 @@ class RejectingArtifactStore:
         artifact_id: UUID,
     ) -> SavedArtifactFile:
         _ = (session_workdir, candidate_relative_path, run_id, artifact_id)
-        raise AppError(ErrorClass.NOT_FOUND, "対象の成果物が見つかりません。")
+        raise ArtifactNotFoundError()
 
 
 class IdFactory:

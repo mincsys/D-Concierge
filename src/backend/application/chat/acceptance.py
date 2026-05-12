@@ -9,10 +9,9 @@ from backend.application.ports.database.interface import (
 from backend.application.ports.runtime.dispatch_status import DispatchStatus
 from backend.application.ports.runtime.interface import RunExecutionDispatcherPort
 from backend.domain.execution.run_state import RunState
-from backend.shared.error_class import ErrorClass
-from backend.shared.errors import AppError
-
-DISPATCH_FAILURE_MESSAGE = "チャット実行処理を開始できませんでした。"
+from backend.shared.errors.error_type import ErrorType
+from backend.shared.errors.errors import AppError
+from backend.shared.user_messages import DISPATCH_FAILURE_MESSAGE
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,4 +54,8 @@ def register_accepted_run(
                 RunState.ERROR,
                 DISPATCH_FAILURE_MESSAGE,
             )
-        raise AppError(ErrorClass.SYSTEM, DISPATCH_FAILURE_MESSAGE)
+        raise AppError(
+            ErrorType.SYSTEM,
+            trace=True,
+            diagnostic_message="受付済みrunのバックグラウンド登録に失敗しました。",
+        )

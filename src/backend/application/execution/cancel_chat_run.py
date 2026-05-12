@@ -13,10 +13,8 @@ from backend.application.ports.database.interface import (
 from backend.application.transactions import NoopTransactionManager
 from backend.domain.execution.run_state import RunState
 from backend.domain.execution.run_state_policy import RunStatePolicy
-from backend.shared.error_class import ErrorClass
-from backend.shared.errors import AppError
+from backend.shared.errors.errors import CancelNotAllowedError
 from backend.shared.user_messages import (
-    CANCEL_NOT_ALLOWED_MESSAGE,
     CANCEL_REQUESTED_MESSAGE,
     CANCELED_MESSAGE,
 )
@@ -68,7 +66,7 @@ class CancelChatRunUseCase:
         with self._transaction_manager.transaction():
             current_state = self._repository.get_run_state(chat_id, run_id)
             if not RunStatePolicy.is_cancelable(current_state):
-                raise AppError(ErrorClass.CONFLICT, CANCEL_NOT_ALLOWED_MESSAGE)
+                raise CancelNotAllowedError()
 
             updated = self._repository.update_run_state_if_current(
                 chat_id=chat_id,
@@ -78,7 +76,7 @@ class CancelChatRunUseCase:
                 user_message=CANCEL_REQUESTED_MESSAGE,
             )
         if not updated:
-            raise AppError(ErrorClass.CONFLICT, CANCEL_NOT_ALLOWED_MESSAGE)
+            raise CancelNotAllowedError()
         self._publish(
             RunEvent(
                 event=RunEventType.STATE,

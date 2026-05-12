@@ -15,7 +15,7 @@ class TraceLogRecord:
     user_id: UUID | None = None
     reference_id: UUID | None = None
     artifact_id: UUID | None = None
-    error_class: str | None = None
+    error_type: str | None = None
     exception_type: str | None = None
     stacktrace: str | None = None
     http_method: str | None = None

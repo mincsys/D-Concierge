@@ -42,8 +42,8 @@ from backend.domain.answer.answer_candidate import (
 from backend.domain.artifacts.artifact_reference import ArtifactReference
 from backend.domain.execution.run_state import RunState
 from backend.domain.references.pdf_reference import PdfLocator, PdfReference
-from backend.shared.error_class import ErrorClass
-from backend.shared.errors import (
+from backend.shared.errors.error_type import ErrorType
+from backend.shared.errors.errors import (
     AppError,
     ReferencePdfReadError,
     RunTimeoutError,
@@ -127,8 +127,8 @@ def test_execute_chat_run_saves_verified_answer_and_publishes_events() -> None:
         "作業を開始します。",
         "資料を検索しています。",
         "作業が完了しました。",
-        "回答の検証を開始します。",
-        "回答の検証を完了しました。",
+        "回答を検証します。",
+        "回答を検証しました。",
     ]
     assert [(event.event, event.text) for event in publisher.events] == [
         (RunEventType.STATE, None),
@@ -136,8 +136,8 @@ def test_execute_chat_run_saves_verified_answer_and_publishes_events() -> None:
         (RunEventType.MESSAGE, "資料を検索しています。"),
         (RunEventType.MESSAGE, "作業が完了しました。"),
         (RunEventType.STATE, None),
-        (RunEventType.MESSAGE, "回答の検証を開始します。"),
-        (RunEventType.MESSAGE, "回答の検証を完了しました。"),
+        (RunEventType.MESSAGE, "回答を検証します。"),
+        (RunEventType.MESSAGE, "回答を検証しました。"),
         (RunEventType.ANSWER, None),
     ]
 
@@ -252,8 +252,8 @@ def test_execute_chat_run_publishes_streamed_intermediate_message_before_return(
         (RunEventType.MESSAGE, "資料を確認しています。"),
         (RunEventType.MESSAGE, "作業が完了しました。"),
         (RunEventType.STATE, None),
-        (RunEventType.MESSAGE, "回答の検証を開始します。"),
-        (RunEventType.MESSAGE, "回答の検証を完了しました。"),
+        (RunEventType.MESSAGE, "回答を検証します。"),
+        (RunEventType.MESSAGE, "回答を検証しました。"),
         (RunEventType.ANSWER, None),
     ]
 
@@ -287,18 +287,18 @@ def test_execute_chat_run_publishes_validation_intermediate_message() -> None:
     assert [message.text for message in detail.runs[0].intermediate_messages] == [
         "作業を開始します。",
         "作業が完了しました。",
-        "回答の検証を開始します。",
+        "回答を検証します。",
         "参照元PDFを検証しています。",
-        "回答の検証を完了しました。",
+        "回答を検証しました。",
     ]
     assert [(event.event, event.text) for event in publisher.events] == [
         (RunEventType.STATE, None),
         (RunEventType.MESSAGE, "作業を開始します。"),
         (RunEventType.MESSAGE, "作業が完了しました。"),
         (RunEventType.STATE, None),
-        (RunEventType.MESSAGE, "回答の検証を開始します。"),
+        (RunEventType.MESSAGE, "回答を検証します。"),
         (RunEventType.MESSAGE, "参照元PDFを検証しています。"),
-        (RunEventType.MESSAGE, "回答の検証を完了しました。"),
+        (RunEventType.MESSAGE, "回答を検証しました。"),
         (RunEventType.ANSWER, None),
     ]
 
@@ -412,7 +412,7 @@ def test_execute_chat_run_marks_error_when_generated_answer_is_invalid() -> None
     assert [message.text for message in detail.runs[0].intermediate_messages] == [
         "作業を開始します。",
         "作業が完了しました。",
-        "回答の検証を開始します。",
+        "回答を検証します。",
     ]
     assert publisher.events[-1].event is RunEventType.ERROR
 
@@ -470,11 +470,11 @@ def test_execute_chat_run_regenerates_when_validator_requests_retry() -> None:
     assert [message.text for message in detail.runs[0].intermediate_messages] == [
         "作業を開始します。",
         "作業が完了しました。",
-        "回答の検証を開始します。",
+        "回答を検証します。",
         "回答を修正します。",
         "作業が完了しました。",
-        "回答の検証を開始します。",
-        "回答の検証を完了しました。",
+        "回答を検証します。",
+        "回答を検証しました。",
     ]
     assert [message.text for message in detail.runs[0].intermediate_messages].count(
         "作業を開始します。"
@@ -515,7 +515,7 @@ def test_execute_chat_run_writes_trace_when_validation_reaches_retry_limit() -> 
             AnswerValidationResult(
                 status=ValidationStatus.FAILED,
                 regeneration_instruction="最後の検証不合格",
-                user_message="回答生成に失敗しました。再度お試しください。",
+                user_message="回答の生成に失敗しました。再度お試しください。",
             ),
         )
     )
@@ -536,9 +536,7 @@ def test_execute_chat_run_writes_trace_when_validation_reaches_retry_limit() -> 
     assert trace_logger.records[0].stage == "validation"
     assert trace_logger.records[0].retry_count == 1
     assert trace_logger.records[0].validation_failure_reason == "最後の検証不合格"
-    assert trace_logger.records[0].message == (
-        "回答生成に失敗しました。再度お試しください。"
-    )
+    assert trace_logger.records[0].message == "最後の検証不合格"
 
 
 def test_execute_chat_run_publishes_revision_message_before_retry_generation() -> None:
@@ -833,7 +831,11 @@ def test_execute_chat_run_marks_error_when_codex_generation_fails() -> None:
     use_case = ExecuteChatRunUseCase(
         repository=repository,
         codex_runner=FailingCodexRunner(
-            error=AppError(ErrorClass.SYSTEM, "Codex実行が失敗しました。")
+            error=AppError(
+                ErrorType.SYSTEM,
+                trace=True,
+                diagnostic_message="Codex実行が失敗しました。",
+            )
         ),
         answer_validator=ParsingAnswerValidator(),
         event_publisher=publisher,
@@ -857,7 +859,7 @@ def test_execute_chat_run_marks_error_when_codex_generation_fails() -> None:
     assert trace_logger.records[-1].trace_id == "trace-502"
     assert trace_logger.records[-1].chat_id == accepted.chat_id
     assert trace_logger.records[-1].run_id == accepted.run_id
-    assert trace_logger.records[-1].error_class == "system"
+    assert trace_logger.records[-1].error_type == "system"
 
 
 def test_execute_chat_run_marks_validation_error_for_invalid_validator_result() -> None:
@@ -902,7 +904,7 @@ def test_execute_chat_run_marks_validation_error_for_invalid_validator_result() 
     assert trace_logger.records[-1].event_name == "execution_failed"
     assert trace_logger.records[-1].stage == "validation"
     assert trace_logger.records[-1].trace_id == "trace-516"
-    assert trace_logger.records[-1].error_class == "system"
+    assert trace_logger.records[-1].error_type == "system"
     assert trace_logger.records[-1].validation_failure_reason == (
         "検証結果の形式が不正です。"
     )
@@ -951,7 +953,7 @@ def test_execute_chat_run_marks_error_when_reference_pdf_read_fails() -> None:
     assert trace_logger.records[-1].event_name == "execution_failed"
     assert trace_logger.records[-1].stage == "validation"
     assert trace_logger.records[-1].trace_id == "trace-515"
-    assert trace_logger.records[-1].error_class == "system"
+    assert trace_logger.records[-1].error_type == "system"
     assert trace_logger.records[-1].validation_failure_reason == (
         "参照元PDFを読み取れません: raw/pdf/manual.pdf "
         "(RuntimeError: AES algorithm is unavailable)"
@@ -992,17 +994,21 @@ def test_execute_chat_run_marks_error_when_unexpected_adoption_failure_occurs() 
     detail = repository.get_chat_detail(accepted.chat_id)
     assert detail.runs[0].state is RunState.ERROR
     assert detail.runs[0].answer is None
-    assert detail.runs[0].user_message == "処理中にエラーが発生しました。"
+    assert detail.runs[0].user_message == (
+        "予期しないエラーが発生しました。開発者にお問い合わせください。"
+    )
     assert [message.text for message in detail.runs[0].intermediate_messages][-2:] == [
-        "回答の検証を開始します。",
-        "回答の検証を完了しました。",
+        "回答を検証します。",
+        "回答を検証しました。",
     ]
     assert publisher.events[-1].event is RunEventType.ERROR
-    assert publisher.events[-1].user_message == "処理中にエラーが発生しました。"
+    assert publisher.events[-1].user_message == (
+        "予期しないエラーが発生しました。開発者にお問い合わせください。"
+    )
     assert trace_logger.records[-1].event_name == "execution_failed"
     assert trace_logger.records[-1].stage == "execution"
     assert trace_logger.records[-1].trace_id == "trace-516"
-    assert trace_logger.records[-1].error_class == "system"
+    assert trace_logger.records[-1].error_type == "system"
     assert trace_logger.records[-1].exception_type == "RuntimeError"
     assert trace_logger.records[-1].message == (
         "採用済み回答の保存前処理に失敗しました。"
@@ -1443,7 +1449,11 @@ class CancelingFailingCodexRunner:
             state=RunState.CANCEL_REQUESTED,
             user_message="処理をキャンセルしています。",
         )
-        raise AppError(ErrorClass.SYSTEM, "Codex実行が失敗しました。")
+        raise AppError(
+            ErrorType.SYSTEM,
+            trace=True,
+            diagnostic_message="Codex実行が失敗しました。",
+        )
 
 
 class StaleStartRepository(InMemoryChatRepository):

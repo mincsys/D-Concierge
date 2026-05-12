@@ -61,8 +61,8 @@ from backend.presentation.schemas.api import (
     ChatStartResponseSchema,
 )
 from backend.presentation.sse.run_event_broker import RunEventSubscription
-from backend.shared.error_class import ErrorClass
-from backend.shared.errors import AppError
+from backend.shared.errors.error_type import ErrorType
+from backend.shared.errors.errors import AppError
 from backend.tests.support.memory_repository import InMemoryChatRepository
 
 
@@ -603,40 +603,28 @@ def test_api_sse_reference_and_artifact_boundaries_do_not_write_success_trace_lo
     assert _trace_records(tmp_path) == []
 
 
-def test_api_failure_writes_trace_log(tmp_path: Path) -> None:
-    """観点：トレースログ。確認：REST API失敗時にエラー分類つきログを保存する。"""
+def test_input_failure_does_not_write_trace_log(tmp_path: Path) -> None:
+    """観点：トレースログ。確認：入力不正は準正常系としてログ保存しない。"""
     client = _make_client(tmp_path)
 
     response = client.post("/api/chats/start", json={"user_instruction": "   "})
 
     assert response.status_code == 400
-    records = _trace_records(tmp_path)
-    assert any(
-        record["event_name"] == "api_failed"
-        and record["stage"] == "start_chat"
-        and record["error_class"] == "input"
-        and record["status_code"] == "400"
-        for record in records
-    )
+    assert _trace_records(tmp_path) == []
 
 
-def test_request_validation_failure_writes_trace_log(tmp_path: Path) -> None:
-    """観点：トレースログ。確認：リクエストバリデーション例外を保存する。"""
+def test_request_validation_failure_does_not_write_trace_log(tmp_path: Path) -> None:
+    """観点：トレースログ。確認：リクエスト形式不正はログ保存しない。"""
     client = _make_client(tmp_path)
 
     response = client.post("/api/chats/start", json={})
 
     assert response.status_code == 422
-    records = _trace_records(tmp_path)
-    assert any(
-        record["event_name"] == "api_failed"
-        and record["stage"] == "start_chat"
-        and record["error_class"] == "input"
-        and record["status_code"] == "422"
-        and "request_validation_errors" in record
-        and "stacktrace" in record
-        for record in records
-    )
+    assert response.json() == {
+        "error": "input",
+        "message": "リクエストの形式が不正です。",
+    }
+    assert _trace_records(tmp_path) == []
 
 
 def test_artifact_endpoint_rejects_disallowed_mime_type(tmp_path: Path) -> None:
@@ -765,7 +753,7 @@ def test_unexpected_api_error_writes_system_trace_log(tmp_path: Path) -> None:
     assert any(
         record["event_name"] == "api_failed"
         and record["stage"] == "chat_histories"
-        and record["error_class"] == "system"
+        and record["error_type"] == "system"
         and record["exception_type"] == "RuntimeError"
         and "stacktrace" in record
         for record in records
@@ -946,9 +934,9 @@ def test_default_runtime_executes_start_chat_through_codex_adapters(
         "作業を開始します。",
         "PDFを確認しています。",
         "作業が完了しました。",
-        "回答の検証を開始します。",
+        "回答を検証します。",
         "参照元PDFを検証しています。",
-        "回答の検証を完了しました。",
+        "回答を検証しました。",
     ]
     assert detail.runs[0].answer is not None
     assert detail.runs[0].answer.blocks[0].markdown == "回答です。"
@@ -996,7 +984,11 @@ class BrokenHistoryRepository(InMemoryChatRepository):
 
     def list_histories(self) -> tuple[HistoryItem, ...]:
         """システム例外を発生させる。"""
-        raise AppError(ErrorClass.SYSTEM, "DB接続に失敗しました。")
+        raise AppError(
+            ErrorType.SYSTEM,
+            trace=True,
+            diagnostic_message="DB接続に失敗しました。",
+        )
 
 
 class UnexpectedHistoryRepository(InMemoryChatRepository):

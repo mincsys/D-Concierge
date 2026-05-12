@@ -6,8 +6,13 @@ from backend.application.ports.filesystem.dto import (
     OpenedArtifactFile,
     SavedArtifactFile,
 )
-from backend.shared.error_class import ErrorClass
-from backend.shared.errors import AppError
+from backend.shared.errors.error_type import ErrorType
+from backend.shared.errors.errors import (
+    AppError,
+    ArtifactAlreadySavedError,
+    ArtifactNotDisplayableError,
+    ArtifactNotFoundError,
+)
 
 _MIME_TYPE_BY_SUFFIX = {
     ".svg": "image/svg+xml",
@@ -44,20 +49,25 @@ class FileArtifactStore:
         artifacts_root = (session_workdir / "artifacts").resolve()
         source_path = (session_workdir / candidate_path).resolve()
         if not source_path.is_relative_to(artifacts_root):
-            raise AppError(ErrorClass.FORBIDDEN, "対象の成果物は表示できません。")
+            raise ArtifactNotDisplayableError()
         if not source_path.exists() or not source_path.is_file():
-            raise AppError(ErrorClass.NOT_FOUND, "対象の成果物が見つかりません。")
+            raise ArtifactNotFoundError()
 
         saved_relative_path = _saved_relative_path(run_id, artifact_id, candidate_path)
         saved_path = self._resolve_saved_output_path(saved_relative_path)
         if saved_path.exists():
-            raise AppError(ErrorClass.CONFLICT, "対象の成果物は保存済みです。")
+            raise ArtifactAlreadySavedError()
 
         try:
             saved_path.parent.mkdir(parents=True, exist_ok=True)
             copy2(source_path, saved_path)
         except OSError as exc:
-            raise AppError(ErrorClass.SYSTEM, "成果物の保存に失敗しました。") from exc
+            raise AppError(
+                ErrorType.SYSTEM,
+                trace=True,
+                diagnostic_message="成果物の保存に失敗しました。",
+                cause=exc,
+            ) from exc
 
         return SavedArtifactFile(
             artifact_id=artifact_id,
@@ -69,48 +79,48 @@ class FileArtifactStore:
         """保存済み成果物領域内のファイルを配信用に開く。"""
         saved_relative_path = _safe_relative_path(relative_path)
         if len(saved_relative_path.parts) != 2:
-            raise AppError(ErrorClass.FORBIDDEN, "対象の成果物は表示できません。")
+            raise ArtifactNotDisplayableError()
         expected_mime_type = self._mime_type(saved_relative_path)
         if mime_type != expected_mime_type:
-            raise AppError(ErrorClass.FORBIDDEN, "対象の成果物は表示できません。")
+            raise ArtifactNotDisplayableError()
 
         saved_path = self._resolve_saved_output_path(saved_relative_path)
         if not saved_path.exists() or not saved_path.is_file():
-            raise AppError(ErrorClass.NOT_FOUND, "対象の成果物が見つかりません。")
+            raise ArtifactNotFoundError()
         return OpenedArtifactFile(path=saved_path, mime_type=mime_type)
 
     def _mime_type(self, relative_path: PurePosixPath) -> str:
         mime_type = _MIME_TYPE_BY_SUFFIX.get(relative_path.suffix.lower())
         if mime_type is None or mime_type not in self._allowed_mime_types:
-            raise AppError(ErrorClass.FORBIDDEN, "対象の成果物は表示できません。")
+            raise ArtifactNotDisplayableError()
         return mime_type
 
     def _resolve_saved_output_path(self, relative_path: PurePosixPath) -> Path:
         saved_root = self._saved_artifacts_dir.resolve()
         saved_path = (saved_root / Path(*relative_path.parts)).resolve()
         if not saved_path.is_relative_to(saved_root):
-            raise AppError(ErrorClass.FORBIDDEN, "対象の成果物は表示できません。")
+            raise ArtifactNotDisplayableError()
         return saved_path
 
 
 def _candidate_path(candidate_relative_path: str) -> PurePosixPath:
     relative_path = _safe_relative_path(candidate_relative_path)
     if len(relative_path.parts) < 2 or relative_path.parts[0].lower() != "artifacts":
-        raise AppError(ErrorClass.FORBIDDEN, "対象の成果物は表示できません。")
+        raise ArtifactNotDisplayableError()
     return relative_path
 
 
 def _safe_relative_path(relative_path: str) -> PurePosixPath:
     if "\x00" in relative_path:
-        raise AppError(ErrorClass.FORBIDDEN, "対象の成果物は表示できません。")
+        raise ArtifactNotDisplayableError()
     normalized = relative_path.replace("\\", "/")
     if normalized.startswith("//") or _has_windows_drive(normalized):
-        raise AppError(ErrorClass.FORBIDDEN, "対象の成果物は表示できません。")
+        raise ArtifactNotDisplayableError()
     posix_path = PurePosixPath(normalized)
     if posix_path.is_absolute():
-        raise AppError(ErrorClass.FORBIDDEN, "対象の成果物は表示できません。")
+        raise ArtifactNotDisplayableError()
     if any(part in {"", ".", ".."} for part in posix_path.parts):
-        raise AppError(ErrorClass.FORBIDDEN, "対象の成果物は表示できません。")
+        raise ArtifactNotDisplayableError()
     return posix_path
 
 

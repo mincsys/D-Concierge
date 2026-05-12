@@ -26,7 +26,7 @@ def test_trace_log_writer_writes_yaml_file_without_masking(
             stage="generation",
             chat_id=UUID("00000000-0000-0000-0000-000000000701"),
             run_id=UUID("00000000-0000-0000-0000-000000000702"),
-            error_class="system",
+            error_type="system",
             exception_type="AppError",
             message=(
                 "/home/minami/dev/D-Concierge/codex/secret "

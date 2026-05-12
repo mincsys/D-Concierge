@@ -9,8 +9,8 @@ from backend.infrastructure.database.repositories.sqlalchemy_chat_repository imp
 from backend.infrastructure.database.session.transaction_manager import (
     SqlAlchemyTransactionManager,
 )
-from backend.shared.error_class import ErrorClass
-from backend.shared.errors import AppError
+from backend.shared.errors.error_type import ErrorType
+from backend.shared.errors.errors import AppError
 
 
 def test_sqlalchemy_repository_requires_active_transaction() -> None:
@@ -20,7 +20,7 @@ def test_sqlalchemy_repository_requires_active_transaction() -> None:
     with pytest.raises(AppError) as error_info:
         repository.list_histories()
 
-    assert error_info.value.error_class is ErrorClass.SYSTEM
+    assert error_info.value.error_type is ErrorType.SYSTEM
 
 
 def test_sqlalchemy_transaction_manager_commits_successful_unit() -> None:
