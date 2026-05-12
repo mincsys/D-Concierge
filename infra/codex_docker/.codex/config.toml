@@ -1,0 +1,60 @@
+approval_policy = "never"
+sandbox_mode = "workspace-write"
+model = "gpt-5.5"
+model_reasoning_effort = "medium"
+
+# web search を使わせない
+web_search = "disabled"
+
+# Codex が実行する shell command のネットワークアクセスを禁止
+[sandbox_workspace_write]
+network_access = false
+
+# API key などを Codex が起動する subprocess に渡さない
+[shell_environment_policy]
+inherit = "none"
+include_only = [
+  "PATH",
+  "HOME",
+  "CODEX_HOME",
+  "LANG",
+  "LC_ALL",
+  "PYTHONPATH",
+  "PYTHONUNBUFFERED",
+  "XDG_CACHE_HOME",
+  "MPLCONFIGDIR"
+]
+
+[projects."/workspace"]
+trust_level = "trusted"
+
+[tui.model_availability_nux]
+"gpt-5.5" = 4
+
+[[skills.config]]
+path = "/home/codex/.codex/plugins/cache/openai-curated/github/1141b764/skills/gh-address-comments/SKILL.md"
+enabled = false
+
+[[skills.config]]
+path = "/home/codex/.codex/plugins/cache/openai-curated/github/1141b764/skills/gh-fix-ci/SKILL.md"
+enabled = false
+
+[[skills.config]]
+path = "/home/codex/.codex/plugins/cache/openai-curated/github/1141b764/skills/github/SKILL.md"
+enabled = false
+
+[[skills.config]]
+path = "/home/codex/.codex/plugins/cache/openai-curated/github/1141b764/skills/yeet/SKILL.md"
+enabled = false
+
+[[skills.config]]
+path = "/home/codex/.codex/skills/.system/openai-docs/SKILL.md"
+enabled = false
+
+[[skills.config]]
+path = "/home/codex/.codex/skills/.system/plugin-creator/SKILL.md"
+enabled = false
+
+[[skills.config]]
+path = "/home/codex/.codex/skills/.system/skill-creator/SKILL.md"
+enabled = false
