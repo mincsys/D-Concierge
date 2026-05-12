@@ -46,18 +46,18 @@ from backend.shared.errors import (
     ValidationWorkspacePreparationError,
 )
 from backend.shared.tracing.exception import exception_message, exception_stacktrace
-
-GENERATION_FAILURE_MESSAGE = "回答の生成に失敗しました。再度お試しください。"
-TIMEOUT_FAILURE_MESSAGE = (
-    "回答生成が時間内に完了しませんでした。ユーザ指示を絞って再度お試しください。"
+from backend.shared.user_messages import (
+    ANSWER_REVISION_MESSAGE,
+    CANCELED_MESSAGE,
+    GENERATION_FAILURE_MESSAGE,
+    PROCESS_CANCELED_CONFLICT_MESSAGE,
+    TIMEOUT_FAILURE_MESSAGE,
+    UNEXPECTED_FAILURE_MESSAGE,
+    VALIDATION_COMPLETED_MESSAGE,
+    VALIDATION_STARTED_MESSAGE,
+    WORK_COMPLETED_MESSAGE,
+    WORK_STARTED_MESSAGE,
 )
-UNEXPECTED_FAILURE_MESSAGE = "処理中にエラーが発生しました。"
-CANCELED_MESSAGE = "処理をキャンセルしました。"
-WORK_STARTED_MESSAGE = "作業を開始します。"
-WORK_COMPLETED_MESSAGE = "作業が完了しました。"
-VALIDATION_STARTED_MESSAGE = "回答の検証を開始します。"
-VALIDATION_COMPLETED_MESSAGE = "回答の検証を完了しました。"
-ANSWER_REVISION_MESSAGE = "回答を修正します。"
 
 
 @dataclass(frozen=True, slots=True)
@@ -422,7 +422,7 @@ class ExecuteChatRunUseCase:
         if not updated:
             if self._is_canceled(chat_id, run_id):
                 self._finish_canceled(chat_id, run_id)
-                raise AppError(ErrorClass.CONFLICT, "この処理はキャンセルされました。")
+                raise AppError(ErrorClass.CONFLICT, PROCESS_CANCELED_CONFLICT_MESSAGE)
             raise AppError(ErrorClass.CONFLICT, "実行状態が変更されています。")
         self._event_publisher.publish(
             RunEvent(

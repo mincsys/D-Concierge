@@ -4,7 +4,10 @@ from pathlib import Path
 from backend.application.ports.codex.dto import ReferenceValidationResult
 from backend.application.validation.validate_answer import ValidateAnswerUseCase
 from backend.application.validation.validation_status import ValidationStatus
-from backend.domain.answer.answer_candidate import ParsedAnswerCandidate
+from backend.domain.answer.answer_candidate import (
+    InvalidReferencePathFailure,
+    ParsedAnswerCandidate,
+)
 
 
 def test_validate_answer_accepts_fixed_and_reference_valid_candidate() -> None:
@@ -142,6 +145,34 @@ def test_validate_answer_returns_regeneration_for_reference_failure() -> None:
 
     assert result.status is ValidationStatus.REGENERATE
     assert result.regeneration_instruction == "2ページの根拠が不足しています。"
+
+
+def test_validate_answer_returns_specific_regeneration_for_reference_file_failure() -> (
+    None
+):
+    """観点：回答検証UseCaseの参照元固定検証失敗。
+
+    確認：参照元検証境界が返す構造化失敗理由から再生成指示を組み立てる。
+    """
+    use_case = ValidateAnswerUseCase(
+        reference_validator=RecordingReferenceValidator(
+            result=ReferenceValidationResult(
+                valid=False,
+                failure=InvalidReferencePathFailure(("readonly/missing.pdf",)),
+            )
+        ),
+        max_retries=2,
+    )
+
+    result = use_case.validate(
+        _valid_answer_json(),
+        retry_count=0,
+        user_instruction="資料を要約",
+    )
+
+    assert result.status is ValidationStatus.REGENERATE
+    assert "以下のパス指定が間違っています。" in result.regeneration_instruction
+    assert "- readonly/missing.pdf" in result.regeneration_instruction
 
 
 def test_validate_answer_fails_when_retry_limit_reached() -> None:

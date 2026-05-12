@@ -28,6 +28,12 @@ from backend.domain.execution.run_state_policy import RunStatePolicy
 from backend.domain.references.source_type import SourceType
 from backend.shared.error_class import ErrorClass
 from backend.shared.errors import AppError
+from backend.shared.user_messages import (
+    CANCEL_NOT_ALLOWED_MESSAGE,
+    CANCEL_REQUESTED_MESSAGE,
+    CANCELED_MESSAGE,
+    USER_INSTRUCTION_REQUIRED_MESSAGE,
+)
 
 
 @dataclass(slots=True)
@@ -259,11 +265,11 @@ class InMemoryChatRepository:
         with self._lock:
             run = self._get_run_locked(chat_id, run_id)
             if not RunStatePolicy.is_cancelable(run.state):
-                raise AppError(ErrorClass.CONFLICT, "この処理はキャンセルできません。")
+                raise AppError(ErrorClass.CONFLICT, CANCEL_NOT_ALLOWED_MESSAGE)
             run.state = RunState.CANCEL_REQUESTED
-            run.user_message = "処理をキャンセルしています。"
+            run.user_message = CANCEL_REQUESTED_MESSAGE
             run.state = RunState.CANCELED
-            run.user_message = "処理をキャンセルしました。"
+            run.user_message = CANCELED_MESSAGE
             self._chats[chat_id].updated_at = now
 
     def get_reference(self, reference_id: UUID) -> DisplayReferenceData:
@@ -381,4 +387,4 @@ def _user_instruction(user_instruction: str) -> UserInstruction:
     try:
         return UserInstruction(user_instruction)
     except InvalidUserInstructionError as exc:
-        raise AppError(ErrorClass.INPUT, "ユーザ指示を入力してください。") from exc
+        raise AppError(ErrorClass.INPUT, USER_INSTRUCTION_REQUIRED_MESSAGE) from exc

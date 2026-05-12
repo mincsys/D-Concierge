@@ -79,6 +79,7 @@ from backend.presentation.sse.run_event_broker import RunEventBroker
 from backend.shared.error_class import ErrorClass
 from backend.shared.errors import AppError
 from backend.shared.tracing.exception import exception_message, exception_stacktrace
+from backend.shared.user_messages import UNEXPECTED_FAILURE_MESSAGE
 
 
 class ApplicationCodexRunner(Protocol):
@@ -363,7 +364,7 @@ def _register_error_handlers(app: FastAPI, trace_logger: TraceLogWriter) -> None
             message=exception_message(exc),
         )
         payload = error_response_payload(
-            AppError(ErrorClass.SYSTEM, "処理中にエラーが発生しました。")
+            AppError(ErrorClass.SYSTEM, UNEXPECTED_FAILURE_MESSAGE)
         )
         return JSONResponse(status_code=500, content=payload.model_dump())
 

@@ -11,6 +11,8 @@ from backend.application.ports.database.interface import (
     TransactionManagerPort,
 )
 from backend.domain.answer.answer_candidate import (
+    InvalidReferencePageRangeFailure,
+    InvalidReferencePathFailure,
     ParsedAnswerBlock,
     ParsedAnswerCandidate,
 )
@@ -511,15 +513,7 @@ def test_codex_reference_validator_rejects_missing_pdf_before_codex(
     )
 
     assert result.valid is False
-    assert result.comment == (
-        "参照元のパスが不正なため、この回答は採用できません。\n"
-        "以下のパス指定が間違っています。\n"
-        "- readonly/manual.pdf\n"
-        "参照元の locator.path は、必ず既存の実PDFファイルへのパスを指す "
-        "`readonly/... .pdf` 形式にしてください。\n"
-        "回答本文は前回同様にユーザ質問へ完全に回答し、"
-        "参照元だけを正しいPDFパスへ修正して最終JSONを再出力してください。"
-    )
+    assert result.failure == InvalidReferencePathFailure(("readonly/manual.pdf",))
     assert codex_runner.requests == []
 
 
@@ -557,16 +551,11 @@ def test_codex_reference_validator_rejects_page_out_of_range_before_codex(
     )
 
     assert result.valid is False
-    assert result.comment == (
-        "参照元のページ範囲が不正なため、この回答は採用できません。\n"
-        "以下のページ範囲指定が間違っています。\n"
-        "- readonly/manual.pdf 1-2ページ\n"
-        "参照元の locator.start_page / locator.end_page は、"
-        "指定したPDFに実在するページ範囲を指定してください。\n"
-        "回答本文は前回同様にユーザ質問へ完全に回答し、"
-        "参照元だけを正しいPDFパスとページ範囲へ修正して"
-        "最終JSONを再出力してください。"
-    )
+    assert isinstance(result.failure, InvalidReferencePageRangeFailure)
+    assert [
+        (item.path, item.page_start, item.page_end)
+        for item in result.failure.page_ranges
+    ] == [("readonly/manual.pdf", 1, 2)]
     assert codex_runner.requests == []
 
 

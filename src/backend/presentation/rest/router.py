@@ -55,6 +55,7 @@ from backend.presentation.sse.run_event_broker import RunEventSubscription
 from backend.shared.error_class import ErrorClass
 from backend.shared.errors import AppError
 from backend.shared.tracing.exception import exception_message, exception_stacktrace
+from backend.shared.user_messages import UNEXPECTED_FAILURE_MESSAGE
 
 
 class RunEventSource(Protocol):
@@ -312,14 +313,14 @@ async def _run_sse_events(
             run_id=run_id,
             exc=exc,
             error_class=ErrorClass.SYSTEM.value,
-            user_message="処理中にエラーが発生しました。",
+            user_message=UNEXPECTED_FAILURE_MESSAGE,
         )
         yield sse_event_bytes(
             RunEventType.ERROR.value,
             end_payload(
                 run_id,
                 RunState.ERROR.value,
-                "処理中にエラーが発生しました。",
+                UNEXPECTED_FAILURE_MESSAGE,
             ),
         )
 

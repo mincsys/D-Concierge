@@ -1,4 +1,9 @@
 from backend.shared.error_class import ErrorClass
+from backend.shared.user_messages import (
+    PDF_READ_FAILURE_MESSAGE,
+    UNEXPECTED_FAILURE_MESSAGE,
+    VALIDATION_RESULT_FAILURE_MESSAGE,
+)
 
 
 class AppError(Exception):
@@ -8,10 +13,6 @@ class AppError(Exception):
         super().__init__(user_message)
         self.error_class = error_class
         self.user_message = user_message
-
-
-PDF_READ_FAILURE_MESSAGE = "PDF読み取り中にエラーが発生しました。"
-VALIDATION_RESULT_FAILURE_MESSAGE = "回答の検証に失敗しました。再度お試しください。"
 
 
 class ReferencePdfReadError(AppError):
@@ -40,7 +41,7 @@ class ValidationWorkspacePreparationError(AppError):
     """検証用Codex作業領域の準備に失敗したことを示すシステムエラー。"""
 
     def __init__(self, message: str, cause: Exception | None = None) -> None:
-        super().__init__(ErrorClass.SYSTEM, "処理中にエラーが発生しました。")
+        super().__init__(ErrorClass.SYSTEM, UNEXPECTED_FAILURE_MESSAGE)
         self.message = message
         self.cause_type = type(cause).__name__ if cause is not None else ""
         self.cause_message = str(cause) if cause is not None else ""

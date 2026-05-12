@@ -1,6 +1,9 @@
 from pathlib import Path
 
 from backend.application.artifacts.validate_artifact_links import ArtifactLinkValidator
+from backend.application.validation.instruction_messages import (
+    get_artifact_link_validation_message,
+)
 
 
 def test_artifact_link_validator_accepts_allowed_existing_files(
@@ -25,7 +28,9 @@ def test_artifact_link_validator_accepts_allowed_existing_files(
 
     assert result.valid is True
     assert result.has_artifact_links is True
-    assert result.regeneration_instruction == ""
+    assert result.invalid_targets == ()
+    assert result.missing_targets == ()
+    assert result.disallowed_suffix_targets == ()
 
 
 def test_artifact_link_validator_normalizes_backslash_artifact_paths(
@@ -69,15 +74,17 @@ def test_artifact_link_validator_rejects_non_artifact_link_targets(
     )
 
     assert result.valid is False
-    assert "許可されていない成果物リンク" in result.regeneration_instruction
-    assert "- https://example.test/report.html" in result.regeneration_instruction
-    assert "- readonly/chart.png" in result.regeneration_instruction
-    assert "- C:\\data\\chart.png" in result.regeneration_instruction
-    assert "- \\\\server\\share\\chart.png" in result.regeneration_instruction
-    assert "- artifacts\\..\\secret.png" in result.regeneration_instruction
-    assert "- /api/artifacts/00000000-0000-0000-0000-000000000001" in (
-        result.regeneration_instruction
+    assert result.invalid_targets == (
+        "https://example.test/report.html",
+        "readonly/chart.png",
+        "C:\\data\\chart.png",
+        "\\\\server\\share\\chart.png",
+        "artifacts\\..\\secret.png",
+        "/api/artifacts/00000000-0000-0000-0000-000000000001",
     )
+    message = get_artifact_link_validation_message(result)
+    assert "許可されていない成果物リンク" in message
+    assert "- https://example.test/report.html" in message
 
 
 def test_artifact_link_validator_rejects_missing_and_disallowed_extensions(
@@ -95,10 +102,13 @@ def test_artifact_link_validator_rejects_missing_and_disallowed_extensions(
     )
 
     assert result.valid is False
-    assert "存在しない成果物ファイル" in result.regeneration_instruction
-    assert "- artifacts/missing.jpeg" in result.regeneration_instruction
-    assert "許可されていない成果物拡張子" in result.regeneration_instruction
-    assert "- artifacts/script.js" in result.regeneration_instruction
+    assert result.missing_targets == ("artifacts/missing.jpeg",)
+    assert result.disallowed_suffix_targets == ("artifacts/script.js",)
+    message = get_artifact_link_validation_message(result)
+    assert "存在しない成果物ファイル" in message
+    assert "- artifacts/missing.jpeg" in message
+    assert "許可されていない成果物拡張子" in message
+    assert "- artifacts/script.js" in message
 
 
 def test_artifact_link_validator_rejects_image_link_to_html(
@@ -116,5 +126,7 @@ def test_artifact_link_validator_rejects_image_link_to_html(
     )
 
     assert result.valid is False
-    assert "許可されていない成果物拡張子" in result.regeneration_instruction
-    assert "- artifacts/report.html" in result.regeneration_instruction
+    assert result.disallowed_suffix_targets == ("artifacts/report.html",)
+    message = get_artifact_link_validation_message(result)
+    assert "許可されていない成果物拡張子" in message
+    assert "- artifacts/report.html" in message

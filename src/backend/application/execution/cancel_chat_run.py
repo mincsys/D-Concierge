@@ -15,9 +15,11 @@ from backend.domain.execution.run_state import RunState
 from backend.domain.execution.run_state_policy import RunStatePolicy
 from backend.shared.error_class import ErrorClass
 from backend.shared.errors import AppError
-
-CANCELED_MESSAGE = "処理をキャンセルしました。"
-CANCEL_REQUESTED_MESSAGE = "処理をキャンセルしています。"
+from backend.shared.user_messages import (
+    CANCEL_NOT_ALLOWED_MESSAGE,
+    CANCEL_REQUESTED_MESSAGE,
+    CANCELED_MESSAGE,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,7 +68,7 @@ class CancelChatRunUseCase:
         with self._transaction_manager.transaction():
             current_state = self._repository.get_run_state(chat_id, run_id)
             if not RunStatePolicy.is_cancelable(current_state):
-                raise AppError(ErrorClass.CONFLICT, "この処理はキャンセルできません。")
+                raise AppError(ErrorClass.CONFLICT, CANCEL_NOT_ALLOWED_MESSAGE)
 
             updated = self._repository.update_run_state_if_current(
                 chat_id=chat_id,
@@ -76,7 +78,7 @@ class CancelChatRunUseCase:
                 user_message=CANCEL_REQUESTED_MESSAGE,
             )
         if not updated:
-            raise AppError(ErrorClass.CONFLICT, "この処理はキャンセルできません。")
+            raise AppError(ErrorClass.CONFLICT, CANCEL_NOT_ALLOWED_MESSAGE)
         self._publish(
             RunEvent(
                 event=RunEventType.STATE,

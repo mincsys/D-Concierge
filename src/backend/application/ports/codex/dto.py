@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+from backend.domain.answer.answer_candidate import ReferenceValidationFailure
+
 
 @dataclass(frozen=True, slots=True)
 class CodexRunResult:
@@ -16,3 +18,4 @@ class ReferenceValidationResult:
 
     valid: bool
     comment: str | None = None
+    failure: ReferenceValidationFailure | None = None

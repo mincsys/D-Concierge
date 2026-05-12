@@ -14,26 +14,54 @@ type JsonScalar = str | int | float | bool | None
 type JsonValue = JsonScalar | list["JsonValue"] | dict[str, "JsonValue"]
 
 
-class AnswerParseError(Exception):
-    """回答候補の固定検証失敗。"""
-
-    def __init__(
-        self,
-        message: str,
-        *,
-        regeneration_instruction: str | None = None,
-    ) -> None:
-        super().__init__(message)
-        self.regeneration_instruction = regeneration_instruction
-
-
 @dataclass(frozen=True, slots=True)
 class InvalidPageRange:
-    """再生成指示へ表示する不正なPDFページ範囲。"""
+    """不正なPDFページ範囲。"""
 
     path: str
     page_start: int
     page_end: int
+
+
+@dataclass(frozen=True, slots=True)
+class GenericAnswerParseFailure:
+    """構造化できない回答候補固定検証失敗。"""
+
+    message: str
+
+
+@dataclass(frozen=True, slots=True)
+class InvalidReferencePathFailure:
+    """不正な参照元pathを含む固定検証失敗。"""
+
+    paths: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class InvalidReferencePageRangeFailure:
+    """不正な参照元ページ範囲を含む固定検証失敗。"""
+
+    page_ranges: tuple[InvalidPageRange, ...]
+
+
+type AnswerParseFailure = (
+    GenericAnswerParseFailure
+    | InvalidReferencePathFailure
+    | InvalidReferencePageRangeFailure
+)
+type ReferenceValidationFailure = (
+    InvalidReferencePathFailure | InvalidReferencePageRangeFailure
+)
+
+
+class AnswerParseError(Exception):
+    """回答候補の固定検証失敗。"""
+
+    def __init__(self, failure: AnswerParseFailure | str) -> None:
+        if isinstance(failure, str):
+            failure = GenericAnswerParseFailure(failure)
+        super().__init__(_failure_message(failure))
+        self.failure = failure
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,38 +85,6 @@ def parsed_candidate_references(
     """回答候補内の全参照元をブロック順に返す。"""
     return tuple(
         reference for block in candidate.blocks for reference in block.references
-    )
-
-
-def invalid_reference_path_message(paths: list[str]) -> str:
-    """不正な参照元pathを生成用Codexへ伝える再生成指示を組み立てる。"""
-    path_lines = "\n".join(f"- {path}" for path in paths)
-    return (
-        "参照元のパスが不正なため、この回答は採用できません。\n"
-        "以下のパス指定が間違っています。\n"
-        f"{path_lines}\n"
-        "参照元の locator.path は、必ず既存の実PDFファイルへのパスを指す "
-        "`readonly/... .pdf` 形式にしてください。\n"
-        "回答本文は前回同様にユーザ質問へ完全に回答し、"
-        "参照元だけを正しいPDFパスへ修正して最終JSONを再出力してください。"
-    )
-
-
-def invalid_reference_page_range_message(page_ranges: list[InvalidPageRange]) -> str:
-    """不正な参照元ページ範囲を生成用Codexへ伝える再生成指示を組み立てる。"""
-    range_lines = "\n".join(
-        f"- {page_range.path} {page_range.page_start}-{page_range.page_end}ページ"
-        for page_range in page_ranges
-    )
-    return (
-        "参照元のページ範囲が不正なため、この回答は採用できません。\n"
-        "以下のページ範囲指定が間違っています。\n"
-        f"{range_lines}\n"
-        "参照元の locator.start_page / locator.end_page は、"
-        "指定したPDFに実在するページ範囲を指定してください。\n"
-        "回答本文は前回同様にユーザ質問へ完全に回答し、"
-        "参照元だけを正しいPDFパスとページ範囲へ修正して"
-        "最終JSONを再出力してください。"
     )
 
 
@@ -184,11 +180,11 @@ def _parse_references(references_value: list[JsonValue]) -> list[PdfReference]:
             continue
         parsed.append(PdfReference.from_locator(locator))
     if invalid_paths:
-        message = invalid_reference_path_message(invalid_paths)
-        raise AnswerParseError(message, regeneration_instruction=message)
+        raise AnswerParseError(InvalidReferencePathFailure(tuple(invalid_paths)))
     if invalid_page_ranges:
-        message = invalid_reference_page_range_message(invalid_page_ranges)
-        raise AnswerParseError(message, regeneration_instruction=message)
+        raise AnswerParseError(
+            InvalidReferencePageRangeFailure(tuple(invalid_page_ranges))
+        )
     return parsed
 
 
@@ -217,3 +213,13 @@ def _normalize_readonly_pdf_path(path_value: str) -> str:
     except InvalidPdfReferenceError as exc:
         raise AnswerParseError("PDF参照位置が不正です。") from exc
     return relative_path
+
+
+def _failure_message(failure: AnswerParseFailure) -> str:
+    match failure:
+        case GenericAnswerParseFailure(message=message):
+            return message
+        case InvalidReferencePathFailure():
+            return "PDF参照位置が不正です。"
+        case InvalidReferencePageRangeFailure():
+            return "参照元ページ範囲が不正です。"

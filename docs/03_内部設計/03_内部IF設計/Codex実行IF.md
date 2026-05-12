@@ -115,7 +115,7 @@ sequenceDiagram
 | 項目 | 内容 |
 | --- | --- |
 | `CodexRunResult` | 生成用CodexのCodex側resume用ID、中間メッセージ一覧、最終回答JSON |
-| `ReferenceValidationResult` | 検証用Codexの合否と指摘コメント |
+| `ReferenceValidationResult` | 検証用Codexの合否と指摘コメント、または検証用Codex起動前の固定検証で得た構造化失敗理由 |
 | `CancelRequestResult` | 終了要求結果。内部では通常Enum、境界では `sent`、`already_exited`、`not_registered` のいずれか |
 | `Path` | `SessionWorkdirResolverPort` が返す生成用Codex作業領域 |
 

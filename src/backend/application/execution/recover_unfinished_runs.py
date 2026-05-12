@@ -14,9 +14,9 @@ from backend.domain.execution.run_state import RunState
 from backend.shared.error_class import ErrorClass
 from backend.shared.errors import AppError
 from backend.shared.tracing.exception import exception_stacktrace
+from backend.shared.user_messages import CANCELED_MESSAGE
 
 RECOVERY_ERROR_MESSAGE = "アプリ起動時に処理を再開できませんでした。"
-RECOVERY_CANCEL_MESSAGE = "処理をキャンセルしました。"
 
 
 @dataclass(frozen=True, slots=True)
@@ -93,7 +93,7 @@ class RecoverUnfinishedRunsUseCase:
                             run.chat_id,
                             run.run_id,
                             RunState.CANCELED,
-                            RECOVERY_CANCEL_MESSAGE,
+                            CANCELED_MESSAGE,
                         )
                     counter.canceled += 1
                 case _:

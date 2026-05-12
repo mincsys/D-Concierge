@@ -14,9 +14,9 @@ from backend.application.ports.database.interface import (
 )
 from backend.domain.answer.answer_candidate import (
     InvalidPageRange,
+    InvalidReferencePageRangeFailure,
+    InvalidReferencePathFailure,
     ParsedAnswerCandidate,
-    invalid_reference_page_range_message,
-    invalid_reference_path_message,
     parsed_candidate_references,
 )
 from backend.domain.answer.output_kind import CodexOutputKind
@@ -223,7 +223,7 @@ def _validate_reference_files(
     if invalid_paths:
         return ReferenceValidationResult(
             valid=False,
-            comment=invalid_reference_path_message(invalid_paths),
+            failure=InvalidReferencePathFailure(tuple(invalid_paths)),
         )
 
     page_counts: dict[str, int] = {}
@@ -249,6 +249,6 @@ def _validate_reference_files(
     if invalid_page_ranges:
         return ReferenceValidationResult(
             valid=False,
-            comment=invalid_reference_page_range_message(invalid_page_ranges),
+            failure=InvalidReferencePageRangeFailure(tuple(invalid_page_ranges)),
         )
     return None

@@ -2,6 +2,8 @@ import pytest
 
 from backend.domain.answer.answer_candidate import (
     AnswerParseError,
+    InvalidReferencePageRangeFailure,
+    InvalidReferencePathFailure,
     parse_generation_final_output,
 )
 
@@ -119,7 +121,7 @@ def test_parse_generation_final_output_normalizes_readonly_backslashes() -> None
 def test_parse_generation_final_output_reports_invalid_reference_paths() -> None:
     """観点：回答候補固定検証の異常系。
 
-    確認：不正な参照元pathを複数件まとめて再生成指示へ使える文面で返す。
+    確認：不正な参照元pathを複数件まとめて構造化失敗理由で返す。
     """
     with pytest.raises(AnswerParseError) as exc_info:
         parse_generation_final_output(
@@ -155,22 +157,15 @@ def test_parse_generation_final_output_reports_invalid_reference_paths() -> None
             """
         )
 
-    assert str(exc_info.value) == (
-        "参照元のパスが不正なため、この回答は採用できません。\n"
-        "以下のパス指定が間違っています。\n"
-        "- manual.pdf\n"
-        "- readonly/html/manual/index.html\n"
-        "参照元の locator.path は、必ず既存の実PDFファイルへのパスを指す "
-        "`readonly/... .pdf` 形式にしてください。\n"
-        "回答本文は前回同様にユーザ質問へ完全に回答し、"
-        "参照元だけを正しいPDFパスへ修正して最終JSONを再出力してください。"
+    assert exc_info.value.failure == InvalidReferencePathFailure(
+        paths=("manual.pdf", "readonly/html/manual/index.html"),
     )
 
 
 def test_parse_generation_final_output_reports_invalid_page_ranges() -> None:
     """観点：回答候補固定検証の異常系。
 
-    確認：不正な参照元ページ範囲を複数件まとめて再生成指示へ使える文面で返す。
+    確認：不正な参照元ページ範囲を複数件まとめて構造化失敗理由で返す。
     """
     with pytest.raises(AnswerParseError) as exc_info:
         parse_generation_final_output(
@@ -206,17 +201,14 @@ def test_parse_generation_final_output_reports_invalid_page_ranges() -> None:
             """
         )
 
-    assert str(exc_info.value) == (
-        "参照元のページ範囲が不正なため、この回答は採用できません。\n"
-        "以下のページ範囲指定が間違っています。\n"
-        "- readonly/manual.pdf 0-1ページ\n"
-        "- readonly/guide.pdf 4-3ページ\n"
-        "参照元の locator.start_page / locator.end_page は、"
-        "指定したPDFに実在するページ範囲を指定してください。\n"
-        "回答本文は前回同様にユーザ質問へ完全に回答し、"
-        "参照元だけを正しいPDFパスとページ範囲へ修正して"
-        "最終JSONを再出力してください。"
-    )
+    failure = exc_info.value.failure
+    assert isinstance(failure, InvalidReferencePageRangeFailure)
+    assert [
+        (item.path, item.page_start, item.page_end) for item in failure.page_ranges
+    ] == [
+        ("readonly/manual.pdf", 0, 1),
+        ("readonly/guide.pdf", 4, 3),
+    ]
 
 
 @pytest.mark.parametrize(

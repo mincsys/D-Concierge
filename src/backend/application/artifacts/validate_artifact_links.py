@@ -31,7 +31,9 @@ class ArtifactLinkValidationResult:
 
     valid: bool
     has_artifact_links: bool
-    regeneration_instruction: str = ""
+    invalid_targets: tuple[str, ...] = ()
+    missing_targets: tuple[str, ...] = ()
+    disallowed_suffix_targets: tuple[str, ...] = ()
 
 
 class ArtifactLinkValidator:
@@ -71,11 +73,9 @@ class ArtifactLinkValidator:
             return ArtifactLinkValidationResult(
                 valid=False,
                 has_artifact_links=bool(artifact_links),
-                regeneration_instruction=_regeneration_instruction(
-                    invalid_targets=invalid_targets,
-                    missing_targets=tuple(missing_targets),
-                    disallowed_suffix_targets=tuple(disallowed_suffix_targets),
-                ),
+                invalid_targets=invalid_targets,
+                missing_targets=tuple(missing_targets),
+                disallowed_suffix_targets=tuple(disallowed_suffix_targets),
             )
 
         return ArtifactLinkValidationResult(
@@ -169,36 +169,3 @@ def _safe_artifact_relative_path(normalized_target: str) -> PurePosixPath:
     ):
         raise OSError("invalid artifact path")
     return posix_path
-
-
-def _regeneration_instruction(
-    *,
-    invalid_targets: tuple[str, ...],
-    missing_targets: tuple[str, ...],
-    disallowed_suffix_targets: tuple[str, ...],
-) -> str:
-    lines = [
-        "成果物リンクが不正なため、この回答は採用できません。",
-    ]
-    _append_issue_lines(lines, "許可されていない成果物リンク", invalid_targets)
-    _append_issue_lines(lines, "存在しない成果物ファイル", missing_targets)
-    _append_issue_lines(
-        lines, "許可されていない成果物拡張子", disallowed_suffix_targets
-    )
-    lines.extend(
-        [
-            "回答本文は前回同様にユーザ質問へ完全に回答してください。",
-            "成果物リンクは `artifacts/...` または `./artifacts/...` 形式で、"
-            "生成用Codexの `artifacts/` 配下に存在するファイルだけを指定してください。",
-        ]
-    )
-    return "\n".join(lines)
-
-
-def _append_issue_lines(
-    lines: list[str], heading: str, targets: tuple[str, ...]
-) -> None:
-    if not targets:
-        return
-    lines.append(f"{heading}:")
-    lines.extend(f"- {target}" for target in targets)

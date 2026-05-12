@@ -48,6 +48,11 @@ from backend.infrastructure.runtime.system_clock import SystemClock
 from backend.infrastructure.runtime.uuid_generator import UuidGenerator
 from backend.shared.error_class import ErrorClass
 from backend.shared.errors import AppError
+from backend.shared.user_messages import (
+    CANCEL_NOT_ALLOWED_MESSAGE,
+    CANCELED_MESSAGE,
+    USER_INSTRUCTION_REQUIRED_MESSAGE,
+)
 
 
 class SqlAlchemySessionProvider(Protocol):
@@ -351,9 +356,9 @@ class SqlAlchemyChatRepository:
         session = self._session()
         run = self._get_run(session, chat_id, run_id)
         if not RunStatePolicy.is_cancelable(_run_state(run)):
-            raise AppError(ErrorClass.CONFLICT, "この処理はキャンセルできません。")
+            raise AppError(ErrorClass.CONFLICT, CANCEL_NOT_ALLOWED_MESSAGE)
         run.state = RunState.CANCELED.value
-        run.user_message = "処理をキャンセルしました。"
+        run.user_message = CANCELED_MESSAGE
         chat = self._get_chat(session, chat_id)
         chat.updated_at = now
 
@@ -529,7 +534,7 @@ def _user_instruction(user_instruction: str) -> UserInstruction:
     try:
         return UserInstruction(user_instruction)
     except InvalidUserInstructionError as exc:
-        raise AppError(ErrorClass.INPUT, "ユーザ指示を入力してください。") from exc
+        raise AppError(ErrorClass.INPUT, USER_INSTRUCTION_REQUIRED_MESSAGE) from exc
 
 
 def _run_state(run: ChatRunModel) -> RunState:

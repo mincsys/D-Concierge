@@ -8,8 +8,12 @@ from backend.application.artifacts.validate_artifact_links import (
     ArtifactLinkValidationResult,
     ArtifactLinkValidator,
 )
-from backend.application.ports.codex.dto import ReferenceValidationResult
 from backend.application.ports.codex.interface import ReferenceValidatorPort
+from backend.application.validation.instruction_messages import (
+    get_answer_parse_failure_message,
+    get_artifact_link_validation_message,
+    get_reference_validation_failed_message,
+)
 from backend.application.validation.validation_status import ValidationStatus
 from backend.domain.answer.answer_candidate import (
     AnswerParseError,
@@ -17,8 +21,7 @@ from backend.domain.answer.answer_candidate import (
     parse_generation_final_output,
 )
 from backend.domain.validation.retry_policy import RetryPolicy
-
-VALIDATION_FAILURE_MESSAGE = "回答生成に失敗しました。再度お試しください。"
+from backend.shared.user_messages import VALIDATION_FAILURE_MESSAGE
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,7 +83,7 @@ class ValidateAnswerUseCase:
         except AnswerParseError as exc:
             return self._regeneration_or_failure(
                 retry_count=retry_count,
-                reason=exc.regeneration_instruction or "固定検証に失敗しました。",
+                reason=get_answer_parse_failure_message(exc.failure),
             )
 
         artifact_link_validation = self._artifact_link_validator.validate(
@@ -90,7 +93,7 @@ class ValidateAnswerUseCase:
         if not artifact_link_validation.valid:
             return self._regeneration_or_failure(
                 retry_count=retry_count,
-                reason=artifact_link_validation.regeneration_instruction,
+                reason=get_artifact_link_validation_message(artifact_link_validation),
             )
 
         validation = self._reference_validator.validate_references(
@@ -112,7 +115,7 @@ class ValidateAnswerUseCase:
 
         return self._regeneration_or_failure(
             retry_count=retry_count,
-            reason=_regeneration_reason(validation),
+            reason=get_reference_validation_failed_message(validation),
         )
 
     def _regeneration_or_failure(
@@ -129,9 +132,3 @@ class ValidateAnswerUseCase:
             status=ValidationStatus.FAILED,
             user_message=VALIDATION_FAILURE_MESSAGE,
         )
-
-
-def _regeneration_reason(validation: ReferenceValidationResult) -> str:
-    if validation.comment is None or validation.comment.strip() == "":
-        return "参照元検証に失敗しました。"
-    return validation.comment
