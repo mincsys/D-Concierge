@@ -19,6 +19,7 @@ from backend.application.ports.database.dto import (
     HistoryItem,
     UnfinishedRun,
 )
+from backend.application.ports.runtime.interface import ClockPort
 from backend.domain.execution.run_state import RunState
 from backend.domain.references.source_type import SourceType
 from backend.infrastructure.database.models.answer import (
@@ -74,7 +75,14 @@ def test_sqlalchemy_repository_rejects_append_when_unfinished_run_exists() -> No
 
 def test_sqlalchemy_repository_lists_histories_by_updated_desc() -> None:
     """観点：履歴一覧取得。確認：更新日時降順で最新run状態を返す。"""
-    repository = _make_repository()
+    repository = _make_repository(
+        clock=SequenceClock(
+            (
+                datetime(2026, 5, 9, 10, 0, 0, tzinfo=UTC),
+                datetime(2026, 5, 9, 10, 0, 1, tzinfo=UTC),
+            )
+        )
+    )
     first = repository.create_chat_with_first_run("古い履歴")
     second = repository.create_chat_with_first_run("新しい履歴")
 
@@ -293,7 +301,16 @@ def test_sqlalchemy_repository_rejects_missing_records() -> None:
 
 def test_sqlalchemy_repository_lists_unfinished_runs_for_recovery() -> None:
     """観点：起動時回復Repository IF。確認：未完了runだけを回復対象として取得する。"""
-    repository = _make_repository()
+    repository = _make_repository(
+        clock=SequenceClock(
+            (
+                datetime(2026, 5, 9, 10, 0, 0, tzinfo=UTC),
+                datetime(2026, 5, 9, 10, 0, 1, tzinfo=UTC),
+                datetime(2026, 5, 9, 10, 0, 2, tzinfo=UTC),
+                datetime(2026, 5, 9, 10, 0, 3, tzinfo=UTC),
+            )
+        )
+    )
     accepted = repository.create_chat_with_first_run("accepted run")
     running = repository.create_chat_with_first_run("running run")
     canceling = repository.create_chat_with_first_run("cancel requested run")
@@ -465,19 +482,24 @@ def test_sqlalchemy_repository_ignores_history_without_run() -> None:
     assert repository.list_histories() == ()
 
 
-def _make_repository() -> "TransactionalSqlAlchemyChatRepository":
-    repository, _session_factory = _make_repository_with_session_factory()
+def _make_repository(
+    clock: ClockPort | None = None,
+) -> "TransactionalSqlAlchemyChatRepository":
+    repository, _session_factory = _make_repository_with_session_factory(clock=clock)
     return repository
 
 
-def _make_repository_with_session_factory() -> tuple[
-    "TransactionalSqlAlchemyChatRepository", sessionmaker[Session]
-]:
+def _make_repository_with_session_factory(
+    clock: ClockPort | None = None,
+) -> tuple["TransactionalSqlAlchemyChatRepository", sessionmaker[Session]]:
     engine = create_engine("sqlite+pysqlite:///:memory:")
     Base.metadata.create_all(engine)
     session_factory = sessionmaker(bind=engine, class_=Session, expire_on_commit=False)
     transaction_manager = SqlAlchemyTransactionManager(session_factory=session_factory)
-    return TransactionalSqlAlchemyChatRepository(transaction_manager), session_factory
+    return (
+        TransactionalSqlAlchemyChatRepository(transaction_manager, clock=clock),
+        session_factory,
+    )
 
 
 def _make_repository_with_foreign_key_checks() -> (
@@ -505,8 +527,12 @@ def _make_repository_with_foreign_key_checks() -> (
 class TransactionalSqlAlchemyChatRepository(SqlAlchemyChatRepository):
     """Repositoryテスト用に各呼び出しを明示トランザクションへ包む。"""
 
-    def __init__(self, transaction_manager: SqlAlchemyTransactionManager) -> None:
-        super().__init__(session_provider=transaction_manager)
+    def __init__(
+        self,
+        transaction_manager: SqlAlchemyTransactionManager,
+        clock: ClockPort | None = None,
+    ) -> None:
+        super().__init__(session_provider=transaction_manager, clock=clock)
         self._transaction_manager = transaction_manager
 
     def create_chat_with_first_run(self, user_instruction: str) -> AcceptedRun:
@@ -610,3 +636,21 @@ class TransactionalSqlAlchemyChatRepository(SqlAlchemyChatRepository):
     def get_artifact(self, artifact_id: UUID) -> ArtifactData:
         with self._transaction_manager.transaction():
             return super().get_artifact(artifact_id)
+
+
+class SequenceClock:
+    """Repositoryテスト用に時刻を順番に返すClock。"""
+
+    def __init__(self, values: tuple[datetime, ...]) -> None:
+        self._values = list(values)
+
+    def now(self) -> datetime:
+        if self._values:
+            return self._values.pop(0)
+        return datetime(2026, 5, 9, 10, 0, tzinfo=UTC)
+
+    def now_utc(self) -> datetime:
+        return self.now()
+
+    def now_app_timezone(self) -> datetime:
+        return self.now()
