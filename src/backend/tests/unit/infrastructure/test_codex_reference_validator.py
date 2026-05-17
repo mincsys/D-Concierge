@@ -194,6 +194,8 @@ def test_codex_reference_validator_prepares_readonly_validation_context(
     )
 
     readonly_dir = codex_runner.requests[0].workdir / "readonly"
+    assert readonly_dir.is_symlink()
+    assert readonly_dir.resolve() == datasource_dir.resolve()
     assert (readonly_dir / "manual.pdf").resolve() == datasource_dir / "manual.pdf"
     assert not (readonly_dir / "answer-candidate.json").exists()
     assert "readonly/manual.pdf" in codex_runner.requests[0].prompt
@@ -398,6 +400,8 @@ def test_codex_reference_validator_rejects_invalid_context_or_payload(
     repository = InMemoryChatRepository()
     accepted = repository.create_chat_with_first_run("資料を要約")
     candidate = _candidate_without_references()
+    datasource_dir = tmp_path / "readonly"
+    datasource_dir.mkdir()
     validator = CodexReferenceValidator(
         repository=repository,
         codex_runner=RecordingCodexRunner(
@@ -413,7 +417,7 @@ def test_codex_reference_validator_rejects_invalid_context_or_payload(
             output_schema=tmp_path / "validator-schema.json",
             saved_artifacts_dir=tmp_path / "unused",
         ),
-        datasource_dir=tmp_path / "readonly",
+        datasource_dir=datasource_dir,
         timeout_seconds=120,
     )
 
@@ -451,6 +455,8 @@ def test_codex_reference_validator_rejects_invalid_final_validation_result(
     """
     repository = InMemoryChatRepository()
     accepted = repository.create_chat_with_first_run("資料を要約")
+    datasource_dir = tmp_path / "readonly"
+    datasource_dir.mkdir()
     validator = CodexReferenceValidator(
         repository=repository,
         codex_runner=RecordingCodexRunner(
@@ -466,7 +472,7 @@ def test_codex_reference_validator_rejects_invalid_final_validation_result(
             output_schema=tmp_path / "validator-schema.json",
             saved_artifacts_dir=tmp_path / "unused",
         ),
-        datasource_dir=tmp_path / "readonly",
+        datasource_dir=datasource_dir,
         timeout_seconds=120,
     )
 

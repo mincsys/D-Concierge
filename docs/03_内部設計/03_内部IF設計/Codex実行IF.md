@@ -123,10 +123,10 @@ sequenceDiagram
 
 | 用途 | 作業領域 | 内容 |
 | --- | --- | --- |
-| 生成用 | `codex/sessions/<user-id>/<session-id>/readonly/` | 生成用Codexへ読み取り専用で提示する共有データソース、抽出済みPDF情報、メタ情報を配置する。`readonly/html/<文書名>/index.html` は検索・本文確認用であり、対応する実PDFは `readonly/raw/pdf/<文書名>.pdf` として参照する。 |
+| 生成用 | `codex/sessions/<user-id>/<session-id>/readonly/` | 共有データソースディレクトリへのシンボリックリンクとして作成し、生成用Codexへ読み取り専用データを提示する。 |
 | 生成用 | `codex/sessions/<user-id>/<session-id>/tmp/` | 生成用Codexがresumeをまたいで使う中間作業ファイルを配置する。 |
 | 生成用 | `codex/sessions/<user-id>/<session-id>/artifacts/` | 採用前のCodex成果物候補を一時配置する。 |
-| 検証用 | `codex/sessions_validator/<user-id>/<session-id>/readonly/` | 検証用Codexへ読み取り専用で提示する共有データソース、抽出済みPDF情報、メタ情報を生成用と同じ方式で配置する。回答候補は `ValidatorCodexInput` として検証プロンプト本文で渡す。 |
+| 検証用 | `codex/sessions_validator/<user-id>/<session-id>/readonly/` | 共有データソースディレクトリへのシンボリックリンクとして作成し、検証用Codexへ生成用と同じ読み取り専用データを提示する。回答候補は `ValidatorCodexInput` として検証プロンプト本文で渡す。 |
 | 検証用 | `codex/sessions_validator/<user-id>/<session-id>/tmp/` | 検証用Codexがresumeをまたいで使う中間作業ファイルを配置する。 |
 
 ### 6.5. JSONLイベント採用規則

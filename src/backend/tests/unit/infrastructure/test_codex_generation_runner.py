@@ -147,6 +147,8 @@ def test_codex_generation_runner_prepares_readonly_datasource(
     )
 
     readonly_dir = codex_runner.requests[0].workdir / "readonly"
+    assert readonly_dir.is_symlink()
+    assert readonly_dir.resolve() == datasource_dir.resolve()
     assert (readonly_dir / "manual.pdf").resolve() == datasource_dir / "manual.pdf"
     assert (readonly_dir / "nested").resolve() == datasource_dir / "nested"
     assert (codex_runner.requests[0].workdir / "tmp").is_dir()

@@ -952,6 +952,8 @@ def test_default_runtime_executes_start_chat_through_codex_adapters(
     validation_readonly_pdf = (
         codex_runner.validation_requests[0].workdir / "readonly" / "manual.pdf"
     )
+    assert (codex_runner.generation_requests[0].workdir / "readonly").is_symlink()
+    assert (codex_runner.validation_requests[0].workdir / "readonly").is_symlink()
     assert generation_readonly_pdf.resolve() == datasource_dir / "manual.pdf"
     assert validation_readonly_pdf.resolve() == datasource_dir / "manual.pdf"
     assert not (
