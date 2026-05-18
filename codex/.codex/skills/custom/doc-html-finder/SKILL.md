@@ -17,7 +17,7 @@ description: Locate target passages in documents that have been converted to str
 
 ## 基本ワークフロー
 
-1. `readonly/IPA_books/raw/meta/*.json` をすべて読み、各文書の `title`、`summary`、`table_of_contents` を把握する。
+1. `extract_meta_markdown.py` を実行し、全文書の概要・目次を Markdown で一覧確認する。
 2. ユーザ質問から関連語、同義語、章題候補を作る。
 3. 関連しそうな文書を複数選択する。迷う場合は除外せず候補に残す。
 4. 各候補文書で目次文字列を検索し、該当ページ候補を得る。
@@ -27,6 +27,14 @@ description: Locate target passages in documents that have been converted to str
 ## スクリプト
 
 Python は必ず `uv run python` で実行する。
+
+### meta JSON から概要・目次一覧を作る
+
+```powershell
+uv run python .\.codex\skills\doc-html-finder\scripts\extract_meta_markdown.py ".\readonly\IPA_books\raw\meta"
+```
+
+入力には `readonly/IPA_books/raw/meta` ディレクトリか meta JSON ファイルを指定できる。出力は Markdown で、meta JSON のファイル名を文書タイトルとして使い、各文書の概要と目次を返す。ページ番号は meta JSON には含まれないため、このスクリプトでは出力しない。
 
 ### 目次からページ候補を探す
 
