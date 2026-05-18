@@ -15,7 +15,7 @@ Do not infer PDF page content from filenames, metadata, or memory; inspect the c
 
 ```bash
 python /home/minami/dev/D-Concierge/codex/.codex_validator/skills/custom/reference-html-page/scripts/extract_reference_html_pages.py \
-  --pdf-path 'readonly/raw/pdf/<document>.pdf' \
+  --pdf-path 'readonly/IPA_books/raw/pdf/<document>.pdf' \
   --start-page 21 \
   --end-page 22
 ```
@@ -25,6 +25,6 @@ python /home/minami/dev/D-Concierge/codex/.codex_validator/skills/custom/referen
 
 ## Notes
 
-- `readonly/raw/pdf/<document>.pdf` maps to `readonly/html/<document>/index.html`.
-- `readonly/<document>.pdf` maps to `readonly/html/<document>/index.html` when that HTML file exists.
+- `readonly/IPA_books/raw/pdf/<document>.pdf` maps to `readonly/IPA_books/raw/<document>/index.html`.
+- `readonly/<document>.pdf` maps to `readonly/IPA_books/raw/<document>/index.html` when that HTML file exists.
 - The script rejects absolute paths, parent-directory traversal, non-PDF paths, invalid page ranges, missing HTML, and missing pages.

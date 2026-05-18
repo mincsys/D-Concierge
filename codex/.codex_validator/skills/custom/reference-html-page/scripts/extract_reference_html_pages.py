@@ -59,7 +59,7 @@ def html_path_for_pdf(pdf_path: str) -> Path:
     elif len(parts) == 2:
         document_name = posix_path.with_suffix("").name
     else:
-        raise ValueError("pdf path must be readonly/raw/pdf/<document>.pdf")
+        raise ValueError("pdf path must be readonly/IPA_books/raw/pdf/<document>.pdf")
 
     html_path = Path("readonly") / "html" / document_name / "index.html"
     if not html_path.is_file():

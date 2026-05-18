@@ -1,23 +1,23 @@
 ---
 name: doc-html-finder
-description: Locate target passages in documents that have been converted to structured HTML, using readonly/raw/meta JSON summaries and tables of contents plus readonly/html/*/index.html page sections. Use when Codex needs to answer Japanese questions such as finding which document and PDF page contains a requested concept, requirement, rule, lesson, or passage, and return document names, page numbers, reference excerpts, and reasons.
+description: Locate target passages in documents that have been converted to structured HTML, using readonly/IPA_books/raw/meta JSON summaries and tables of contents plus readonly/IPA_books/raw/*/index.html page sections. Use when Codex needs to answer Japanese questions such as finding which document and PDF page contains a requested concept, requirement, rule, lesson, or passage, and return document names, page numbers, reference excerpts, and reasons.
 ---
 
 # Doc HTML Finder
 
 ## 概要
 
-`readonly/raw/meta/*.json` の概要・目次と `readonly/html/*/index.html` のページ別 HTML から、ユーザが探している文章が記載された文書と PDF ページ番号を特定する。
+`readonly/IPA_books/raw/meta/*.json` の概要・目次と `readonly/IPA_books/raw/*/index.html` のページ別 HTML から、ユーザが探している文章が記載された文書と PDF ページ番号を特定する。
 
 想定データ構造:
 
-- `readonly/raw/meta/<文書名>.json`: `title`、`summary`、`table_of_contents` を持つメタデータ。
-- `readonly/html/<文書名>/index.html`: `<section class="page" id="page-N">` で PDF ページごとに区切られた HTML。
+- `readonly/IPA_books/raw/meta/<文書名>.json`: `title`、`summary`、`table_of_contents` を持つメタデータ。
+- `readonly/IPA_books/raw/<文書名>/index.html`: `<section class="page" id="page-N">` で PDF ページごとに区切られた HTML。
 - meta と HTML は `<文書名>` のベース名一致で対応させる。
 
 ## 基本ワークフロー
 
-1. `readonly/raw/meta/*.json` をすべて読み、各文書の `title`、`summary`、`table_of_contents` を把握する。
+1. `readonly/IPA_books/raw/meta/*.json` をすべて読み、各文書の `title`、`summary`、`table_of_contents` を把握する。
 2. ユーザ質問から関連語、同義語、章題候補を作る。
 3. 関連しそうな文書を複数選択する。迷う場合は除外せず候補に残す。
 4. 各候補文書で目次文字列を検索し、該当ページ候補を得る。

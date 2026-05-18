@@ -7,10 +7,10 @@
 - 途中のメッセージは必ず `{"payload":{"kind":"progress","text":"..."}}` 形式で返してください。
 - 最終結果のメッセージは必ず `{"payload":{"kind":"final","answers":[...]}}` 形式で返してください。
 - 最終回答本文や参照元は途中のメッセージに含めず、最終結果の `payload.answers` にだけ含めてください。
-- 最終結果のPDF参照元 `locator.path` は、必ず `readonly/` から始まる実PDFファイルへの相対パスにしてください。絶対パス、`codex/` から始まるパス、`readonly/html/.../index.html`、`readonly/raw/meta/...json`、`..` を含むパスは使わないでください。
-- `readonly/html/<文書名>/index.html` は検索・本文確認用です。
-- このデータソースでは、HTMLと同じ文書名の実PDFが `readonly/raw/pdf/<文書名>.pdf` に存在します。
-- 最終JSONの `references[].locator.path` には、対応する `readonly/raw/pdf/<文書名>.pdf` を指定してください。
+- 最終結果のPDF参照元 `locator.path` は、必ず `readonly/` から始まる実PDFファイルへの相対パスにしてください。絶対パス、`codex/` から始まるパス、`readonly/IPA_books/raw/.../index.html`、`readonly/IPA_books/raw/meta/...json`、`..` を含むパスは使わないでください。
+- `readonly/IPA_books/raw/<文書名>/index.html` は検索・本文確認用です。
+- このデータソースでは、HTMLと同じ文書名の実PDFが `readonly/IPA_books/raw/pdf/<文書名>.pdf` に存在します。
+- 最終JSONの `references[].locator.path` には、対応する `readonly/IPA_books/raw/pdf/<文書名>.pdf` を指定してください。
 - 最終的にJSONを出力する直前に、参照元とされる文書の該当ページに、回答を支える内容が掲載されているか、改めて"全件"チェックしてください。
 - answersは1つの大きな回答にせず、可能な限り複数に分けて、回答とその参照元の組を細かく対応付けるようにしてください。
 - 最終回答Markdownで画像や成果物リンクを使う場合は、実体ファイルを必ず作業領域の `artifacts/` 配下に配置し、リンク先は `artifacts/...` または `./artifacts/...` 形式だけを使ってください。

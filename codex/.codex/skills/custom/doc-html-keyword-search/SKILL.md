@@ -1,13 +1,13 @@
 ---
 name: doc-html-keyword-search
-description: Search structured document HTML files under readonly/html/*/index.html by keyword or optional regular expression, page by page. Use when Codex needs to return a JSON list of documents and PDF page numbers where specific search words appear, without doing semantic passage selection.
+description: Search structured document HTML files under readonly/IPA_books/raw/*/index.html by keyword or optional regular expression, page by page. Use when Codex needs to return a JSON list of documents and PDF page numbers where specific search words appear, without doing semantic passage selection.
 ---
 
 # Doc HTML Keyword Search
 
 ## 概要
 
-`readonly/html/*/index.html` の文書 HTML を `<section class="page" id="page-N">` 単位で検索し、検索ワードにヒットした文書名と PDF ページ番号の一覧を JSON で返す。
+`readonly/IPA_books/raw/*/index.html` の文書 HTML を `<section class="page" id="page-N">` 単位で検索し、検索ワードにヒットした文書名と PDF ページ番号の一覧を JSON で返す。
 
 このスキルは機械的なキーワード検索用。質問意図に合う本文を解釈して探す場合は `doc-html-finder` を使う。
 
@@ -35,9 +35,9 @@ uv run python .\.codex\skills\doc-html-keyword-search\scripts\search_html_pages.
 
 入力パスには以下を指定できる。
 
-- `readonly/html` ルート
-- `readonly/html/<文書名>` の文書ディレクトリ
-- `readonly/html/<文書名>/index.html`
+- `readonly/IPA_books/raw` ルート
+- `readonly/IPA_books/raw/<文書名>` の文書ディレクトリ
+- `readonly/IPA_books/raw/<文書名>/index.html`
 
 ## 検索仕様
 
@@ -69,7 +69,7 @@ uv run python .\.codex\skills\doc-html-keyword-search\scripts\search_html_pages.
   "results": [
     {
       "document": "文書名",
-      "path": "readonly/html/文書名/index.html",
+      "path": "readonly/IPA_books/raw/文書名/index.html",
       "page": 34,
       "hit_count": 2,
       "matched_terms": ["検索語"],
