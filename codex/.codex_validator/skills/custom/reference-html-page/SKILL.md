@@ -14,10 +14,7 @@ Do not infer PDF page content from filenames, metadata, or memory; inspect the c
 2. Run the bundled script from the validator workdir where `readonly/` exists:
 
 ```bash
-python /home/minami/dev/D-Concierge/codex/.codex_validator/skills/custom/reference-html-page/scripts/extract_reference_html_pages.py \
-  --pdf-path 'readonly/IPA_books/raw/pdf/<document>.pdf' \
-  --start-page 21 \
-  --end-page 22
+python "$CODEX_HOME/skills/custom/reference-html-page/scripts/extract_reference_html_pages.py" --pdf-path 'readonly/IPA_books/raw/pdf/<document>.pdf' --start-page 21 --end-page 22
 ```
 
 3. Treat stdout as the only page content for validation. The script prints only the matching HTML `<section>` fragment(s).

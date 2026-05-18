@@ -18,19 +18,19 @@ Python は必ず `uv run python` で実行する。
 複数文書を横断検索する:
 
 ```powershell
-uv run python .\.codex\skills\doc-html-keyword-search\scripts\search_html_pages.py .\readonly\html コーディング規約
+uv run python "$CODEX_HOME/skills/custom/doc-html-keyword-search/scripts/search_html_pages.py" readonly/IPA_books/raw コーディング規約
 ```
 
 正規表現で検索する:
 
 ```powershell
-uv run python .\.codex\skills\doc-html-keyword-search\scripts\search_html_pages.py .\readonly\html "コーディング.*規約" --regex
+uv run python "$CODEX_HOME/skills/custom/doc-html-keyword-search/scripts/search_html_pages.py" readonly/IPA_books/raw "コーディング.*規約" --regex
 ```
 
 複数語をすべて含むページだけ返す:
 
 ```powershell
-uv run python .\.codex\skills\doc-html-keyword-search\scripts\search_html_pages.py .\readonly\html 安全 要求 --mode and
+uv run python "$CODEX_HOME/skills/custom/doc-html-keyword-search/scripts/search_html_pages.py" readonly/IPA_books/raw 安全 要求 --mode and
 ```
 
 入力パスには以下を指定できる。

@@ -11,7 +11,7 @@ description: Locate target passages in documents that have been converted to str
 
 想定データ構造:
 
-- `readonly/IPA_books/raw/meta/<文書名>.json`: `title`、`summary`、`table_of_contents` を持つメタデータ。
+- `readonly/IPA_books/raw/meta/<文書名>.json`: `summary`、`table_of_contents` を持つメタデータ。文書タイトルは JSON 内の `title` ではなくファイル名から `.json` を除いた `<文書名>` として扱う。
 - `readonly/IPA_books/raw/<文書名>/index.html`: `<section class="page" id="page-N">` で PDF ページごとに区切られた HTML。
 - meta と HTML は `<文書名>` のベース名一致で対応させる。
 
@@ -31,7 +31,7 @@ Python は必ず `uv run python` で実行する。
 ### meta JSON から概要・目次一覧を作る
 
 ```powershell
-uv run python .\.codex\skills\doc-html-finder\scripts\extract_meta_markdown.py ".\readonly\IPA_books\raw\meta"
+uv run python "$CODEX_HOME/skills/custom/doc-html-finder/scripts/extract_meta_markdown.py" "readonly/IPA_books/raw/meta"
 ```
 
 入力には `readonly/IPA_books/raw/meta` ディレクトリか meta JSON ファイルを指定できる。出力は Markdown で、meta JSON のファイル名を文書タイトルとして使い、各文書の概要と目次を返す。ページ番号は meta JSON には含まれないため、このスクリプトでは出力しない。
@@ -39,7 +39,7 @@ uv run python .\.codex\skills\doc-html-finder\scripts\extract_meta_markdown.py "
 ### 目次からページ候補を探す
 
 ```powershell
-uv run python .\.codex\skills\doc-html-finder\scripts\search_toc_pages.py ".\readonly\html\<文書名>\index.html" "安全要求"
+uv run python "$CODEX_HOME/skills/custom/doc-html-finder/scripts/search_toc_pages.py" "readonly/IPA_books/raw/<文書名>/index.html" "安全要求"
 ```
 
 入力には `index.html` か文書ディレクトリを指定できる。出力は JSON で、目次タイトル、PDF ページ番号、スコア、マッチした語を返す。
@@ -47,13 +47,13 @@ uv run python .\.codex\skills\doc-html-finder\scripts\search_toc_pages.py ".\rea
 複数語を明示する場合:
 
 ```powershell
-uv run python .\.codex\skills\doc-html-finder\scripts\search_toc_pages.py ".\readonly\html\<文書名>" "安全要求" --terms "合意" "セキュリティ"
+uv run python "$CODEX_HOME/skills/custom/doc-html-finder/scripts/search_toc_pages.py" "readonly/IPA_books/raw/<文書名>" "安全要求" --terms "合意" "セキュリティ"
 ```
 
 ### ページ section を抽出する
 
 ```powershell
-uv run python .\.codex\skills\doc-html-finder\scripts\extract_html_pages.py ".\readonly\html\<文書名>\index.html" 34,35,36
+uv run python "$CODEX_HOME/skills/custom/doc-html-finder/scripts/extract_html_pages.py" "readonly/IPA_books/raw/<文書名>/index.html" 34,35,36
 ```
 
 入力には `index.html` か文書ディレクトリを指定できる。指定ページに対応する `<section class="page" id="page-N">...</section>` をページ順に結合して返す。
@@ -61,7 +61,7 @@ uv run python .\.codex\skills\doc-html-finder\scripts\extract_html_pages.py ".\r
 前後ページも確認する場合:
 
 ```powershell
-uv run python .\.codex\skills\doc-html-finder\scripts\extract_html_pages.py ".\readonly\html\<文書名>\index.html" 34 --context 1
+uv run python "$CODEX_HOME/skills/custom/doc-html-finder/scripts/extract_html_pages.py" "readonly/IPA_books/raw/<文書名>/index.html" 34 --context 1
 ```
 
 ## 判断ルール
