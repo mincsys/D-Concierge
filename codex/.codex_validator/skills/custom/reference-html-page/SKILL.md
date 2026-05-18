@@ -1,27 +1,27 @@
 ---
 name: reference-html-page
-description: Retrieve the HTML page fragment corresponding to a cited PDF source path and page range in D-Concierge validator workspaces. Use when validating answers that cite readonly PDF references and you need to inspect the matching readonly HTML page content.
+description: 検証用ワークスペースで、参照元PDFパスとページ範囲に対応するHTMLページ断片を取得する。readonly PDF参照を含む回答を検証し、対応するreadonly HTML本文を確認する必要があるときに使う。
 ---
 
 # Reference HTML Page
 
-Use this skill when checking whether an answer is supported by cited PDF pages.
-Do not infer PDF page content from filenames, metadata, or memory; inspect the corresponding HTML fragment.
+回答が参照元PDFページの内容に支えられているか確認するときに使う。
+PDFページの内容をファイル名、メタデータ、記憶から推測せず、対応するHTML断片を必ず確認する。
 
-## Workflow
+## ワークフロー
 
-1. Take the cited `answers[].references[].path`, `page_start`, and `page_end`.
-2. Run the bundled script from the validator workdir where `readonly/` exists:
+1. 検証対象回答の `answers[].references[].path`、`page_start`、`page_end` を取得する。
+2. `readonly/` が存在するvalidator workdirで、同梱スクリプトを実行する。
 
 ```bash
 python "$CODEX_HOME/skills/custom/reference-html-page/scripts/extract_reference_html_pages.py" --pdf-path 'readonly/IPA_books/raw/pdf/<document>.pdf' --start-page 21 --end-page 22
 ```
 
-3. Treat stdout as the only page content for validation. The script prints only the matching HTML `<section>` fragment(s).
-4. If the script fails, the cited page content is not available from the workspace; do not mark the reference as verified.
+3. 標準出力だけを検証対象ページの本文として扱う。スクリプトは対応するHTMLの `<section>` 断片だけを出力する。
+4. スクリプトが失敗した場合、その参照元ページ本文はワークスペースから確認できない。参照元を検証済みにしない。
 
-## Notes
+## 注意事項
 
-- `readonly/IPA_books/raw/pdf/<document>.pdf` maps to `readonly/IPA_books/raw/<document>/index.html`.
-- `readonly/<document>.pdf` maps to `readonly/IPA_books/raw/<document>/index.html` when that HTML file exists.
-- The script rejects absolute paths, parent-directory traversal, non-PDF paths, invalid page ranges, missing HTML, and missing pages.
+- `readonly/IPA_books/raw/pdf/<document>.pdf` は `readonly/IPA_books/raw/<document>/index.html` に対応する。
+- `readonly/<document>.pdf` は、対応するHTMLが存在する場合に `readonly/IPA_books/raw/<document>/index.html` に対応する。
+- スクリプトは、絶対パス、親ディレクトリ参照、PDF以外のパス、不正なページ範囲、存在しないHTML、存在しないページを拒否する。
