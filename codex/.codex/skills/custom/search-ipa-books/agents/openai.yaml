@@ -1,0 +1,4 @@
+interface:
+  display_name: "IPA Books Search"
+  short_description: "IPA Books文書を検索し参照元付きJSON回答を作成する"
+  default_prompt: "$search-ipa-books を使って、IPA Books文書を根拠に参照元付きJSON回答を作成してください。"
