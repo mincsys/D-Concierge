@@ -11,7 +11,7 @@ SECTION_TAG_PATTERN = re.compile(r"</?section\b[^>]*>", re.IGNORECASE)
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Extract matching HTML page sections for a readonly PDF reference."
+        description="Extract matching HTML page sections for an IPA Books PDF reference."
     )
     parser.add_argument("--pdf-path", required=True)
     parser.add_argument("--start-page", required=True, type=int)
@@ -41,11 +41,12 @@ def html_path_for_pdf(pdf_path: str) -> Path:
     if "\x00" in pdf_path:
         raise ValueError("pdf path contains NUL")
 
-    raw_path = Path(pdf_path)
+    normalized_pdf_path = pdf_path.replace("\\", "/")
+    raw_path = Path(normalized_pdf_path)
     if raw_path.is_absolute():
         raise ValueError("pdf path must be relative")
 
-    posix_path = PurePosixPath(pdf_path)
+    posix_path = PurePosixPath(normalized_pdf_path)
     parts = posix_path.parts
     if not parts or parts[0] != "readonly":
         raise ValueError("pdf path must start with readonly/")
@@ -54,14 +55,16 @@ def html_path_for_pdf(pdf_path: str) -> Path:
     if posix_path.suffix.lower() != ".pdf":
         raise ValueError("pdf path must end with .pdf")
 
-    if len(parts) >= 4 and parts[1:3] == ("raw", "pdf"):
-        document_name = PurePosixPath(*parts[3:]).with_suffix("").as_posix()
+    if len(parts) >= 5 and parts[1:4] == ("IPA_books", "raw", "pdf"):
+        document_name = PurePosixPath(*parts[4:]).with_suffix("").as_posix()
     elif len(parts) == 2:
         document_name = posix_path.with_suffix("").name
     else:
-        raise ValueError("pdf path must be readonly/IPA_books/raw/pdf/<document>.pdf")
+        raise ValueError(
+            "pdf path must be readonly/IPA_books/raw/pdf/<document>.pdf"
+        )
 
-    html_path = Path("readonly") / "html" / document_name / "index.html"
+    html_path = Path("readonly") / "IPA_books" / "html" / document_name / "index.html"
     if not html_path.is_file():
         raise ValueError(f"matching HTML not found: {html_path.as_posix()}")
     return html_path

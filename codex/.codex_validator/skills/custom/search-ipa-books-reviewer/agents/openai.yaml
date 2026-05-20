@@ -1,0 +1,4 @@
+interface:
+  display_name: "IPA Books Reviewer"
+  short_description: "IPA Books回答の本文・参照元・ページ範囲を検証する"
+  default_prompt: "$search-ipa-books-reviewer を使って、IPA Books回答の本文、参照元、ページ範囲を検証してください。"

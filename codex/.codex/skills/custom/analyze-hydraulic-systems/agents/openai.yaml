@@ -1,0 +1,4 @@
+interface:
+  display_name: "Hydraulic Systems Analysis"
+  short_description: "油圧システム状態監視データのEDA・特徴量作成・条件別集計を行う"
+  default_prompt: "油圧システム状態監視データを分析し、センサー時系列とprofile条件値から傾向を説明してください。"

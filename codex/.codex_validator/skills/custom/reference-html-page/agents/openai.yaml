@@ -1,4 +1,0 @@
-interface:
-  display_name: "Reference HTML Page"
-  short_description: "PDF参照元パスとページ番号から対応HTMLページを取得する"
-  default_prompt: "参照元PDFパスとページ番号を指定して、対応するHTMLページを取得してください。"

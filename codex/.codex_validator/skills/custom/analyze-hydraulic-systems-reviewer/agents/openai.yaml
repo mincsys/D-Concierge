@@ -1,0 +1,4 @@
+interface:
+  display_name: "Hydraulic Systems Reviewer"
+  short_description: "油圧システム分析回答がユーザ指示に沿っているか簡易検証する"
+  default_prompt: "$analyze-hydraulic-systems-reviewer を使って、油圧システム分析回答がユーザ指示に沿っているか検証してください。"

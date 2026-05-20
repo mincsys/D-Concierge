@@ -1,0 +1,4 @@
+interface:
+  display_name: "D-Concierge Explorer"
+  short_description: "D-Conciergeのコードベースと設計書を根拠付きで調査する"
+  default_prompt: "D-Conciergeのコードベースと設計書を調査し、参照ファイルを明示して回答してください。"

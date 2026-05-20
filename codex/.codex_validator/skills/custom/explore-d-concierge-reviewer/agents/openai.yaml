@@ -1,0 +1,4 @@
+interface:
+  display_name: "D-Concierge Reviewer"
+  short_description: "D-Concierge調査回答がユーザ指示に沿っているか簡易検証する"
+  default_prompt: "$explore-d-concierge-reviewer を使って、D-Concierge調査回答がユーザ指示に沿っているか検証してください。"

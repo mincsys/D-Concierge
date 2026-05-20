@@ -13,7 +13,7 @@
             "kind": {
               "type": "string",
               "const": "progress",
-              "description": "中間メッセージであることを示す識別子。"
+              "description": "中間メッセージであることを示す識別子。最後のメッセージとしてはこの識別子を絶対に付けないこと。"
             },
             "text": {
               "type": "string",
@@ -30,7 +30,7 @@
             "kind": {
               "type": "string",
               "const": "final",
-              "description": "最終検証結果であることを示す識別子。"
+              "description": "最終検証結果であることを示す識別子。必ず最後のメッセージにこの識別子を付与すること。この識別子のメッセージなしで作業を終了することを禁止する。"
             },
             "valid": {
               "type": "boolean",
