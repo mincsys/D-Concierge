@@ -38,6 +38,7 @@
 - 検証用Codex最終出力の再出力回数は `RetryPolicy` が判定する `validator.max_retries` を超えない。
 - 利用者向け表示文言は `shared/user_messages.py` の定数を使用し、生成用Codexへ渡す再生成指示文とは混在させない。
 - 再生成指示文は `application/validation/instruction_messages.py` で生成し、domain層は再生成指示文を生成しない。
+- 回答JSONの汎用的な固定検証不合格では、再生成指示に `不合格理由：` を含め、概略とスキーマ上の問題点を生成用Codexへ伝える。回答ブロックまたは参照元配列の位置を特定できる場合は、0始まり配列番号を含める。
 - 検証用Codexの `valid` / `comment` は一時判定結果として扱い、DB永続化対象および利用者画面の中間メッセージ対象にしない。
 - 検証用Codexの最終出力として `payload.kind="progress"` は採用せず、再出力上限内では検証用Codexへ `payload.kind="final"` の再出力を依頼する。
 - 検証用Codexへは元のユーザ指示、現在の回答候補、参照元情報を毎回渡し、resume済み会話の過去文脈だけで判定させない。

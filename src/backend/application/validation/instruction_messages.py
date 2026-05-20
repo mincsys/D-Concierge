@@ -12,7 +12,6 @@ from backend.domain.answer.answer_candidate import (
     InvalidReferencePathFailure,
 )
 
-FIXED_VALIDATION_FAILED_MESSAGE = "固定検証に失敗しました。"
 REFERENCE_VALIDATION_FAILED_MESSAGE = "参照元検証に失敗しました。"
 
 
@@ -23,8 +22,17 @@ def get_answer_parse_failure_message(failure: AnswerParseFailure) -> str:
             return get_invalid_reference_path_message(paths)
         case InvalidReferencePageRangeFailure(page_ranges=page_ranges):
             return get_invalid_reference_page_range_message(page_ranges)
-        case GenericAnswerParseFailure():
-            return FIXED_VALIDATION_FAILED_MESSAGE
+        case GenericAnswerParseFailure(message=message):
+            return get_generic_fixed_validation_message(message)
+
+
+def get_generic_fixed_validation_message(reason: str) -> str:
+    """回答JSON固定検証不合格を生成用Codexへ伝える再生成指示を組み立てる。"""
+    return (
+        "回答JSONの固定検証で不合格になったため、この回答は採用できません。\n"
+        f"不合格理由：{reason}\n\n"
+        "ユーザ指示には完全に回答し、指定スキーマに従って回答を再出力してください。"
+    )
 
 
 def get_invalid_reference_path_message(paths: tuple[str, ...]) -> str:

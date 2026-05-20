@@ -96,10 +96,16 @@ def parse_generation_final_output(raw_json: str) -> ParsedAnswerCandidate:
         not isinstance(payload_value, dict)
         or payload_value.get("kind") != CodexOutputKind.FINAL.value
     ):
-        raise AnswerParseError("回答候補の形式が不正です。")
+        raise AnswerParseError(
+            "回答の形式が不正です。"
+            '最終出力が payload.kind="final" を持つJSONオブジェクトになっていません。'
+        )
     answers_value = payload_value.get("answers")
     if not isinstance(answers_value, list):
-        raise AnswerParseError("回答候補が空です。")
+        raise AnswerParseError(
+            "回答が空です。"
+            "payload.answers が存在しない、配列ではない、または空配列になっています。"
+        )
     return _parse_answers(answers_value)
 
 
@@ -107,49 +113,91 @@ def _load_object(raw_json: str) -> dict[str, JsonValue]:
     try:
         loaded: JsonValue = json.loads(raw_json)
     except json.JSONDecodeError as exc:
-        raise AnswerParseError("回答候補JSONを解析できません。") from exc
+        raise AnswerParseError(
+            "回答JSONを解析できません。"
+            "最終出力がJSONとして解釈できない文字列になっています。"
+        ) from exc
     if not isinstance(loaded, dict):
-        raise AnswerParseError("回答候補の形式が不正です。")
+        raise AnswerParseError(
+            "回答の形式が不正です。"
+            '最終出力が payload.kind="final" を持つJSONオブジェクトになっていません。'
+        )
     return loaded
 
 
 def _parse_answers(answers_value: list[JsonValue]) -> ParsedAnswerCandidate:
     if len(answers_value) == 0:
-        raise AnswerParseError("回答候補が空です。")
+        raise AnswerParseError(
+            "回答が空です。"
+            "payload.answers が存在しない、配列ではない、または空配列になっています。"
+        )
 
     blocks: list[ParsedAnswerBlock] = []
-    for answer_value in answers_value:
+    for answer_index, answer_value in enumerate(answers_value):
         if not isinstance(answer_value, dict):
-            raise AnswerParseError("回答要素の形式が不正です。")
+            raise AnswerParseError(
+                "回答要素の形式が不正です。"
+                f"payload.answers[{answer_index}] がJSONオブジェクトになっていません。"
+            )
         text_value = answer_value.get("text")
         if not isinstance(text_value, str) or text_value.strip() == "":
-            raise AnswerParseError("回答本文が空です。")
+            raise AnswerParseError(
+                "回答本文が空です。"
+                f"payload.answers[{answer_index}].text が存在しない、文字列ではない、"
+                "または空文字列になっています。"
+            )
         references_value = answer_value.get("references")
         if not isinstance(references_value, list):
-            raise AnswerParseError("参照元の形式が不正です。")
+            raise AnswerParseError(
+                "参照元の形式が不正です。"
+                f"payload.answers[{answer_index}].references が存在しない、"
+                "または配列ではありません。"
+            )
         blocks.append(
             ParsedAnswerBlock(
                 markdown=text_value.strip(),
-                references=tuple(_parse_references(references_value)),
+                references=tuple(
+                    _parse_references(
+                        references_value,
+                        answer_index=answer_index,
+                    )
+                ),
             )
         )
 
     return ParsedAnswerCandidate(blocks=tuple(blocks))
 
 
-def _parse_references(references_value: list[JsonValue]) -> list[PdfReference]:
+def _parse_references(
+    references_value: list[JsonValue],
+    *,
+    answer_index: int,
+) -> list[PdfReference]:
     parsed: list[PdfReference] = []
     invalid_paths: list[str] = []
     invalid_page_ranges: list[InvalidPageRange] = []
-    for reference_value in references_value:
+    for reference_index, reference_value in enumerate(references_value):
         if not isinstance(reference_value, dict):
-            raise AnswerParseError("参照元要素の形式が不正です。")
+            raise AnswerParseError(
+                "参照元要素の形式が不正です。"
+                f"payload.answers[{answer_index}].references[{reference_index}] "
+                "がJSONオブジェクトになっていません。"
+            )
         source_type = reference_value.get("source_type")
         if source_type != SourceType.PDF.value:
-            raise AnswerParseError("未対応の参照元種別です。")
+            raise AnswerParseError(
+                "未対応の参照元種別です。"
+                f"payload.answers[{answer_index}].references[{reference_index}]"
+                '.source_type が "pdf" 以外になっています。'
+            )
         locator_value = reference_value.get("locator")
         if not isinstance(locator_value, dict):
-            raise AnswerParseError("参照位置の形式が不正です。")
+            raise AnswerParseError(
+                "参照位置の形式が不正です。"
+                f"payload.answers[{answer_index}].references[{reference_index}]"
+                ".locator が存在しない、"
+                "またはJSONオブジェクトではありません。"
+            )
         path_value = locator_value.get("path")
         start_page_value = locator_value.get("start_page")
         end_page_value = locator_value.get("end_page")
@@ -158,7 +206,12 @@ def _parse_references(references_value: list[JsonValue]) -> list[PdfReference]:
             or not isinstance(start_page_value, int)
             or not isinstance(end_page_value, int)
         ):
-            raise AnswerParseError("PDF参照位置が不正です。")
+            raise AnswerParseError(
+                "PDF参照位置が不正です。"
+                f"payload.answers[{answer_index}].references[{reference_index}]"
+                ".locator.path、start_page、end_page のいずれかが"
+                "参照元PDFの位置情報として不正です。"
+            )
         relative_path = _try_normalize_readonly_pdf_path(path_value)
         if relative_path is None:
             invalid_paths.append(path_value)

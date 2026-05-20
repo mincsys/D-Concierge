@@ -76,13 +76,18 @@ def test_validate_answer_returns_regeneration_for_fixed_validation_failure() -> 
     use_case = _use_case(file_validator, validator_runner)
 
     result = use_case.validate(
-        '{"answers":[]}',
+        '{"payload":{"kind":"final","answers":[{"text":" ","references":[]}]}}',
         retry_count=0,
         user_instruction="資料を要約",
     )
 
     assert result.status is ValidationStatus.REGENERATE
-    assert "固定検証" in result.regeneration_instruction
+    assert result.regeneration_instruction == (
+        "回答JSONの固定検証で不合格になったため、この回答は採用できません。\n"
+        "不合格理由：回答本文が空です。payload.answers[0].text が存在しない、"
+        "文字列ではない、または空文字列になっています。\n\n"
+        "ユーザ指示には完全に回答し、指定スキーマに従って回答を再出力してください。"
+    )
     assert file_validator.validated_candidates == []
     assert validator_runner.prompts == []
 
