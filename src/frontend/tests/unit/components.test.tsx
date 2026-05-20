@@ -4,6 +4,7 @@ import { StrictMode, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AppShell } from "@/components/layout/AppShell";
+import { TopMenu } from "@/components/layout/TopMenu";
 import { Providers } from "@/app/providers";
 import { AnswerContent } from "@/features/answer-rendering/components/AnswerContent";
 import { ImageViewerDialog } from "@/features/answer-rendering/components/ImageViewerDialog";
@@ -261,6 +262,23 @@ describe("frontend components", () => {
     });
     await act(async () => window.dispatchEvent(new Event("resize")));
     expect(screen.getByText("D-Concierge")).toBeInTheDocument();
+  });
+
+  it("観点：TopMenu。確認：その他メニューから削除項目を表示する。", async () => {
+    const user = userEvent.setup();
+    render(
+      <Providers>
+        <TopMenu />
+      </Providers>,
+    );
+
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    await user.click(screen.getByLabelText("その他"));
+    expect(screen.getByRole("menu", { name: "その他メニュー" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "削除する" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
   });
 
   it("観点：ChatThread。確認：中間、回答、状態メッセージ、キャンセル、継続指示を表示・通知する。", async () => {
