@@ -38,14 +38,15 @@
 | `ui.welcome_message` | 任意 | 開始画面の入力欄上に表示する文言。YAMLの `\n` による改行指定を表示上の改行として扱う。 | `GET /api/app-config` |
 | `ui.input_suggestions` | 任意 | 開始画面の入力候補チップ文字列配列。YAMLの `\n` による改行指定を表示上の改行として扱う。 | `GET /api/app-config` |
 | `datasource.dir` | 必須 | 共有データソースのベースディレクトリ。 | 参照元表示、回答生成、回答検証 |
-| `codex.home` | 必須 | 生成指示を記載した `AGENTS.md` と生成用Skillsを含む、生成用codex execのホームディレクトリ。 | codex exec IF |
-| `codex.workdir` | 必須 | 生成用セッションベースディレクトリ。 | codex exec IF |
-| `codex.output_schema` | 必須 | 生成用codex execの出力契約。 | 回答生成、形式検証 |
-| `codex.saved_artifacts_dir` | 必須 | 検証済み回答が参照するCodex成果物本体の保存領域。 | Codex成果物配信 |
-| `validator.max_retries` | 必須 | 検証失敗後の再生成上限。 | 回答検証 |
-| `validator.codex.home` | 必須 | 検証指示を記載した `AGENTS.md` と検証用Skillsを含む、検証用codex execのホームディレクトリ。 | codex exec IF |
-| `validator.codex.workdir` | 必須 | 検証用セッションベースディレクトリ。 | codex exec IF |
-| `validator.codex.output_schema` | 必須 | 検証用codex execの検証結果出力契約。 | 回答検証 |
+| `generator.max_retries` | 必須 | 生成回答が検証で不採用になった場合の再生成上限。 | 回答検証 |
+| `generator.home` | 必須 | 生成指示を記載した `AGENTS.md` と生成用Skillsを含む、生成用codex execのホームディレクトリ。 | codex exec IF |
+| `generator.workdir` | 必須 | 生成用セッションベースディレクトリ。 | codex exec IF |
+| `generator.output_schema` | 必須 | 生成用codex execの出力契約。 | 回答生成、形式検証 |
+| `generator.saved_artifacts_dir` | 必須 | 検証済み回答が参照するCodex成果物本体の保存領域。 | Codex成果物配信 |
+| `validator.max_retries` | 必須 | 検証用Codexの最終出力形式が不正だった場合の再出力上限。 | 回答検証 |
+| `validator.home` | 必須 | 検証指示を記載した `AGENTS.md` と検証用Skillsを含む、検証用codex execのホームディレクトリ。 | codex exec IF |
+| `validator.workdir` | 必須 | 検証用セッションベースディレクトリ。 | codex exec IF |
+| `validator.output_schema` | 必須 | 検証用codex execの検証結果出力契約。 | 回答検証 |
 | `database.url` | 必須 | データベース接続先。 | 永続化 |
 | `server.timeout_seconds` | 必須 | 回答生成から検証完了までのタイムアウト値。 | 実行制約 |
 | `trace_log.dir` | 必須 | 異常系トレースログYAMLファイルの保存先。 | ログ設計 |
@@ -78,15 +79,17 @@
 ## 6. パス設定の扱い
 
 - 共有データソース配置先は `datasource.dir` から決まる。
-- 生成用 `CODEX_HOME` は `codex.home` から決まる。
-- 生成指示と生成用Skillsは、`codex.home` 配下の `AGENTS.md` とSkillsから決まる。
-- 生成用作業ディレクトリは、DBに保存された利用者IDとセッションIDを使い、`codex.workdir/<user-id>/<session-id>` から決まる。
-- 生成用出力スキーマは `codex.output_schema` から決まる。
-- 保存済みCodex成果物領域は `codex.saved_artifacts_dir` から決まる。
-- 検証用 `CODEX_HOME` は `validator.codex.home` から決まる。
-- 検証指示と検証用Skillsは、`validator.codex.home` 配下の `AGENTS.md` とSkillsから決まる。
-- 検証用作業ディレクトリは、DBに保存された利用者IDとセッションIDを使い、`validator.codex.workdir/<user-id>/<session-id>` から決まる。
-- 検証用出力スキーマは `validator.codex.output_schema` から決まる。
+- 生成回答の再生成上限は `generator.max_retries` から決まる。
+- 生成用 `CODEX_HOME` は `generator.home` から決まる。
+- 生成指示と生成用Skillsは、`generator.home` 配下の `AGENTS.md` とSkillsから決まる。
+- 生成用作業ディレクトリは、DBに保存された利用者IDとセッションIDを使い、`generator.workdir/<user-id>/<session-id>` から決まる。
+- 生成用出力スキーマは `generator.output_schema` から決まる。
+- 保存済みCodex成果物領域は `generator.saved_artifacts_dir` から決まる。
+- 検証用Codexの最終出力形式不正時の再出力上限は `validator.max_retries` から決まる。
+- 検証用 `CODEX_HOME` は `validator.home` から決まる。
+- 検証指示と検証用Skillsは、`validator.home` 配下の `AGENTS.md` とSkillsから決まる。
+- 検証用作業ディレクトリは、DBに保存された利用者IDとセッションIDを使い、`validator.workdir/<user-id>/<session-id>` から決まる。
+- 検証用出力スキーマは `validator.output_schema` から決まる。
 - トレースログ保存期間は `trace_log.retention_days` から決まる。
 - アプリケーション起動ごとの同日トレースログ最大保存件数は `trace_log.max_files_per_day` から決まる。
 - トレースログの日付ディレクトリ、ファイル名、発生日時、保存期間判定は `app.timezone` から決まる。

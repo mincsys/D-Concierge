@@ -1,11 +1,13 @@
-import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import pytest
 from pypdf import PdfWriter
 
-from backend.application.ports.codex.dto import ReferenceValidationResult
+from backend.application.ports.codex.dto import (
+    ReferenceValidationResult,
+    ValidatorCodexRunResult,
+)
 from backend.application.ports.database.interface import (
     ChatRuntimeRepositoryPort,
     TransactionManagerPort,
@@ -28,45 +30,24 @@ from backend.infrastructure.codex.jsonl_event_parser import (
     ParsedCodexEvent,
 )
 from backend.infrastructure.codex.reference_validator import (
-    CodexReferenceValidator as _CodexReferenceValidator,
+    CodexReferenceFileValidator,
+    CodexValidationRunnerAdapter,
+    InfrastructureCodexRunner,
 )
-from backend.infrastructure.codex.reference_validator import InfrastructureCodexRunner
-from backend.infrastructure.config.models import CodexConfig
-from backend.shared.errors.error_type import ErrorType
+from backend.infrastructure.config.models import ValidatorConfig
 from backend.shared.errors.errors import (
-    AppError,
     ReferencePdfReadError,
-    ValidationResultFormatError,
+    ValidationWorkspacePreparationError,
 )
 from backend.tests.support.memory_repository import InMemoryChatRepository
 from backend.tests.support.symlink import require_symlink_support
 from backend.tests.support.transaction_manager import NoopTransactionManager
 
 
-def CodexReferenceValidator(
-    *,
-    repository: ChatRuntimeRepositoryPort,
-    codex_runner: InfrastructureCodexRunner,
-    validator_config: CodexConfig,
-    datasource_dir: Path,
-    timeout_seconds: int,
-    transaction_manager: TransactionManagerPort | None = None,
-) -> _CodexReferenceValidator:
-    """テスト用TransactionManagerを補って検証アダプタを生成する。"""
-    return _CodexReferenceValidator(
-        repository=repository,
-        codex_runner=codex_runner,
-        validator_config=validator_config,
-        datasource_dir=datasource_dir,
-        timeout_seconds=timeout_seconds,
-        transaction_manager=transaction_manager or NoopTransactionManager(),
-    )
-
-
-def test_codex_reference_validator_runs_validation_and_saves_resume_id(
+def test_codex_validation_runner_runs_validation_and_saves_resume_id(
     tmp_path: Path,
 ) -> None:
-    """観点：検証用Codex連携。確認：検証結果JSONを参照元検証結果へ変換する。"""
+    """観点：検証用Codex連携。確認：promptをそのまま渡し、resume idを保存する。"""
     repository = InMemoryChatRepository()
     accepted = repository.create_chat_with_first_run("資料を要約")
     repository.save_validation_conversation_id(accepted.chat_id, "previous-val-thread")
@@ -94,36 +75,30 @@ def test_codex_reference_validator_runs_validation_and_saves_resume_id(
     datasource_dir = tmp_path / "readonly"
     datasource_dir.mkdir()
     _write_pdf(datasource_dir / "manual.pdf", page_count=2)
-    validator = CodexReferenceValidator(
+    runner = _validation_runner(
         repository=repository,
         codex_runner=codex_runner,
-        validator_config=CodexConfig(
-            home=tmp_path / "codex/.codex_validator",
-            workdir=tmp_path / "codex/sessions_validator",
-            output_schema=tmp_path / "validator-schema.json",
-            saved_artifacts_dir=tmp_path / "unused",
-        ),
         datasource_dir=datasource_dir,
-        timeout_seconds=120,
+        tmp_path=tmp_path,
     )
-    candidate = _candidate_with_pdf()
 
-    result = validator.validate_references(
-        candidate,
-        user_instruction="資料を要約",
+    result = runner.run_validation(
         chat_id=accepted.chat_id,
         run_id=accepted.run_id,
-        trace_id="trace-601",
+        prompt='{"input":"value"}',
         timeout_seconds=55,
+        trace_id="trace-601",
     )
     saved_context = repository.get_chat_runtime_context(accepted.chat_id)
 
-    assert result == ReferenceValidationResult(
-        valid=False,
-        comment="根拠が不足しています。",
+    assert result == ValidatorCodexRunResult(
+        conversation_id="next-val-thread",
+        intermediate_messages=(),
+        final_output_json='{"payload":{"kind":"final","valid":false,"comment":"根拠が不足しています。"}}',
     )
     assert saved_context.validation_conversation_id == "next-val-thread"
     assert codex_runner.requests[0].run_id == accepted.run_id
+    assert codex_runner.requests[0].prompt == '{"input":"value"}'
     assert codex_runner.requests[0].codex_conversation_id == "previous-val-thread"
     assert codex_runner.requests[0].workdir == (
         tmp_path
@@ -131,78 +106,43 @@ def test_codex_reference_validator_runs_validation_and_saves_resume_id(
         / str(saved_context.local_user_id)
         / str(saved_context.session_id)
     )
-    assert json.loads(codex_runner.requests[0].prompt) == {
-        "instruction": "資料を要約",
-        "answers": [
-            {
-                "text": "回答",
-                "references": [
-                    {
-                        "label": "manual.pdf",
-                        "path": "readonly/manual.pdf",
-                        "page_start": 1,
-                        "page_end": 2,
-                    }
-                ],
-            }
-        ],
-    }
-    assert "relative_path" not in codex_runner.requests[0].prompt
-    assert "readonly_path" not in codex_runner.requests[0].prompt
     assert codex_runner.requests[0].timeout_seconds == 55
     assert codex_runner.requests[0].trace_id == "trace-601"
 
 
-def test_codex_reference_validator_prepares_readonly_validation_context(
+def test_codex_validation_runner_prepares_readonly_validation_context(
     tmp_path: Path,
 ) -> None:
-    """観点：検証用Codex連携。
-
-    確認：検証用readonlyへ共有データソースを提示し、回答候補はプロンプトで渡してから起動する。
-    """
+    """観点：検証用Codex連携。確認：検証用readonlyへ共有データソースを提示して起動する。"""
     repository = InMemoryChatRepository()
     accepted = repository.create_chat_with_first_run("資料を要約")
     datasource_dir = tmp_path / "readonly"
     datasource_dir.mkdir()
     _write_pdf(datasource_dir / "manual.pdf", page_count=2)
-    codex_runner = RecordingCodexRunner(
-        result=InfrastructureCodexRunResult(
-            events=(),
-            final_message='{"payload":{"kind":"final","valid":true,"comment":""}}',
-            codex_conversation_id="thread",
-        )
-    )
-    validator = CodexReferenceValidator(
+    codex_runner = RecordingCodexRunner(_valid_infrastructure_result())
+    runner = _validation_runner(
         repository=repository,
         codex_runner=codex_runner,
-        validator_config=CodexConfig(
-            home=tmp_path / "codex/.codex_validator",
-            workdir=tmp_path / "codex/sessions_validator",
-            output_schema=tmp_path / "validator-schema.json",
-            saved_artifacts_dir=tmp_path / "unused",
-        ),
         datasource_dir=datasource_dir,
-        timeout_seconds=120,
+        tmp_path=tmp_path,
     )
-    candidate = _candidate_with_pdf()
 
-    validator.validate_references(
-        candidate,
-        user_instruction="資料を要約",
+    runner.run_validation(
         chat_id=accepted.chat_id,
         run_id=accepted.run_id,
+        prompt="prompt",
+        timeout_seconds=120,
+        trace_id="trace",
     )
 
     readonly_dir = codex_runner.requests[0].workdir / "readonly"
     assert readonly_dir.is_symlink()
     assert readonly_dir.resolve() == datasource_dir.resolve()
     assert (readonly_dir / "manual.pdf").resolve() == datasource_dir / "manual.pdf"
-    assert not (readonly_dir / "answer-candidate.json").exists()
-    assert "readonly/manual.pdf" in codex_runner.requests[0].prompt
     assert (codex_runner.requests[0].workdir / "tmp").is_dir()
 
 
-def test_codex_reference_validator_links_generation_artifacts_when_needed(
+def test_codex_validation_runner_links_generation_artifacts_when_needed(
     tmp_path: Path,
 ) -> None:
     """観点：検証用Codex連携。確認：成果物リンクがある回答では生成成果物を検証用workdirへ提示する。"""
@@ -222,25 +162,20 @@ def test_codex_reference_validator_links_generation_artifacts_when_needed(
     generation_artifacts = generation_workdir / "artifacts"
     generation_artifacts.mkdir(parents=True)
     (generation_artifacts / "chart.svg").write_text("<svg />", encoding="utf-8")
-    codex_runner = RecordingCodexRunner(
-        result=InfrastructureCodexRunResult(
-            events=(),
-            final_message='{"payload":{"kind":"final","valid":true,"comment":""}}',
-            codex_conversation_id="thread",
-        )
-    )
-    validator = _reference_validator(
+    codex_runner = RecordingCodexRunner(_valid_infrastructure_result())
+    runner = _validation_runner(
         repository=repository,
         codex_runner=codex_runner,
         datasource_dir=datasource_dir,
         tmp_path=tmp_path,
     )
 
-    validator.validate_references(
-        _candidate_with_pdf(),
-        user_instruction="資料を要約",
+    runner.run_validation(
         chat_id=accepted.chat_id,
         run_id=accepted.run_id,
+        prompt="prompt",
+        timeout_seconds=120,
+        trace_id="trace",
         session_workdir=generation_workdir,
         has_artifact_links=True,
     )
@@ -250,13 +185,10 @@ def test_codex_reference_validator_links_generation_artifacts_when_needed(
     assert (validation_artifacts / "chart.svg").read_text(encoding="utf-8") == "<svg />"
 
 
-def test_codex_reference_validator_streams_intermediate_messages(
+def test_codex_validation_runner_streams_intermediate_messages(
     tmp_path: Path,
 ) -> None:
-    """観点：検証用Codex連携の中間メッセージ。
-
-    確認：検証用agent_message.textを即時通知し、最終検証結果JSONは通知しない。
-    """
+    """観点：検証用Codex連携の中間メッセージ。確認：検証用agent_message.textを即時通知する。"""
     repository = InMemoryChatRepository()
     accepted = repository.create_chat_with_first_run("資料を要約")
     codex_runner = StreamingRecordingCodexRunner(
@@ -273,15 +205,9 @@ def test_codex_reference_validator_streams_intermediate_messages(
                     text='{"payload":{"kind":"progress","text":"参照元PDFを確認しています。"}}',
                 ),
                 ParsedCodexEvent(
-                    kind=CodexEventKind.UNKNOWN, event_type="item.completed"
-                ),
-                ParsedCodexEvent(
                     kind=CodexEventKind.AGENT_MESSAGE,
                     event_type="item.completed",
                     text='{"payload":{"kind":"final","valid":false,"comment":"根拠が不足しています。"}}',
-                ),
-                ParsedCodexEvent(
-                    kind=CodexEventKind.TURN_COMPLETED, event_type="turn.completed"
                 ),
             ),
             final_message='{"payload":{"kind":"final","valid":false,"comment":"根拠が不足しています。"}}',
@@ -291,270 +217,53 @@ def test_codex_reference_validator_streams_intermediate_messages(
     datasource_dir = tmp_path / "readonly"
     datasource_dir.mkdir()
     _write_pdf(datasource_dir / "manual.pdf", page_count=2)
-    validator = CodexReferenceValidator(
+    runner = _validation_runner(
         repository=repository,
         codex_runner=codex_runner,
-        validator_config=CodexConfig(
-            home=tmp_path / "codex/.codex_validator",
-            workdir=tmp_path / "codex/sessions_validator",
-            output_schema=tmp_path / "validator-schema.json",
-            saved_artifacts_dir=tmp_path / "unused",
-        ),
         datasource_dir=datasource_dir,
-        timeout_seconds=120,
+        tmp_path=tmp_path,
     )
-    candidate = _candidate_with_pdf()
     streamed_messages: list[str] = []
 
-    result = validator.validate_references(
-        candidate,
-        user_instruction="資料を要約",
+    result = runner.run_validation(
         chat_id=accepted.chat_id,
         run_id=accepted.run_id,
+        prompt="prompt",
+        timeout_seconds=120,
+        trace_id="trace",
         on_intermediate_message=streamed_messages.append,
     )
 
-    assert result == ReferenceValidationResult(
-        valid=False,
-        comment="根拠が不足しています。",
-    )
+    assert result.intermediate_messages == ()
     assert streamed_messages == ["参照元PDFを確認しています。"]
 
 
-def test_codex_reference_validator_streams_progress_only(
+def test_reference_file_validator_rejects_missing_pdf_before_codex(
     tmp_path: Path,
 ) -> None:
-    """観点：検証用Codex連携の中間メッセージ。
-
-    確認：payload.kind=progressだけを通知し、payload.kind=finalは通知しない。
-    """
-    repository = InMemoryChatRepository()
-    accepted = repository.create_chat_with_first_run("資料を要約")
-    codex_runner = StreamingRecordingCodexRunner(
-        result=InfrastructureCodexRunResult(
-            events=(
-                ParsedCodexEvent(
-                    kind=CodexEventKind.THREAD_STARTED,
-                    event_type="thread.started",
-                    thread_id="validator-thread",
-                ),
-                ParsedCodexEvent(
-                    kind=CodexEventKind.AGENT_MESSAGE,
-                    event_type="item.completed",
-                    text='{"payload":{"kind":"progress","text":"参照元を確認しています。"}}',
-                ),
-                ParsedCodexEvent(
-                    kind=CodexEventKind.AGENT_MESSAGE,
-                    event_type="item.completed",
-                    text='{"payload":{"kind":"final","valid":true,"comment":"検証しました。"}}',
-                ),
-                ParsedCodexEvent(
-                    kind=CodexEventKind.TURN_COMPLETED,
-                    event_type="turn.completed",
-                ),
-            ),
-            final_message='{"payload":{"kind":"final","valid":true,"comment":"検証しました。"}}',
-            codex_conversation_id="validator-thread",
-        )
-    )
+    """観点：参照元PDF固定検証。確認：存在しないPDFは不合格にする。"""
     datasource_dir = tmp_path / "readonly"
     datasource_dir.mkdir()
-    _write_pdf(datasource_dir / "manual.pdf", page_count=2)
-    validator = CodexReferenceValidator(
-        repository=repository,
-        codex_runner=codex_runner,
-        validator_config=CodexConfig(
-            home=tmp_path / "codex/.codex_validator",
-            workdir=tmp_path / "codex/sessions_validator",
-            output_schema=tmp_path / "validator-schema.json",
-            saved_artifacts_dir=tmp_path / "unused",
-        ),
-        datasource_dir=datasource_dir,
-        timeout_seconds=120,
-    )
-    candidate = _candidate_with_pdf()
-    streamed_messages: list[str] = []
+    validator = CodexReferenceFileValidator(datasource_dir=datasource_dir)
 
-    result = validator.validate_references(
-        candidate,
-        user_instruction="資料を要約",
-        chat_id=accepted.chat_id,
-        run_id=accepted.run_id,
-        on_intermediate_message=streamed_messages.append,
-    )
+    result = validator.validate_reference_files(_candidate_with_pdf())
 
     assert result == ReferenceValidationResult(
-        valid=True,
-        comment="検証しました。",
+        valid=False,
+        failure=InvalidReferencePathFailure(("readonly/manual.pdf",)),
     )
-    assert streamed_messages == ["参照元を確認しています。"]
 
 
-def test_codex_reference_validator_rejects_invalid_context_or_payload(
+def test_reference_file_validator_rejects_page_out_of_range(
     tmp_path: Path,
 ) -> None:
-    """観点：検証用Codex連携。
-
-    確認：実行文脈なしは汎用システムエラー、検証結果不正は専用エラーにする。
-    """
-    repository = InMemoryChatRepository()
-    accepted = repository.create_chat_with_first_run("資料を要約")
-    candidate = _candidate_without_references()
-    datasource_dir = tmp_path / "readonly"
-    datasource_dir.mkdir()
-    validator = CodexReferenceValidator(
-        repository=repository,
-        codex_runner=RecordingCodexRunner(
-            result=InfrastructureCodexRunResult(
-                events=(),
-                final_message='{"payload":{"kind":"final","valid":"yes","comment":""}}',
-                codex_conversation_id="thread",
-            )
-        ),
-        validator_config=CodexConfig(
-            home=tmp_path / "codex/.codex_validator",
-            workdir=tmp_path / "codex/sessions_validator",
-            output_schema=tmp_path / "validator-schema.json",
-            saved_artifacts_dir=tmp_path / "unused",
-        ),
-        datasource_dir=datasource_dir,
-        timeout_seconds=120,
-    )
-
-    with pytest.raises(AppError) as context_error:
-        validator.validate_references(candidate, user_instruction="資料を要約")
-    with pytest.raises(ValidationResultFormatError) as payload_error:
-        validator.validate_references(
-            candidate,
-            user_instruction="資料を要約",
-            chat_id=accepted.chat_id,
-            run_id=accepted.run_id,
-            trace_id="trace-602",
-        )
-
-    assert context_error.value.error_type is ErrorType.SYSTEM
-    assert payload_error.value.error_type is ErrorType.SYSTEM
-    assert payload_error.value.diagnostic_message == "検証結果の形式が不正です。"
-
-
-@pytest.mark.parametrize(
-    "final_message",
-    (
-        '{"payload":{"kind":"progress","text":"検証しています。"}}',
-        '{"payload":{"kind":"final","valid":true}}',
-        "not-json",
-    ),
-)
-def test_codex_reference_validator_rejects_invalid_final_validation_result(
-    tmp_path: Path,
-    final_message: str,
-) -> None:
-    """観点：検証用Codex連携。
-
-    確認：最終検証結果として採用できないJSONは専用エラーにする。
-    """
-    repository = InMemoryChatRepository()
-    accepted = repository.create_chat_with_first_run("資料を要約")
-    datasource_dir = tmp_path / "readonly"
-    datasource_dir.mkdir()
-    validator = CodexReferenceValidator(
-        repository=repository,
-        codex_runner=RecordingCodexRunner(
-            result=InfrastructureCodexRunResult(
-                events=(),
-                final_message=final_message,
-                codex_conversation_id="thread",
-            )
-        ),
-        validator_config=CodexConfig(
-            home=tmp_path / "codex/.codex_validator",
-            workdir=tmp_path / "codex/sessions_validator",
-            output_schema=tmp_path / "validator-schema.json",
-            saved_artifacts_dir=tmp_path / "unused",
-        ),
-        datasource_dir=datasource_dir,
-        timeout_seconds=120,
-    )
-
-    with pytest.raises(ValidationResultFormatError):
-        validator.validate_references(
-            _candidate_without_references(),
-            user_instruction="資料を要約",
-            chat_id=accepted.chat_id,
-            run_id=accepted.run_id,
-            trace_id="trace-603",
-        )
-
-
-def test_codex_reference_validator_rejects_missing_pdf_before_codex(
-    tmp_path: Path,
-) -> None:
-    """観点：検証用Codex連携。
-
-    確認：参照元PDFが存在しない場合は検証用Codexを起動せず不合格にする。
-    """
-    repository = InMemoryChatRepository()
-    accepted = repository.create_chat_with_first_run("資料を要約")
-    codex_runner = RecordingCodexRunner(
-        result=InfrastructureCodexRunResult(
-            events=(),
-            final_message='{"payload":{"kind":"final","valid":true,"comment":""}}',
-            codex_conversation_id="thread",
-        )
-    )
-    datasource_dir = tmp_path / "readonly"
-    datasource_dir.mkdir()
-    validator = _reference_validator(
-        repository=repository,
-        codex_runner=codex_runner,
-        datasource_dir=datasource_dir,
-        tmp_path=tmp_path,
-    )
-
-    result = validator.validate_references(
-        _candidate_with_pdf(),
-        user_instruction="資料を要約",
-        chat_id=accepted.chat_id,
-        run_id=accepted.run_id,
-    )
-
-    assert result.valid is False
-    assert result.failure == InvalidReferencePathFailure(("readonly/manual.pdf",))
-    assert codex_runner.requests == []
-
-
-def test_codex_reference_validator_rejects_page_out_of_range_before_codex(
-    tmp_path: Path,
-) -> None:
-    """観点：検証用Codex連携。
-
-    確認：参照元PDFに存在しないページ範囲は検証用Codexを起動せず不合格にする。
-    """
-    repository = InMemoryChatRepository()
-    accepted = repository.create_chat_with_first_run("資料を要約")
-    codex_runner = RecordingCodexRunner(
-        result=InfrastructureCodexRunResult(
-            events=(),
-            final_message='{"payload":{"kind":"final","valid":true,"comment":""}}',
-            codex_conversation_id="thread",
-        )
-    )
+    """観点：参照元PDF固定検証。確認：PDFに存在しないページ範囲は不合格にする。"""
     datasource_dir = tmp_path / "readonly"
     datasource_dir.mkdir()
     _write_pdf(datasource_dir / "manual.pdf", page_count=1)
-    validator = _reference_validator(
-        repository=repository,
-        codex_runner=codex_runner,
-        datasource_dir=datasource_dir,
-        tmp_path=tmp_path,
-    )
+    validator = CodexReferenceFileValidator(datasource_dir=datasource_dir)
 
-    result = validator.validate_references(
-        _candidate_with_pdf(),
-        user_instruction="資料を要約",
-        chat_id=accepted.chat_id,
-        run_id=accepted.run_id,
-    )
+    result = validator.validate_reference_files(_candidate_with_pdf())
 
     assert result.valid is False
     assert isinstance(result.failure, InvalidReferencePageRangeFailure)
@@ -562,45 +271,50 @@ def test_codex_reference_validator_rejects_page_out_of_range_before_codex(
         (item.path, item.page_start, item.page_end)
         for item in result.failure.page_ranges
     ] == [("readonly/manual.pdf", 1, 2)]
-    assert codex_runner.requests == []
 
 
-def test_codex_reference_validator_raises_when_existing_pdf_is_unreadable(
+def test_reference_file_validator_raises_when_existing_pdf_is_unreadable(
     tmp_path: Path,
 ) -> None:
-    """観点：検証用Codex連携。
-
-    確認：存在するPDFを読み取れない場合は検証用Codexや再生成へ進めず、システムエラーにする。
-    """
-    repository = InMemoryChatRepository()
-    accepted = repository.create_chat_with_first_run("資料を要約")
-    codex_runner = RecordingCodexRunner(
-        result=InfrastructureCodexRunResult(
-            events=(),
-            final_message='{"payload":{"kind":"final","valid":true,"comment":""}}',
-            codex_conversation_id="thread",
-        )
-    )
+    """観点：参照元PDF固定検証。確認：存在するPDFを読めない場合はシステムエラーにする。"""
     datasource_dir = tmp_path / "readonly"
     datasource_dir.mkdir()
     (datasource_dir / "manual.pdf").write_text("not a pdf", encoding="utf-8")
-    validator = _reference_validator(
+    validator = CodexReferenceFileValidator(datasource_dir=datasource_dir)
+
+    with pytest.raises(ReferencePdfReadError) as exc_info:
+        validator.validate_reference_files(_candidate_with_pdf())
+
+    assert exc_info.value.relative_path == "manual.pdf"
+    assert "manual.pdf" in exc_info.value.diagnostic_message
+
+
+def test_codex_validation_runner_requires_generation_artifacts_when_needed(
+    tmp_path: Path,
+) -> None:
+    """観点：検証用Codex連携。確認：成果物提示が必要なのに生成workdirがない場合は準備エラーにする。"""
+    repository = InMemoryChatRepository()
+    accepted = repository.create_chat_with_first_run("資料を要約")
+    datasource_dir = tmp_path / "readonly"
+    datasource_dir.mkdir()
+    codex_runner = RecordingCodexRunner(_valid_infrastructure_result())
+    runner = _validation_runner(
         repository=repository,
         codex_runner=codex_runner,
         datasource_dir=datasource_dir,
         tmp_path=tmp_path,
     )
 
-    with pytest.raises(ReferencePdfReadError) as exc_info:
-        validator.validate_references(
-            _candidate_with_pdf(),
-            user_instruction="資料を要約",
+    with pytest.raises(ValidationWorkspacePreparationError):
+        runner.run_validation(
             chat_id=accepted.chat_id,
             run_id=accepted.run_id,
+            prompt="prompt",
+            timeout_seconds=120,
+            trace_id="trace",
+            has_artifact_links=True,
         )
 
-    assert exc_info.value.relative_path == "manual.pdf"
-    assert "manual.pdf" in exc_info.value.diagnostic_message
     assert codex_runner.requests == []
 
 
@@ -644,30 +358,34 @@ def _candidate_with_pdf() -> ParsedAnswerCandidate:
     )
 
 
-def _candidate_without_references() -> ParsedAnswerCandidate:
-    return ParsedAnswerCandidate(
-        blocks=(ParsedAnswerBlock(markdown="回答", references=()),)
-    )
-
-
-def _reference_validator(
+def _validation_runner(
     *,
-    repository: InMemoryChatRepository,
-    codex_runner: RecordingCodexRunner,
+    repository: ChatRuntimeRepositoryPort,
+    codex_runner: InfrastructureCodexRunner,
     datasource_dir: Path,
     tmp_path: Path,
-) -> _CodexReferenceValidator:
-    return CodexReferenceValidator(
+    transaction_manager: TransactionManagerPort | None = None,
+) -> CodexValidationRunnerAdapter:
+    return CodexValidationRunnerAdapter(
         repository=repository,
         codex_runner=codex_runner,
-        validator_config=CodexConfig(
+        validator_config=ValidatorConfig(
+            max_retries=3,
             home=tmp_path / "codex/.codex_validator",
             workdir=tmp_path / "codex/sessions_validator",
             output_schema=tmp_path / "validator-schema.json",
-            saved_artifacts_dir=tmp_path / "unused",
         ),
         datasource_dir=datasource_dir,
         timeout_seconds=120,
+        transaction_manager=transaction_manager or NoopTransactionManager(),
+    )
+
+
+def _valid_infrastructure_result() -> InfrastructureCodexRunResult:
+    return InfrastructureCodexRunResult(
+        events=(),
+        final_message='{"payload":{"kind":"final","valid":true,"comment":""}}',
+        codex_conversation_id="thread",
     )
 
 

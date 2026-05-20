@@ -1545,7 +1545,7 @@ class AdoptionWithoutCandidateValidator:
         chat_id: UUID,
         run_id: UUID,
         trace_id: str,
-        timeout_seconds: int,
+        get_timeout_seconds: Callable[[], int],
         on_intermediate_message: Callable[[str], None] | None = None,
         session_workdir: Path | None = None,
     ) -> AnswerValidationResult:
@@ -1557,7 +1557,7 @@ class AdoptionWithoutCandidateValidator:
             chat_id,
             run_id,
             trace_id,
-            timeout_seconds,
+            get_timeout_seconds,
             on_intermediate_message,
             session_workdir,
         )
@@ -1581,7 +1581,7 @@ class CancelingValidationValidator:
         chat_id: UUID,
         run_id: UUID,
         trace_id: str,
-        timeout_seconds: int,
+        get_timeout_seconds: Callable[[], int],
         on_intermediate_message: Callable[[str], None] | None = None,
         session_workdir: Path | None = None,
     ) -> AnswerValidationResult:
@@ -1593,7 +1593,7 @@ class CancelingValidationValidator:
             chat_id,
             run_id,
             trace_id,
-            timeout_seconds,
+            get_timeout_seconds,
             on_intermediate_message,
             session_workdir,
         )
@@ -1621,7 +1621,7 @@ class ParsingAnswerValidator:
         chat_id: UUID,
         run_id: UUID,
         trace_id: str,
-        timeout_seconds: int,
+        get_timeout_seconds: Callable[[], int],
         on_intermediate_message: Callable[[str], None] | None = None,
         session_workdir: Path | None = None,
     ) -> AnswerValidationResult:
@@ -1634,7 +1634,7 @@ class ParsingAnswerValidator:
             on_intermediate_message,
             session_workdir,
         )
-        self.timeout_seconds.append(timeout_seconds)
+        self.timeout_seconds.append(get_timeout_seconds())
         try:
             candidate = parse_generation_final_output(raw_answer_json)
         except AnswerParseError:
@@ -1663,7 +1663,7 @@ class QueuedAnswerValidator:
         chat_id: UUID,
         run_id: UUID,
         trace_id: str,
-        timeout_seconds: int,
+        get_timeout_seconds: Callable[[], int],
         on_intermediate_message: Callable[[str], None] | None = None,
         session_workdir: Path | None = None,
     ) -> AnswerValidationResult:
@@ -1672,7 +1672,7 @@ class QueuedAnswerValidator:
             chat_id,
             run_id,
             trace_id,
-            timeout_seconds,
+            get_timeout_seconds,
             on_intermediate_message,
             session_workdir,
         )
@@ -1695,7 +1695,7 @@ class FailingValidationValidator:
         chat_id: UUID,
         run_id: UUID,
         trace_id: str,
-        timeout_seconds: int,
+        get_timeout_seconds: Callable[[], int],
         on_intermediate_message: Callable[[str], None] | None = None,
         session_workdir: Path | None = None,
     ) -> AnswerValidationResult:
@@ -1707,7 +1707,7 @@ class FailingValidationValidator:
             chat_id,
             run_id,
             trace_id,
-            timeout_seconds,
+            get_timeout_seconds,
             on_intermediate_message,
             session_workdir,
         )
@@ -1726,7 +1726,7 @@ class ValidationStreamingAnswerValidator:
         chat_id: UUID,
         run_id: UUID,
         trace_id: str,
-        timeout_seconds: int,
+        get_timeout_seconds: Callable[[], int],
         on_intermediate_message: Callable[[str], None] | None = None,
         session_workdir: Path | None = None,
     ) -> AnswerValidationResult:
@@ -1737,7 +1737,7 @@ class ValidationStreamingAnswerValidator:
             chat_id,
             run_id,
             trace_id,
-            timeout_seconds,
+            get_timeout_seconds,
             session_workdir,
         )
         if on_intermediate_message is None:

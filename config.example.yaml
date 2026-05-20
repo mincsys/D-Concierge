@@ -14,7 +14,9 @@ datasource:
   # Codexが参照する共有データソースのベースディレクトリ。
   dir: "codex/readonly"
 
-codex:
+generator:
+  # 生成回答が検証で不採用になった場合に生成を再試行する最大回数。
+  max_retries: 2
   # 生成用CodexのCODEX_HOME。AGENTS.mdと生成用Skillsを配置する。
   home: "codex/.codex"
   # 生成用Codexのセッション作業領域。
@@ -25,15 +27,14 @@ codex:
   saved_artifacts_dir: "codex/saved_artifacts"
 
 validator:
-  # 検証不合格時に生成を再試行する最大回数。
-  max_retries: 2
-  codex:
-    # 検証用CodexのCODEX_HOME。AGENTS.mdと検証用Skillsを配置する。
-    home: "codex/.codex_validator"
-    # 検証用Codexのセッション作業領域。
-    workdir: "codex/sessions_validator"
-    # 検証用Codexの最終出力JSONスキーマ。
-    output_schema: "codex/output_json_schema/validator_schema.json"
+  # 検証用Codexの最終出力形式が不正だった場合に再出力を依頼する最大回数。
+  max_retries: 3
+  # 検証用CodexのCODEX_HOME。AGENTS.mdと検証用Skillsを配置する。
+  home: "codex/.codex_validator"
+  # 検証用Codexのセッション作業領域。
+  workdir: "codex/sessions_validator"
+  # 検証用Codexの最終出力JSONスキーマ。
+  output_schema: "codex/output_json_schema/validator_schema.json"
 
 database:
   # PostgreSQL接続URL。SQLAlchemyのURL形式で指定する。

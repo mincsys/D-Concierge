@@ -70,9 +70,11 @@ sequenceDiagram
 
 | 項目 | 内容 |
 | --- | --- |
-| `AppConfig` | アプリ表示設定、DB、Codex、ファイル、ログ、タイムアウトなどの型付き設定 |
+| `AppConfig` | アプリ表示設定、DB、生成用Codex、検証用Codex、ファイル、ログ、タイムアウトなどの型付き設定 |
 | `app.timezone` | 運用者向け日時に使用するIANA timezone名を検証済みタイムゾーンとして保持する |
-| `normalized_paths` | 共有データソース、Codex作業領域、成果物保存先、トレースログ出力先 |
+| `generator.max_retries` | 検証不合格時に生成用Codexへ回答の再出力を依頼する追加試行回数 |
+| `validator.max_retries` | 検証用Codexの最終出力形式不正時に最終検証結果JSONの再出力を依頼する追加試行回数 |
+| `normalized_paths` | 共有データソース、生成用Codex作業領域、検証用Codex作業領域、成果物保存先、トレースログ出力先 |
 | `trace_log.retention_days` | トレースログ日付ディレクトリの保持日数 |
 | `trace_log.max_files_per_day` | アプリケーション起動ごとの同日トレースログ最大保存件数 |
 

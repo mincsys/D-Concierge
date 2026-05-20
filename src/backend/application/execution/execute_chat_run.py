@@ -96,7 +96,7 @@ class AnswerValidator(Protocol):
         chat_id: UUID,
         run_id: UUID,
         trace_id: str,
-        timeout_seconds: int,
+        get_timeout_seconds: Callable[[], int],
         on_intermediate_message: Callable[[str], None] | None = None,
         session_workdir: Path | None = None,
     ) -> AnswerValidationResult:
@@ -330,7 +330,6 @@ class ExecuteChatRunUseCase:
             for message in result.intermediate_messages:
                 self._record_intermediate_message(chat_id, run_id, message)
             self._record_intermediate_message(chat_id, run_id, WORK_COMPLETED_MESSAGE)
-            validation_timeout_seconds = self._remaining_seconds(execution_deadline_at)
             self._change_state(
                 chat_id,
                 run_id,
@@ -348,7 +347,9 @@ class ExecuteChatRunUseCase:
                 chat_id,
                 run_id,
                 trace_id,
-                timeout_seconds=validation_timeout_seconds,
+                get_timeout_seconds=lambda: self._remaining_seconds(
+                    execution_deadline_at
+                ),
                 on_intermediate_message=lambda message: (
                     self._record_intermediate_message(chat_id, run_id, message)
                 ),

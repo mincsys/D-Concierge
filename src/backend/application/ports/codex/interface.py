@@ -7,6 +7,7 @@ from backend.application.ports.codex.cancel_request_result import CancelRequestR
 from backend.application.ports.codex.dto import (
     CodexRunResult,
     ReferenceValidationResult,
+    ValidatorCodexRunResult,
 )
 from backend.domain.answer.answer_candidate import ParsedAnswerCandidate
 
@@ -26,22 +27,31 @@ class CodexGenerationRunnerPort(Protocol):
         """生成用Codexを実行し、構造化結果を返す。"""
 
 
-class ReferenceValidatorPort(Protocol):
-    """参照元検証境界。"""
+class ReferenceFileValidatorPort(Protocol):
+    """参照元PDFファイル固定検証境界。"""
 
-    def validate_references(
+    def validate_reference_files(
         self,
         candidate: ParsedAnswerCandidate,
-        user_instruction: str,
-        chat_id: UUID | None = None,
-        run_id: UUID | None = None,
-        trace_id: str = "",
-        timeout_seconds: int | None = None,
+    ) -> ReferenceValidationResult:
+        """回答候補の参照元PDFファイルとページ範囲を固定検証する。"""
+
+
+class ValidatorCodexRunnerPort(Protocol):
+    """検証用Codex 1回実行境界。"""
+
+    def run_validation(
+        self,
+        chat_id: UUID,
+        run_id: UUID,
+        prompt: str,
+        timeout_seconds: int,
+        trace_id: str,
         on_intermediate_message: Callable[[str], None] | None = None,
         session_workdir: Path | None = None,
         has_artifact_links: bool = False,
-    ) -> ReferenceValidationResult:
-        """回答候補の参照元が回答内容を支えるか検証する。"""
+    ) -> ValidatorCodexRunResult:
+        """検証用Codexを1回実行し、rawな最終出力を返す。"""
 
 
 class CancelRequesterPort(Protocol):

@@ -18,7 +18,7 @@ from backend.infrastructure.codex.intermediate_messages import (
 from backend.infrastructure.codex.jsonl_event_parser import (
     ParsedCodexEvent,
 )
-from backend.infrastructure.config.models import CodexConfig
+from backend.infrastructure.config.models import GeneratorConfig
 from backend.tests.support.memory_repository import InMemoryChatRepository
 from backend.tests.support.transaction_manager import NoopTransactionManager
 
@@ -64,7 +64,8 @@ def test_codex_generation_runner_builds_request_and_saves_resume_id(
     adapter = CodexGenerationRunnerAdapter(
         repository=repository,
         codex_runner=codex_runner,
-        codex_config=CodexConfig(
+        generator_config=GeneratorConfig(
+            max_retries=2,
             home=tmp_path / "codex/.codex",
             workdir=tmp_path / "codex/sessions",
             output_schema=tmp_path / "schema.json",
@@ -131,7 +132,8 @@ def test_codex_generation_runner_prepares_readonly_datasource(
     adapter = CodexGenerationRunnerAdapter(
         repository=repository,
         codex_runner=codex_runner,
-        codex_config=CodexConfig(
+        generator_config=GeneratorConfig(
+            max_retries=2,
             home=tmp_path / "codex/.codex",
             workdir=tmp_path / "codex/sessions",
             output_schema=tmp_path / "schema.json",
@@ -200,7 +202,8 @@ def test_codex_generation_runner_streams_intermediate_messages(
     adapter = CodexGenerationRunnerAdapter(
         repository=repository,
         codex_runner=codex_runner,
-        codex_config=CodexConfig(
+        generator_config=GeneratorConfig(
+            max_retries=2,
             home=tmp_path / "codex/.codex",
             workdir=tmp_path / "codex/sessions",
             output_schema=tmp_path / "schema.json",

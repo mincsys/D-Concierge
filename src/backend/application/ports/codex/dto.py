@@ -13,6 +13,15 @@ class CodexRunResult:
 
 
 @dataclass(frozen=True, slots=True)
+class ValidatorCodexRunResult:
+    """検証用Codex 1回実行結果。"""
+
+    conversation_id: str
+    intermediate_messages: tuple[str, ...]
+    final_output_json: str
+
+
+@dataclass(frozen=True, slots=True)
 class ReferenceValidationResult:
     """検証用Codexによる参照元検証結果。"""
 

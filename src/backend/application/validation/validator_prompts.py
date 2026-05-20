@@ -1,3 +1,6 @@
+"""検証用Codexへ渡すプロンプトを組み立てる。"""
+
+import json
 from typing import TypedDict
 
 from backend.domain.answer.answer_candidate import ParsedAnswerCandidate
@@ -26,12 +29,42 @@ class ValidatorCodexInput(TypedDict):
     answers: list[ValidatorCodexAnswerInput]
 
 
-def build_validator_codex_input(
+_VALIDATOR_RESULT_RETRY_PROMPT = (
+    "検証結果の最終出力形式が不正なため、この検証結果は採用できません。\n"
+    '最終出力は必ず {"payload":{"kind":"final","valid":trueまたはfalse,'
+    '"comment":"..."}} 形式にしてください。\n'
+    '途中経過を示す {"payload":{"kind":"progress","text":"..."}} は'
+    "最終出力として使用できません。\n"
+    "直前の検証内容を踏まえて、最終検証結果JSONだけを再出力してください。"
+)
+
+
+def build_validator_prompt(
+    *,
+    user_instruction: str,
+    candidate: ParsedAnswerCandidate,
+) -> str:
+    """検証用Codexへ渡す初回検証プロンプトを返す。"""
+    return json.dumps(
+        _build_validator_codex_input(
+            user_instruction=user_instruction,
+            candidate=candidate,
+        ),
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+
+
+def build_validator_result_retry_prompt() -> str:
+    """検証用Codexの最終出力形式が不正だった場合の再出力プロンプトを返す。"""
+    return _VALIDATOR_RESULT_RETRY_PROMPT
+
+
+def _build_validator_codex_input(
     *,
     user_instruction: str,
     candidate: ParsedAnswerCandidate,
 ) -> ValidatorCodexInput:
-    """検証用Codexの参照元検証入力を組み立てる。"""
     return ValidatorCodexInput(
         instruction=user_instruction,
         answers=[

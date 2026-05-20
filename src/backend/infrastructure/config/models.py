@@ -19,9 +19,10 @@ class UiConfig:
 
 
 @dataclass(frozen=True, slots=True)
-class CodexConfig:
-    """codex execのホーム、作業領域、出力契約、成果物保存先設定。"""
+class GeneratorConfig:
+    """生成用codex execの再生成上限、ホーム、作業領域、出力契約、成果物保存先設定。"""
 
+    max_retries: int
     home: Path
     workdir: Path
     output_schema: Path
@@ -30,10 +31,12 @@ class CodexConfig:
 
 @dataclass(frozen=True, slots=True)
 class ValidatorConfig:
-    """検証処理設定。"""
+    """検証用codex execの再出力上限、ホーム、作業領域、出力契約設定。"""
 
     max_retries: int
-    codex: CodexConfig
+    home: Path
+    workdir: Path
+    output_schema: Path
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,7 +69,7 @@ class AppConfig:
     app: AppRuntimeConfig
     ui: UiConfig
     datasource_dir: Path
-    codex: CodexConfig
+    generator: GeneratorConfig
     validator: ValidatorConfig
     database: DatabaseConfig
     server: ServerConfig

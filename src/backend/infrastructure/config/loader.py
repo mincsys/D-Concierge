@@ -7,8 +7,8 @@ import yaml
 from backend.infrastructure.config.models import (
     AppConfig,
     AppRuntimeConfig,
-    CodexConfig,
     DatabaseConfig,
+    GeneratorConfig,
     ServerConfig,
     TraceLogConfig,
     UiConfig,
@@ -45,9 +45,13 @@ class ConfigLoader:
         if timeout_seconds <= 0:
             raise _configuration_error("タイムアウト設定が不正です。")
 
-        max_retries = _required_int(data, ("validator", "max_retries"))
-        if max_retries < 0:
-            raise _configuration_error("検証再試行上限が不正です。")
+        generator_max_retries = _required_int(data, ("generator", "max_retries"))
+        if generator_max_retries < 0:
+            raise _configuration_error("生成再試行上限が不正です。")
+
+        validator_max_retries = _required_int(data, ("validator", "max_retries"))
+        if validator_max_retries < 0:
+            raise _configuration_error("検証再出力上限が不正です。")
 
         trace_log_retention_days = _required_int(data, ("trace_log", "retention_days"))
         if trace_log_retention_days <= 0:
@@ -70,32 +74,23 @@ class ConfigLoader:
                 ),
             ),
             datasource_dir=_path(root, _required_str(data, ("datasource", "dir"))),
-            codex=CodexConfig(
-                home=_path(root, _required_str(data, ("codex", "home"))),
-                workdir=_path(root, _required_str(data, ("codex", "workdir"))),
+            generator=GeneratorConfig(
+                max_retries=generator_max_retries,
+                home=_path(root, _required_str(data, ("generator", "home"))),
+                workdir=_path(root, _required_str(data, ("generator", "workdir"))),
                 output_schema=_path(
-                    root, _required_str(data, ("codex", "output_schema"))
+                    root, _required_str(data, ("generator", "output_schema"))
                 ),
                 saved_artifacts_dir=_path(
-                    root, _required_str(data, ("codex", "saved_artifacts_dir"))
+                    root, _required_str(data, ("generator", "saved_artifacts_dir"))
                 ),
             ),
             validator=ValidatorConfig(
-                max_retries=max_retries,
-                codex=CodexConfig(
-                    home=_path(
-                        root, _required_str(data, ("validator", "codex", "home"))
-                    ),
-                    workdir=_path(
-                        root, _required_str(data, ("validator", "codex", "workdir"))
-                    ),
-                    output_schema=_path(
-                        root,
-                        _required_str(data, ("validator", "codex", "output_schema")),
-                    ),
-                    saved_artifacts_dir=_path(
-                        root, _required_str(data, ("codex", "saved_artifacts_dir"))
-                    ),
+                max_retries=validator_max_retries,
+                home=_path(root, _required_str(data, ("validator", "home"))),
+                workdir=_path(root, _required_str(data, ("validator", "workdir"))),
+                output_schema=_path(
+                    root, _required_str(data, ("validator", "output_schema"))
                 ),
             ),
             database=DatabaseConfig(url=_required_str(data, ("database", "url"))),

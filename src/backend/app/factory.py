@@ -47,7 +47,10 @@ from backend.infrastructure.codex.codex_runner import (
     CodexRunResult as InfrastructureCodexRunResult,
 )
 from backend.infrastructure.codex.generation_runner import CodexGenerationRunnerAdapter
-from backend.infrastructure.codex.reference_validator import CodexReferenceValidator
+from backend.infrastructure.codex.reference_validator import (
+    CodexReferenceFileValidator,
+    CodexValidationRunnerAdapter,
+)
 from backend.infrastructure.codex.session_workdir import CodexSessionWorkdirResolver
 from backend.infrastructure.config.loader import ConfigLoader
 from backend.infrastructure.config.models import AppConfig
@@ -200,7 +203,7 @@ def create_app(
     )
     get_artifact_usecase = GetArtifactUseCase(
         repository=chat_repository,
-        artifact_store=FileArtifactStore(app_config.codex.saved_artifacts_dir),
+        artifact_store=FileArtifactStore(app_config.generator.saved_artifacts_dir),
         transaction_manager=runtime_transaction_manager,
     )
 
@@ -261,25 +264,30 @@ def _create_runtime_services(
     generation_runner = CodexGenerationRunnerAdapter(
         repository=chat_repository,
         codex_runner=runtime_codex_runner,
-        codex_config=app_config.codex,
+        generator_config=app_config.generator,
         datasource_dir=app_config.datasource_dir,
         timeout_seconds=app_config.server.timeout_seconds,
         transaction_manager=transaction_manager,
     )
-    reference_validator = CodexReferenceValidator(
+    reference_file_validator = CodexReferenceFileValidator(
+        datasource_dir=app_config.datasource_dir,
+    )
+    validator_codex_runner = CodexValidationRunnerAdapter(
         repository=chat_repository,
         codex_runner=runtime_codex_runner,
-        validator_config=app_config.validator.codex,
+        validator_config=app_config.validator,
         datasource_dir=app_config.datasource_dir,
         timeout_seconds=app_config.server.timeout_seconds,
         transaction_manager=transaction_manager,
     )
     answer_validator = ValidateAnswerUseCase(
-        reference_validator=reference_validator,
-        max_retries=app_config.validator.max_retries,
+        max_retries=app_config.generator.max_retries,
+        reference_file_validator=reference_file_validator,
+        validator_codex_runner=validator_codex_runner,
+        validator_max_retries=app_config.validator.max_retries,
     )
     artifact_saver = SaveAdoptedArtifactsUseCase(
-        artifact_store=FileArtifactStore(app_config.codex.saved_artifacts_dir),
+        artifact_store=FileArtifactStore(app_config.generator.saved_artifacts_dir),
         id_generator=id_generator,
     )
     execute_usecase = ExecuteChatRunUseCase(
@@ -290,7 +298,7 @@ def _create_runtime_services(
         artifact_saver=artifact_saver,
         session_workdir_resolver=CodexSessionWorkdirResolver(
             repository=chat_repository,
-            base_workdir=app_config.codex.workdir,
+            base_workdir=app_config.generator.workdir,
         ),
         trace_logger=trace_logger,
         timeout_seconds=app_config.server.timeout_seconds,

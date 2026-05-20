@@ -17,17 +17,17 @@ ui:
     - "要約してください"
 datasource:
   dir: "data"
-codex:
+generator:
+  max_retries: 2
   home: "codex/.codex"
   workdir: "codex/sessions"
   output_schema: "codex/output_json_schema/pdf-reference-schema.json"
   saved_artifacts_dir: "codex/saved_artifacts"
 validator:
-  max_retries: 2
-  codex:
-    home: "codex/.codex_validator"
-    workdir: "codex/sessions_validator"
-    output_schema: "codex/output_json_schema/validator_schema.json"
+  max_retries: 3
+  home: "codex/.codex_validator"
+  workdir: "codex/sessions_validator"
+  output_schema: "codex/output_json_schema/validator_schema.json"
 database:
   url: "postgresql+psycopg://user:password@127.0.0.1:5432/db"
 server:
@@ -72,13 +72,15 @@ def test_config_loader_resolves_relative_paths_from_relative_config_path(
     config = ConfigLoader.load(Path("config.yaml"))
 
     assert config.datasource_dir == tmp_path / "data"
-    assert config.codex.home == tmp_path / "codex/.codex"
-    assert config.codex.workdir == tmp_path / "codex/sessions"
-    assert config.codex.output_schema == (
+    assert config.generator.max_retries == 2
+    assert config.generator.home == tmp_path / "codex/.codex"
+    assert config.generator.workdir == tmp_path / "codex/sessions"
+    assert config.generator.output_schema == (
         tmp_path / "codex/output_json_schema/pdf-reference-schema.json"
     )
-    assert config.validator.codex.home == tmp_path / "codex/.codex_validator"
-    assert config.validator.codex.workdir == tmp_path / "codex/sessions_validator"
+    assert config.validator.max_retries == 3
+    assert config.validator.home == tmp_path / "codex/.codex_validator"
+    assert config.validator.workdir == tmp_path / "codex/sessions_validator"
     assert config.trace_log.dir == tmp_path / "logs/trace"
 
 
@@ -129,8 +131,8 @@ def test_config_loader_uses_absolute_paths_without_base_dir_join(
     config = ConfigLoader.load(config_path, base_dir=tmp_path / "base")
 
     assert config.datasource_dir == tmp_path / "readonly"
-    assert config.codex.home == tmp_path / "home"
-    assert config.codex.workdir == tmp_path / "sessions"
+    assert config.generator.home == tmp_path / "home"
+    assert config.generator.workdir == tmp_path / "sessions"
     assert config.trace_log.dir == tmp_path / "logs" / "trace"
 
 
@@ -138,7 +140,14 @@ def test_config_loader_uses_absolute_paths_without_base_dir_join(
     ("config_text", "message_part"),
     [
         ("[]", "ルート形式"),
-        (VALID_CONFIG.replace("max_retries: 2", "max_retries: -1"), "検証再試行"),
+        (
+            VALID_CONFIG.replace("max_retries: 2", "max_retries: -1", 1),
+            "生成再試行",
+        ),
+        (
+            VALID_CONFIG.replace("max_retries: 3", "max_retries: -1"),
+            "検証再出力",
+        ),
         (
             VALID_CONFIG.replace(
                 'url: "postgresql+psycopg://user:password@127.0.0.1:5432/db"',

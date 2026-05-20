@@ -21,8 +21,8 @@
 | --- | --- |
 | IF名 | Codex実行IF |
 | 呼出元 | 実行、検証、キャンセルのユースケース |
-| 呼出先 | `src/backend/application/ports/codex/interface.py`。具象実装は `CodexGenerationRunnerAdapter`、`CodexReferenceValidator`、`CodexCancelRequester`、`CodexSessionWorkdirResolver` |
-| 目的 | 生成用Codex実行、参照元検証、resume、JSONLイベント解析、タイムアウト、終了要求、作業領域解決をapplication層から抽象化する。 |
+| 呼出先 | `src/backend/application/ports/codex/interface.py`。具象実装は `CodexGenerationRunnerAdapter`、`CodexReferenceFileValidator`、`CodexValidationRunnerAdapter`、`CodexCancelRequester`、`CodexSessionWorkdirResolver` |
+| 目的 | 生成用Codex実行、参照元PDF固定検証、検証用Codex 1回実行、resume、JSONLイベント解析、タイムアウト、終了要求、作業領域解決をapplication層から抽象化する。 |
 | 冪等性 | codex exec起動は非冪等。JSONL解析は同一行に対して冪等。終了要求は対象プロセスが生存している場合に限り効果を持つ。 |
 
 ### 3.1. Port構成
@@ -30,7 +30,8 @@
 | Port | 役割 |
 | --- | --- |
 | `CodexGenerationRunnerPort` | 生成用codex execを起動し、中間メッセージと最終回答JSONを返す。 |
-| `ReferenceValidatorPort` | 検証用Codex入力を受け取り、参照元検証結果を返す。 |
+| `ReferenceFileValidatorPort` | 検証用codex exec起動前に参照元PDFの存在、読込可否、ページ範囲を固定検証する。 |
+| `ValidatorCodexRunnerPort` | 検証用codex execを1回起動し、中間メッセージとrawな最終検証結果JSONを返す。 |
 | `CancelRequesterPort` | 実行中codex execへ終了要求を送る。 |
 | `SessionWorkdirResolverPort` | 生成用Codex作業領域をチャットIDから解決する。 |
 
@@ -64,7 +65,7 @@ sequenceDiagram
 ### 5.2. 事後条件
 
 - 生成用は中間メッセージイベントと最終回答候補を返す。
-- 検証用は中間メッセージイベント、検証合否、指摘内容を返す。
+- 検証用は中間メッセージイベントとrawな最終検証結果JSONを返す。最終検証結果JSONの固定検証はapplication層で行う。
 - `thread.started.thread_id` を受信した場合、生成用は `generation_conversation_id`、検証用は `validation_conversation_id` として保存できる値を返す。
 - 正常終了時はJSONL上の最新 `item.completed.agent_message.text` を最終出力候補として返す。
 - 生成用の最終回答候補に含まれるPDF参照元pathは、Codex作業領域上の `readonly/` から始まる実PDFファイルへの相対パスである。
@@ -142,6 +143,7 @@ sequenceDiagram
 | 項目 | 内容 |
 | --- | --- |
 | `CodexRunResult` | 生成用CodexのCodex側resume用ID、中間メッセージ一覧、最終回答JSON |
+| `ValidatorCodexRunResult` | 検証用CodexのCodex側resume用ID、中間メッセージ一覧、rawな最終検証結果JSON |
 | `ReferenceValidationResult` | 検証用Codexの合否と指摘コメント、または検証用Codex起動前の固定検証で得た構造化失敗理由 |
 | `CancelRequestResult` | 終了要求結果。内部では通常Enum、境界では `sent`、`already_exited`、`not_registered` のいずれか |
 | `Path` | `SessionWorkdirResolverPort` が返す生成用Codex作業領域 |
@@ -162,7 +164,7 @@ sequenceDiagram
 | --- | --- |
 | `thread.started` | `thread_id` をCodex側resume用IDとして保持する。 |
 | `item.completed` の `agent_message` | `item.text` をJSONとして解析し、`payload.kind="progress"` の場合は `payload.text` を利用者向け中間メッセージへ変換する。`payload.kind="final"` の場合は中間メッセージへ変換しない。 |
-| `turn.completed` | 最新の `item.completed.agent_message.text` を最終回答候補または検証結果候補とし、JSON parseと出力スキーマ検証を行う。 |
+| `turn.completed` | 最新の `item.completed.agent_message.text` を最終回答候補または検証結果候補として返す。生成用最終回答と検証用最終結果の固定検証はapplication層で行う。 |
 | `turn.failed` または `error` | 最終回答候補を返さない。 |
 
 ## 7. 例外処理
@@ -174,6 +176,7 @@ sequenceDiagram
 | タイムアウト | プロセスへ終了要求を送り、run状態を `タイムアウト` へ更新できる結果を返す |
 | キャンセル要求 | ユーザキャンセル要求、`sent` / `already_exited` / `not_registered` の終了要求結果、プロセス終了結果を合わせて判定し、run状態を `キャンセル済み` へ更新できる結果を返す |
 | 検証用Codex資産不足 | 設定不備分類として起動前に失敗させる |
+| 検証用Codex最終出力形式不正 | application層が `validator.max_retries` の範囲で同じ検証用Codex会話へ最終検証結果JSONだけの再出力を依頼し、上限後も不正な場合は検証フェーズのシステムエラーへ変換する |
 
 ## 8. 留意事項
 

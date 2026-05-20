@@ -93,7 +93,7 @@ sequenceDiagram
 | 対象 | 検証ルール |
 | --- | --- |
 | 成果物候補 | 対象セッションの `artifacts/` 配下へ正規化できる相対パスだけを許可する。 |
-| 保存済み成果物 | `codex.saved_artifacts_dir/<run_id>/<artifact_id>.<拡張子>` 配下へ正規化できる保存参照だけを許可する。 |
+| 保存済み成果物 | `generator.saved_artifacts_dir/<run_id>/<artifact_id>.<拡張子>` 配下へ正規化できる保存参照だけを許可する。 |
 | 共有データソース | 参照元として扱い、Codex成果物保存対象にはしない。 |
 
 ### 6.4. 許可拡張子とMIMEタイプ

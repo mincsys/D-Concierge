@@ -44,8 +44,8 @@ from backend.infrastructure.codex.jsonl_event_parser import (
 from backend.infrastructure.config.models import (
     AppConfig,
     AppRuntimeConfig,
-    CodexConfig,
     DatabaseConfig,
+    GeneratorConfig,
     ServerConfig,
     TraceLogConfig,
     UiConfig,
@@ -1145,7 +1145,8 @@ def _make_config(tmp_path: Path) -> AppConfig:
             input_suggestions=("要約してください",),
         ),
         datasource_dir=tmp_path / "readonly",
-        codex=CodexConfig(
+        generator=GeneratorConfig(
+            max_retries=2,
             home=tmp_path / "codex/.codex",
             workdir=tmp_path / "codex/sessions",
             output_schema=tmp_path
@@ -1153,14 +1154,10 @@ def _make_config(tmp_path: Path) -> AppConfig:
             saved_artifacts_dir=tmp_path / "codex/saved_artifacts",
         ),
         validator=ValidatorConfig(
-            max_retries=2,
-            codex=CodexConfig(
-                home=tmp_path / "codex/.codex_validator",
-                workdir=tmp_path / "codex/sessions_validator",
-                output_schema=tmp_path
-                / "codex/output_json_schema/validator_schema.json",
-                saved_artifacts_dir=tmp_path / "codex/saved_artifacts",
-            ),
+            max_retries=3,
+            home=tmp_path / "codex/.codex_validator",
+            workdir=tmp_path / "codex/sessions_validator",
+            output_schema=tmp_path / "codex/output_json_schema/validator_schema.json",
         ),
         database=DatabaseConfig(
             url="postgresql+psycopg://user:password@127.0.0.1:5432/db"

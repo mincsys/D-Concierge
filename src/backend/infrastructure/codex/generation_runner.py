@@ -20,7 +20,7 @@ from backend.infrastructure.codex.intermediate_messages import (
 from backend.infrastructure.codex.session_readonly import (
     prepare_generation_session_readonly,
 )
-from backend.infrastructure.config.models import CodexConfig
+from backend.infrastructure.config.models import GeneratorConfig
 
 
 class InfrastructureCodexRunner(Protocol):
@@ -37,14 +37,14 @@ class CodexGenerationRunnerAdapter:
         self,
         repository: ChatRuntimeRepositoryPort,
         codex_runner: InfrastructureCodexRunner,
-        codex_config: CodexConfig,
+        generator_config: GeneratorConfig,
         datasource_dir: Path,
         timeout_seconds: int,
         transaction_manager: TransactionManagerPort,
     ) -> None:
         self._repository = repository
         self._codex_runner = codex_runner
-        self._codex_config = codex_config
+        self._generator_config = generator_config
         self._datasource_dir = datasource_dir
         self._timeout_seconds = timeout_seconds
         self._transaction_manager = transaction_manager
@@ -62,7 +62,7 @@ class CodexGenerationRunnerAdapter:
         with self._transaction_manager.transaction():
             context = self._repository.get_chat_runtime_context(chat_id)
         workdir = (
-            self._codex_config.workdir
+            self._generator_config.workdir
             / str(context.local_user_id)
             / str(context.session_id)
         )
@@ -77,9 +77,9 @@ class CodexGenerationRunnerAdapter:
             CodexRunRequest(
                 run_id=run_id,
                 prompt=user_instruction,
-                codex_home=self._codex_config.home,
+                codex_home=self._generator_config.home,
                 workdir=workdir,
-                output_schema=self._codex_config.output_schema,
+                output_schema=self._generator_config.output_schema,
                 codex_conversation_id=context.generation_conversation_id,
                 timeout_seconds=(
                     timeout_seconds

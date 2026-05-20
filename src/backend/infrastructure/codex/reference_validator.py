@@ -1,13 +1,14 @@
-import json
 from collections.abc import Callable
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 from uuid import UUID
 
 from pypdf import PdfReader
 
-from backend.application.ports.codex.dto import ReferenceValidationResult
+from backend.application.ports.codex.dto import (
+    ReferenceValidationResult,
+    ValidatorCodexRunResult,
+)
 from backend.application.ports.database.interface import (
     ChatRuntimeRepositoryPort,
     TransactionManagerPort,
@@ -19,7 +20,6 @@ from backend.domain.answer.answer_candidate import (
     ParsedAnswerCandidate,
     parsed_candidate_references,
 )
-from backend.domain.answer.output_kind import CodexOutputKind
 from backend.domain.references.pdf_reference import PdfReference
 from backend.infrastructure.codex.codex_runner import (
     CodexRunRequest,
@@ -30,21 +30,15 @@ from backend.infrastructure.codex.codex_runner import (
 from backend.infrastructure.codex.intermediate_messages import (
     CodexIntermediateMessageStreamer,
 )
-from backend.infrastructure.codex.jsonl_event_parser import JsonValue
 from backend.infrastructure.codex.session_readonly import (
     prepare_validation_session_artifacts,
     prepare_validation_session_readonly,
 )
-from backend.infrastructure.codex.validator_codex_input import (
-    build_validator_codex_input,
-)
-from backend.infrastructure.config.models import CodexConfig
+from backend.infrastructure.config.models import ValidatorConfig
 from backend.infrastructure.filesystem.path_security import PathSecurityService
-from backend.shared.errors.error_type import ErrorType
 from backend.shared.errors.errors import (
     AppError,
     ReferencePdfReadError,
-    ValidationResultFormatError,
     ValidationWorkspacePreparationError,
 )
 
@@ -56,20 +50,34 @@ class InfrastructureCodexRunner(Protocol):
         """検証用codex execを実行する。"""
 
 
-@dataclass(frozen=True, slots=True)
-class _ParsedValidationResult:
-    valid: bool
-    comment: str
+class CodexReferenceFileValidator:
+    """参照元PDFファイル固定検証境界へ実ファイル検証を適合させる。"""
+
+    def __init__(self, datasource_dir: Path) -> None:
+        self._datasource_dir = datasource_dir
+
+    def validate_reference_files(
+        self,
+        candidate: ParsedAnswerCandidate,
+    ) -> ReferenceValidationResult:
+        """回答候補の参照元PDFファイルとページ範囲を固定検証する。"""
+        validation = _validate_reference_files(
+            references=parsed_candidate_references(candidate),
+            datasource_dir=self._datasource_dir,
+        )
+        if validation is not None:
+            return validation
+        return ReferenceValidationResult(valid=True)
 
 
-class CodexReferenceValidator:
-    """検証用CodexRunnerを参照元検証境界へ適合させる。"""
+class CodexValidationRunnerAdapter:
+    """検証用CodexRunnerを1回実行境界へ適合させる。"""
 
     def __init__(
         self,
         repository: ChatRuntimeRepositoryPort,
         codex_runner: InfrastructureCodexRunner,
-        validator_config: CodexConfig,
+        validator_config: ValidatorConfig,
         datasource_dir: Path,
         timeout_seconds: int,
         transaction_manager: TransactionManagerPort,
@@ -81,26 +89,18 @@ class CodexReferenceValidator:
         self._timeout_seconds = timeout_seconds
         self._transaction_manager = transaction_manager
 
-    def validate_references(
+    def run_validation(
         self,
-        candidate: ParsedAnswerCandidate,
-        user_instruction: str,
-        chat_id: UUID | None = None,
-        run_id: UUID | None = None,
-        trace_id: str = "",
-        timeout_seconds: int | None = None,
+        chat_id: UUID,
+        run_id: UUID,
+        prompt: str,
+        timeout_seconds: int,
+        trace_id: str,
         on_intermediate_message: Callable[[str], None] | None = None,
         session_workdir: Path | None = None,
         has_artifact_links: bool = False,
-    ) -> ReferenceValidationResult:
-        """検証用codex execで回答候補の参照元妥当性を検証する。"""
-        if chat_id is None or run_id is None:
-            raise AppError(
-                ErrorType.SYSTEM,
-                trace=True,
-                diagnostic_message="検証対象の実行文脈が不正です。",
-            )
-
+    ) -> ValidatorCodexRunResult:
+        """検証用codex execを1回実行し、rawな最終出力を返す。"""
         with self._transaction_manager.transaction():
             context = self._repository.get_chat_runtime_context(chat_id)
         workdir = (
@@ -108,12 +108,6 @@ class CodexReferenceValidator:
             / str(context.local_user_id)
             / str(context.session_id)
         )
-        local_validation = _validate_reference_files(
-            references=parsed_candidate_references(candidate),
-            datasource_dir=self._datasource_dir,
-        )
-        if local_validation is not None:
-            return local_validation
 
         prepare_validation_session_readonly(
             workdir=workdir,
@@ -135,19 +129,12 @@ class CodexReferenceValidator:
         result = self._codex_runner.run_validation(
             CodexRunRequest(
                 run_id=run_id,
-                prompt=_validation_prompt(
-                    candidate=candidate,
-                    user_instruction=user_instruction,
-                ),
+                prompt=prompt,
                 codex_home=self._validator_config.home,
                 workdir=workdir,
                 output_schema=self._validator_config.output_schema,
                 codex_conversation_id=context.validation_conversation_id,
-                timeout_seconds=(
-                    timeout_seconds
-                    if timeout_seconds is not None
-                    else self._timeout_seconds
-                ),
+                timeout_seconds=timeout_seconds,
                 trace_id=trace_id,
                 on_event=intermediate_streamer.accept
                 if on_intermediate_message is not None
@@ -159,47 +146,25 @@ class CodexReferenceValidator:
                 chat_id,
                 result.codex_conversation_id,
             )
-        parsed = _parse_validation_result(result.final_message)
-        return ReferenceValidationResult(
-            valid=parsed.valid,
-            comment=parsed.comment,
+        return ValidatorCodexRunResult(
+            conversation_id=result.codex_conversation_id,
+            intermediate_messages=(
+                ()
+                if on_intermediate_message is not None
+                else _intermediate_messages(result)
+            ),
+            final_output_json=result.final_message,
         )
 
 
-def _validation_prompt(
-    *,
-    candidate: ParsedAnswerCandidate,
-    user_instruction: str,
-) -> str:
-    return json.dumps(
-        build_validator_codex_input(
-            user_instruction=user_instruction,
-            candidate=candidate,
-        ),
-        ensure_ascii=False,
-        separators=(",", ":"),
-    )
-
-
-def _parse_validation_result(raw_json: str) -> _ParsedValidationResult:
-    try:
-        loaded: JsonValue = json.loads(raw_json)
-    except json.JSONDecodeError as exc:
-        raise ValidationResultFormatError("検証結果を解析できませんでした。") from exc
-    if not isinstance(loaded, dict):
-        raise ValidationResultFormatError("検証結果の形式が不正です。")
-
-    payload = loaded.get("payload")
-    if (
-        not isinstance(payload, dict)
-        or payload.get("kind") != CodexOutputKind.FINAL.value
-    ):
-        raise ValidationResultFormatError("検証結果の形式が不正です。")
-    valid_value = payload.get("valid")
-    comment_value = payload.get("comment")
-    if not isinstance(valid_value, bool) or not isinstance(comment_value, str):
-        raise ValidationResultFormatError("検証結果の形式が不正です。")
-    return _ParsedValidationResult(valid=valid_value, comment=comment_value)
+def _intermediate_messages(
+    result: InfrastructureCodexRunResult,
+) -> tuple[str, ...]:
+    agent_messages: list[str] = []
+    intermediate_streamer = CodexIntermediateMessageStreamer(agent_messages.append)
+    for event in result.events:
+        intermediate_streamer.accept(event)
+    return tuple(agent_messages)
 
 
 def _validate_reference_files(
