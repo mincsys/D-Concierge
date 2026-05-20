@@ -7,3 +7,4 @@
 - TDD を原則とする。必ずRed、Green、Refactorの順に実装を行うこと。
 - Python の構造化データを `dict[str, object]`、`list[dict[str, object]]`、広すぎる `Any`、安易な`object`や `cast(...)` で表現しないこと。意味のある payload 型が必要な場合は `TypedDict` や dataclass を定義して使うこと。
 - コミットは日本語で行うこと。
+- ユーザの指示で不明点や疑問点、合意を取る必要があることなどがあれば積極的に質問すること。
