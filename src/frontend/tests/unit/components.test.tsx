@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { StrictMode, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { ActionMenuPopover } from "@/components/action-menu/ActionMenuPopover";
 import { AppShell } from "@/components/layout/AppShell";
 import { TopMenu } from "@/components/layout/TopMenu";
 import { Providers } from "@/app/providers";
@@ -193,10 +194,56 @@ describe("frontend components", () => {
     const historyButton = screen.getByRole("button", { name: longTitle });
     const title = screen.getByText(longTitle);
     expect(historyButton).toHaveAttribute("title", longTitle);
-    expect(historyButton).toHaveClass("min-w-0", "overflow-hidden");
+    expect(historyButton).toHaveClass("min-w-0", "overflow-hidden", "pr-8", "group-hover:pr-12");
     expect(title).toHaveClass("block", "min-w-0", "truncate");
     await user.click(historyButton);
     expect(onOpenAnswer).toHaveBeenCalledWith("chat-1");
+  });
+
+  it("観点：ChatHistoryList。確認：履歴項目ホバー用メニューから削除項目を表示し、履歴選択を抑止する。", async () => {
+    const user = userEvent.setup();
+    const onOpenAnswer = vi.fn();
+    const histories = [history("chat-1", "Codex 実行時フォーマット検査")];
+
+    render(
+      <Providers>
+        <ChatHistoryList activeChatId="chat-1" histories={histories} onOpenAnswer={onOpenAnswer} />
+      </Providers>,
+    );
+
+    const menuButton = screen.getByRole("button", {
+      name: "Codex 実行時フォーマット検査のメニュー",
+    });
+    expect(menuButton).toHaveClass("opacity-0", "group-hover:opacity-100");
+
+    await user.hover(screen.getByRole("button", { name: "Codex 実行時フォーマット検査" }));
+    await user.click(menuButton);
+    expect(onOpenAnswer).not.toHaveBeenCalled();
+    expect(screen.getByRole("menu", { name: "履歴項目メニュー" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "削除する" })).toHaveClass(
+      "text-[var(--dc-danger)]",
+    );
+  });
+
+  it("観点：ActionMenuPopover。確認：通常項目は黒系、削除項目だけ赤系で表示する。", () => {
+    render(
+      <Providers>
+        <ActionMenuPopover
+          open
+          ariaLabel="操作メニュー"
+          items={[
+            { icon: <span aria-hidden="true" />, label: "通常項目" },
+            { icon: <span aria-hidden="true" />, label: "削除する", tone: "danger" },
+          ]}
+          onOpenChange={vi.fn()}
+        />
+      </Providers>,
+    );
+
+    expect(screen.getByRole("menuitem", { name: "通常項目" })).toHaveClass("text-[var(--dc-text)]");
+    expect(screen.getByRole("menuitem", { name: "削除する" })).toHaveClass(
+      "text-[var(--dc-danger)]",
+    );
   });
 
   it("観点：AppShellとSidebar。確認：履歴、新規開始、折りたたみ表示を切り替える。", async () => {
