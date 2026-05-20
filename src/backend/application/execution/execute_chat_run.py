@@ -9,6 +9,7 @@ from uuid import UUID
 from backend.application.artifacts.save_adopted_artifacts import (
     SavedAnswerBlocksArtifacts,
 )
+from backend.application.execution.generation_prompt import build_generation_prompt
 from backend.application.execution.run_event_type import RunEventType
 from backend.application.ports.codex.interface import (
     CodexGenerationRunnerPort,
@@ -292,7 +293,7 @@ class ExecuteChatRunUseCase:
             self._finish_canceled(chat_id, run_id)
             return
 
-        prompt = user_instruction
+        prompt = build_generation_prompt(user_instruction)
         retry_count = 0
         while True:
             generation_timeout_seconds = self._remaining_seconds(execution_deadline_at)
@@ -376,8 +377,9 @@ class ExecuteChatRunUseCase:
                     return
                 case ValidationStatus.REGENERATE:
                     retry_count += 1
-                    prompt = (
-                        f"{user_instruction}\n\n{validation.regeneration_instruction}"
+                    prompt = build_generation_prompt(
+                        user_instruction,
+                        validation.regeneration_instruction,
                     )
                 case ValidationStatus.FAILED:
                     self._write_trace(

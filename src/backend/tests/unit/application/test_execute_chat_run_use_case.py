@@ -479,7 +479,18 @@ def test_execute_chat_run_regenerates_when_validator_requests_retry() -> None:
     assert [message.text for message in detail.runs[0].intermediate_messages].count(
         "作業を開始します。"
     ) == 1
-    assert runner.prompts[1] == "資料を要約してください\n\n参照元を具体化してください。"
+    assert runner.prompts[0] == ("<ユーザ指示>\n資料を要約してください\n</ユーザ指示>")
+    assert runner.prompts[1] == (
+        "以下のユーザ指示に対する前回回答は検証で不採用になりました。\n"
+        "ユーザ指示には完全に回答しつつ、"
+        "検証による修正指示を反映して回答を再出力してください。\n\n"
+        "<ユーザ指示>\n"
+        "資料を要約してください\n"
+        "</ユーザ指示>\n\n"
+        "<検証による修正指示>\n"
+        "参照元を具体化してください。\n"
+        "</検証による修正指示>"
+    )
     assert validator.retry_counts == [0, 1]
     assert validator.user_instructions == [
         "資料を要約してください",

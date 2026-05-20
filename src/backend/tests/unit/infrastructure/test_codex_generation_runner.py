@@ -78,7 +78,7 @@ def test_codex_generation_runner_builds_request_and_saves_resume_id(
     result = adapter.run_generation(
         accepted.chat_id,
         accepted.run_id,
-        "資料を要約してください",
+        "<ユーザ指示>\n資料を要約してください\n</ユーザ指示>",
         timeout_seconds=45,
         trace_id="trace-701",
     )
@@ -91,7 +91,9 @@ def test_codex_generation_runner_builds_request_and_saves_resume_id(
     )
     assert saved_context.generation_conversation_id == "next-thread"
     assert codex_runner.requests[0].run_id == accepted.run_id
-    assert codex_runner.requests[0].prompt == "資料を要約してください"
+    assert codex_runner.requests[0].prompt == (
+        "<ユーザ指示>\n資料を要約してください\n</ユーザ指示>"
+    )
     assert codex_runner.requests[0].codex_conversation_id == "previous-thread"
     assert codex_runner.requests[0].codex_home == tmp_path / "codex/.codex"
     assert codex_runner.requests[0].output_schema == tmp_path / "schema.json"

@@ -89,7 +89,7 @@ sequenceDiagram
 | --- | --- |
 | `chat_id` | 対象チャットID |
 | `run_id` | 対象チャット実行処理ID。キャンセル対象プロセスの特定にも使う |
-| `user_instruction` | 生成用Codexへ渡すユーザ指示本文。検証時は `ValidatorCodexInput.instruction` に入れる元のユーザ指示 |
+| `user_instruction` | 利用者が送信した元のユーザ指示本文。生成用Codex promptの `<ユーザ指示>` ブロックと、検証用 `ValidatorCodexInput.instruction` に入れる |
 | `candidate` | 検証対象の回答候補 |
 | `codex_conversation_id` | `codex exec resume` に渡すCodex側resume用ID。初回起動時は未指定 |
 | `timeout_seconds` | 全体deadlineから算出した当該codex execの残り秒数 |
@@ -97,7 +97,34 @@ sequenceDiagram
 | `session_workdir` | 生成用または検証用のセッション作業領域 |
 | `on_intermediate_message` | 生成用または検証用Codex由来の中間メッセージを即時配信するコールバック |
 
-### 6.2. 検証用Codex入力
+### 6.2. 生成用Codex入力
+
+生成用Codexへ渡す `prompt` は、初回生成時はユーザ指示だけをタグで囲む。検証不合格後の再生成時は、再生成であることを説明する文、元のユーザ指示、検証による修正指示を分けて渡す。
+
+初回生成時:
+
+```text
+<ユーザ指示>
+[ユーザの指示文]
+</ユーザ指示>
+```
+
+再生成時:
+
+```text
+以下のユーザ指示に対する前回回答は検証で不採用になりました。
+ユーザ指示には完全に回答しつつ、検証による修正指示を反映して回答を再出力してください。
+
+<ユーザ指示>
+[ユーザの指示文]
+</ユーザ指示>
+
+<検証による修正指示>
+[検証の修正指示文]
+</検証による修正指示>
+```
+
+### 6.3. 検証用Codex入力
 
 検証用Codexへ渡す `prompt` は、以下の `ValidatorCodexInput` JSONとする。DB保存用の共有データソース相対パスは含めず、検証用Codexが実際に読む作業領域上の `readonly/` 付きPDFパスだけを渡す。
 
@@ -110,7 +137,7 @@ sequenceDiagram
 | `answers[].references[].page_start` | 検証対象PDF開始ページ |
 | `answers[].references[].page_end` | 検証対象PDF終了ページ |
 
-### 6.3. 出力
+### 6.4. 出力
 
 | 項目 | 内容 |
 | --- | --- |
