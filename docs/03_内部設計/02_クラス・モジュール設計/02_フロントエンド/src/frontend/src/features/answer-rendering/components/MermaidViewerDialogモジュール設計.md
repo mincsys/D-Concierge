@@ -8,11 +8,12 @@
 
 - 本書の対象は `モジュール一覧.md` で詳細設計対象とした `MermaidViewerDialog` モジュールのみとする。
 - SVGの生成は `MermaidRenderer` が行い、本モジュールは生成済みSVGの表示操作を担当する。
+- ダイアログ枠、ズーム操作、パン操作、全体表示操作は `ZoomViewerDialog` に委譲する。
 
 ## 3. 責務
 
-- Mermaid SVGを全画面に近いダイアログ内へ表示する。
-- SVGのズーム、パン、全体表示を提供する。
+- Mermaid SVGを `ZoomViewerDialog` 内へ表示する。
+- SVGの全体表示に必要なサイズ計算を行う。
 - ダイアログオープン時とSVG変更時に図全体が見えるように初期表示を調整する。
 - SVG固有サイズをviewBox、width/height、描画矩形の順に取得する。
 
@@ -20,8 +21,7 @@
 
 - `open` の状態は親から受け取り、変更は `onOpenChange` で親へ通知する。
 - SVGが取得できない場合、fit処理は何もせず失敗を画面全体へ伝播しない。
-- ズーム操作は定義済みの最小/最大倍率の範囲内で行う。
-- SVG表示領域はダイアログの残り領域を占有し、ヘッダーと重ならない。
+- ズーム操作、パン操作、表示領域の配置は `ZoomViewerDialog` の不変条件に従う。
 
 ## 5. 公開プロパティ
 
@@ -35,7 +35,7 @@
 
 | メソッド | 役割 | 入力 | 出力 | 事前条件 | 事後条件 |
 | --- | --- | --- | --- | --- | --- |
-| `MermaidViewerDialog` | Mermaid拡大表示ダイアログを描画する | 開閉状態、SVG、開閉イベントハンドラ | React要素 | `onOpenChange` が渡されていること | `open` がtrueの場合、SVG操作可能なダイアログが表示されること |
+| `MermaidViewerDialog` | Mermaid拡大表示ダイアログを描画する | 開閉状態、SVG、開閉イベントハンドラ | React要素 | `onOpenChange` が渡されていること | `open` がtrueの場合、`ZoomViewerDialog` 内にSVG操作可能なダイアログが表示されること |
 
 ## 7. 公開イベント
 

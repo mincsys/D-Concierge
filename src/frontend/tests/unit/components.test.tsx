@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppShell } from "@/components/layout/AppShell";
 import { Providers } from "@/app/providers";
 import { AnswerContent } from "@/features/answer-rendering/components/AnswerContent";
+import { ImageViewerDialog } from "@/features/answer-rendering/components/ImageViewerDialog";
 import { MarkdownRenderer } from "@/features/answer-rendering/components/MarkdownRenderer";
 import { MermaidRenderer } from "@/features/answer-rendering/components/MermaidRenderer";
 import { MermaidViewerDialog } from "@/features/answer-rendering/components/MermaidViewerDialog";
@@ -411,6 +412,24 @@ describe("frontend components", () => {
     expect(screen.getAllByText("ts")).toHaveLength(2);
   });
 
+  it("観点：Markdown画像拡大表示。確認：許可画像はビューアで拡大表示でき、外部画像は出力しない。", async () => {
+    const user = userEvent.setup();
+    render(
+      <Providers>
+        <MarkdownRenderer
+          markdown={"![成果物画像](/api/artifacts/a.png)\n\n![外部](https://evil.example/a.png)"}
+        />
+      </Providers>,
+    );
+
+    expect(screen.getByAltText("成果物画像")).toHaveAttribute("src", "/api/artifacts/a.png");
+    expect(screen.queryByAltText("外部")).not.toBeInTheDocument();
+
+    await user.click(screen.getByLabelText("画像を拡大表示"));
+    expect(screen.getByRole("dialog", { name: "画像" })).toBeInTheDocument();
+    expect(screen.getAllByAltText("成果物画像")).toHaveLength(2);
+  });
+
   it("観点：MermaidRenderer。確認：描画成功、拡大、描画失敗を表示する。", async () => {
     const user = userEvent.setup();
     const { rerender } = render(
@@ -596,6 +615,52 @@ describe("frontend components", () => {
     await user.click(screen.getByLabelText("Mermaid図全体を表示"));
     await waitFor(() => expect(zoomMocks.setTransform).toHaveBeenCalled());
     SVGElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
+  });
+
+  it("観点：ImageViewerDialog。確認：拡大縮小と全体表示を操作する。", async () => {
+    const user = userEvent.setup();
+    const naturalWidth = Object.getOwnPropertyDescriptor(
+      HTMLImageElement.prototype,
+      "naturalWidth",
+    );
+    const naturalHeight = Object.getOwnPropertyDescriptor(
+      HTMLImageElement.prototype,
+      "naturalHeight",
+    );
+    Object.defineProperty(HTMLImageElement.prototype, "naturalWidth", {
+      configurable: true,
+      get: () => 240,
+    });
+    Object.defineProperty(HTMLImageElement.prototype, "naturalHeight", {
+      configurable: true,
+      get: () => 120,
+    });
+
+    render(
+      <Providers>
+        <ImageViewerDialog
+          alt="成果物画像"
+          open
+          src="/api/artifacts/a.png"
+          onOpenChange={vi.fn()}
+        />
+      </Providers>,
+    );
+
+    fireEvent.load(screen.getByAltText("成果物画像"));
+    await user.click(screen.getByLabelText("画像を拡大"));
+    await user.click(screen.getByLabelText("画像を縮小"));
+    await user.click(screen.getByLabelText("画像全体を表示"));
+    expect(zoomMocks.zoomIn).toHaveBeenCalledWith(0.1);
+    expect(zoomMocks.zoomOut).toHaveBeenCalledWith(0.1);
+    await waitFor(() => expect(zoomMocks.setTransform).toHaveBeenCalled());
+
+    if (naturalWidth) {
+      Object.defineProperty(HTMLImageElement.prototype, "naturalWidth", naturalWidth);
+    }
+    if (naturalHeight) {
+      Object.defineProperty(HTMLImageElement.prototype, "naturalHeight", naturalHeight);
+    }
   });
 
   it("観点：参照元表示。確認：ページ範囲、リンク、PDFダイアログなし状態を処理する。", async () => {

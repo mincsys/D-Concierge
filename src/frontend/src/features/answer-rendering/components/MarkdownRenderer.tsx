@@ -1,11 +1,15 @@
 import { useState, type ReactNode } from "react";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, Maximize2 } from "lucide-react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import type { PluggableList } from "unified";
 
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+
+import { ImageViewerDialog } from "./ImageViewerDialog";
 import { MermaidRenderer } from "./MermaidRenderer";
 
 const markdownSanitizeSchema = {
@@ -83,6 +87,7 @@ export function MarkdownRenderer({ markdown }: { markdown: string }) {
 
 function ArtifactImage({ alt, src }: { alt: string; src: string }) {
   const [failed, setFailed] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
 
   if (failed) {
     return (
@@ -93,13 +98,31 @@ function ArtifactImage({ alt, src }: { alt: string; src: string }) {
   }
 
   return (
-    <img
-      alt={alt}
-      className="markdown-image"
-      loading="lazy"
-      src={src}
-      onError={() => setFailed(true)}
-    />
+    <span className="group relative my-3 block max-w-full">
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            aria-label="画像を拡大表示"
+            className="pointer-events-none absolute top-2.5 right-2.5 z-1 size-[34px] rounded-lg border border-[var(--dc-border)] bg-white/90 text-[var(--dc-muted-strong)] opacity-0 shadow-[0_8px_20px_rgba(25,42,70,0.12)] transition-opacity duration-150 hover:bg-white hover:text-[var(--dc-primary)] group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"
+            onClick={() => setViewerOpen(true)}
+            size="icon"
+            type="button"
+            variant="ghost"
+          >
+            <Maximize2 size={18} />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>拡大表示</TooltipContent>
+      </Tooltip>
+      <img
+        alt={alt}
+        className="markdown-image"
+        loading="lazy"
+        src={src}
+        onError={() => setFailed(true)}
+      />
+      <ImageViewerDialog alt={alt} open={viewerOpen} src={src} onOpenChange={setViewerOpen} />
+    </span>
   );
 }
 

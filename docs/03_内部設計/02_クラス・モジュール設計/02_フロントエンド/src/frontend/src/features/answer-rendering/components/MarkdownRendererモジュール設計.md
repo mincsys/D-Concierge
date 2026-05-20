@@ -18,12 +18,14 @@
 - Mermaidコードブロックを `MermaidRenderer` へ委譲する。
 - 通常コードブロックをコピー可能な表示部品として描画する。
 - 画像は同一オリジンかつ `/api/artifacts/` 配下のURLのみ表示する。
+- 許可画像に拡大表示導線を表示し、選択時に `ImageViewerDialog` を開く。
 - `table`、`thead`、`tbody`、`tr`、`th`、`td`、`p`、`ul`、`ol`、`li`、`strong`、`em`、`code`、`pre`、`a` を許可要素として扱う。
 - `script`、`iframe`、`object`、`embed`、すべてのイベント属性、`javascript:` URLを除去する。
 
 ## 4. 不変条件
 
 - 許可されていない画像URLはDOMへ出力しない。
+- 画像読み込みに失敗した場合は、該当画像の失敗表示だけを行い、拡大表示導線を表示しない。
 - 許可されていないHTML要素、属性、URLスキームはDOMへ出力しない。
 - `language-mermaid` のコードブロックは通常コードブロックではなくMermaid表示へ切り替える。
 - コードブロックのコピー失敗は画面全体の例外にせず、コピー状態だけを戻す。
@@ -39,10 +41,11 @@
 
 | メソッド | 役割 | 入力 | 出力 | 事前条件 | 事後条件 |
 | --- | --- | --- | --- | --- | --- |
-| `MarkdownRenderer` | Markdownを安全化して描画する | Markdown文字列 | React要素 | 入力が文字列であること | sanitize済みMarkdownが `markdown-body` 配下に表示されること |
+| `MarkdownRenderer` | Markdownを安全化して描画する | Markdown文字列 | React要素 | 入力が文字列であること | sanitize済みMarkdownが `markdown-body` 配下に表示され、許可画像には拡大表示導線が表示されること |
 
 ## 7. 公開イベント
 
 | イベント名 | 発火条件 | 通知内容 |
 | --- | --- | --- |
 | `コードコピー` | コードブロックのコピーボタンを選択したとき | 対象コード文字列をクリップボードへ書き込む |
+| `画像拡大表示` | 許可画像の拡大表示ボタンを選択したとき | `ImageViewerDialog` を開く |
