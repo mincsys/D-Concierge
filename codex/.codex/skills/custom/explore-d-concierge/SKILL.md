@@ -61,7 +61,7 @@ description: readonly/d-concierge_codebase/D-Concierge にある D-Concierge 自
 
 ### `docs/01_要件定義/`
 
-- `MVP要件定義.md`
+- `要件定義.md`
 - `将来構想要件定義.md`
 
 ### `docs/02_外部設計/`

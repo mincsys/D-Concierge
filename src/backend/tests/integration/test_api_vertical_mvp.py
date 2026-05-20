@@ -842,7 +842,7 @@ def test_create_app_cleans_expired_trace_logs(tmp_path: Path) -> None:
 def test_default_runtime_executes_start_chat_through_codex_adapters(
     tmp_path: Path,
 ) -> None:
-    """観点：MVP既定実行構成。
+    """観点：既定実行構成。
 
     確認：create_app既定のdispatcher/adapterで生成、検証、回答保存まで到達する。
     """

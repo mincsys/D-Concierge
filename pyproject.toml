@@ -1,7 +1,7 @@
 [project]
 name = "d-concierge"
 version = "0.1.0"
-description = "D-Concierge MVP backend"
+description = "D-Concierge backend"
 requires-python = ">=3.12"
 dependencies = [
   "alembic>=1.17.0",

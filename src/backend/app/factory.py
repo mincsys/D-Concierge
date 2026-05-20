@@ -92,7 +92,7 @@ from backend.shared.user_messages import (
 
 
 class ApplicationCodexRunner(Protocol):
-    """MVP既定実行構成が利用するCodexRunner境界。"""
+    """既定実行構成が利用するCodexRunner境界。"""
 
     def run_generation(self, request: CodexRunRequest) -> InfrastructureCodexRunResult:
         """生成用codex execを実行する。"""
@@ -105,7 +105,7 @@ class ApplicationCodexRunner(Protocol):
 
 
 class _DefaultRunDispatcher:
-    """create_app省略時にMVP既定実行構成を使うためのsentinel。"""
+    """create_app省略時に既定実行構成を使うためのsentinel。"""
 
 
 _DEFAULT_RUN_DISPATCHER = _DefaultRunDispatcher()

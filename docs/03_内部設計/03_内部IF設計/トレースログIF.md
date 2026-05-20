@@ -114,8 +114,8 @@ sequenceDiagram
 
 | 項目 | 内容 |
 | --- | --- |
-| `trace_log.retention_days` | トレースログ日付ディレクトリの保持日数。MVP標準は90日。 |
-| `trace_log.max_files_per_day` | アプリケーション起動ごとの同日最大保存件数。MVP標準は1000件。 |
+| `trace_log.retention_days` | トレースログ日付ディレクトリの保持日数。標準は90日。 |
+| `trace_log.max_files_per_day` | アプリケーション起動ごとの同日最大保存件数。標準は1000件。 |
 
 ## 7. 例外処理
 

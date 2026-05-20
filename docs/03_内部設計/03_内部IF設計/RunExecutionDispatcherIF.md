@@ -9,7 +9,7 @@
 - 呼出方式: Pythonメソッド呼出。
 - 呼出主体: `StartChatUseCase`、`AppendChatRunUseCase`、アプリ起動時の回復処理。
 - 呼出先: アプリ内バックグラウンド実行基盤。具象実装は `InProcessRunExecutionDispatcher`。
-- MVPでは外部の永続ジョブキューを導入せず、アプリ内dispatcherで受付済みrunを `ExecuteChatRunUseCase.execute` へ登録する。
+- 本システムでは外部の永続ジョブキューを導入せず、アプリ内dispatcherで受付済みrunを `ExecuteChatRunUseCase.execute` へ登録する。
 - dispatcher登録結果は内部では通常Enumの `DispatchStatus` として扱う。
 
 ## 3. IF概要

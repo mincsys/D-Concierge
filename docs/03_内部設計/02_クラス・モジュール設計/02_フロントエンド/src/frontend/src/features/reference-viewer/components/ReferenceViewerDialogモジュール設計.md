@@ -7,7 +7,7 @@
 ## 2. 前提
 
 - 本書の対象は `モジュール一覧.md` で詳細設計対象とした `ReferenceViewerDialog` モジュールのみとする。
-- MVPで表示する参照元種別はPDFのみであり、PDF描画は `PdfPageViewer` に委譲する。
+- 本システムで表示する参照元種別はPDFのみであり、PDF描画は `PdfPageViewer` に委譲する。
 
 ## 3. 責務
 
