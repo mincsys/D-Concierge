@@ -27,7 +27,7 @@ export function ChatStartScreen({
     <section className="grid min-h-screen min-w-0 place-items-center overflow-hidden px-12">
       <div className="w-full max-w-[1040px] translate-y-[-12px]">
         {welcomeMessage ? (
-          <h1 className="mb-8 text-center text-[25px] font-[780] tracking-normal text-[var(--dc-primary-strong)]">
+          <h1 className="mb-8 text-center text-[25px] leading-9 font-[780] tracking-normal whitespace-pre-line text-[var(--dc-primary-strong)]">
             {welcomeMessage}
           </h1>
         ) : null}
@@ -46,7 +46,7 @@ export function ChatStartScreen({
 
               return (
                 <Button
-                  className="h-[54px] gap-3 rounded-[27px] border border-[var(--dc-border)] bg-white px-5 text-base font-bold text-[var(--dc-text)] shadow-[0_9px_22px_rgba(23,36,61,0.03)] hover:bg-white [&_svg]:text-[var(--dc-primary)]"
+                  className="h-auto min-h-[54px] gap-3 rounded-[27px] border border-[var(--dc-border)] bg-white px-5 py-3 text-center text-base leading-6 font-bold whitespace-pre-line text-[var(--dc-text)] shadow-[0_9px_22px_rgba(23,36,61,0.03)] hover:bg-white [&_svg]:text-[var(--dc-primary)]"
                   key={label}
                   type="button"
                   variant="outline"

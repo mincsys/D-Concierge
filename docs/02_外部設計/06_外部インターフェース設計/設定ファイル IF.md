@@ -35,8 +35,8 @@
 | 設定項目 | 必須 | 内容 | 利用箇所 |
 | --- | --- | --- | --- |
 | `app.timezone` | 必須 | アプリケーションが運用者向け日時へ使用するIANA timezone名。MVP標準は `Asia/Tokyo`。 | トレースログ、日時表示 |
-| `ui.welcome_message` | 任意 | 開始画面の入力欄上に表示する文言。 | `GET /api/app-config` |
-| `ui.input_suggestions` | 任意 | 開始画面の入力候補チップ文字列配列。 | `GET /api/app-config` |
+| `ui.welcome_message` | 任意 | 開始画面の入力欄上に表示する文言。YAMLの `\n` による改行指定を表示上の改行として扱う。 | `GET /api/app-config` |
+| `ui.input_suggestions` | 任意 | 開始画面の入力候補チップ文字列配列。YAMLの `\n` による改行指定を表示上の改行として扱う。 | `GET /api/app-config` |
 | `datasource.dir` | 必須 | 共有データソースのベースディレクトリ。 | 参照元表示、回答生成、回答検証 |
 | `codex.home` | 必須 | 生成指示を記載した `AGENTS.md` と生成用Skillsを含む、生成用codex execのホームディレクトリ。 | codex exec IF |
 | `codex.workdir` | 必須 | 生成用セッションベースディレクトリ。 | codex exec IF |
@@ -60,6 +60,8 @@
 | --- | --- | --- |
 | `welcome_message` | `ui.welcome_message` | 表示しない。 |
 | `input_suggestions` | `ui.input_suggestions` | 入力候補チップを表示しない。 |
+
+画面へ返す文字列に改行文字が含まれる場合、開始画面は改行を維持して表示する。`<br>` は改行指定として扱わず、通常の文字列として表示する。
 
 次の情報は画面へ返さない。
 

@@ -149,6 +149,29 @@ describe("frontend components", () => {
     expect(onStart).toHaveBeenCalledWith("差分を整理");
   });
 
+  it("観点：ChatStartScreen。確認：歓迎メッセージと入力候補の改行を表示し、候補クリックで改行を維持する。", async () => {
+    const user = userEvent.setup();
+    render(
+      <Providers>
+        <ChatStartScreen
+          inputSuggestions={["候補1行目\n候補2行目"]}
+          welcomeMessage={"1行目\n2行目"}
+          onStart={vi.fn()}
+        />
+      </Providers>,
+    );
+
+    const heading = screen.getByRole("heading", { name: /1行目\s+2行目/ });
+    const suggestion = screen.getByRole("button", { name: /候補1行目\s+候補2行目/ });
+
+    expect(heading).toHaveClass("whitespace-pre-line");
+    expect(suggestion).toHaveClass("whitespace-pre-line", "min-h-[54px]");
+    await user.click(suggestion);
+    expect(screen.getByPlaceholderText("指示を入力してください")).toHaveValue(
+      "候補1行目\n候補2行目",
+    );
+  });
+
   it("観点：ChatHistoryList。確認：長い履歴名は領域内で省略表示できる。", async () => {
     const user = userEvent.setup();
     const onOpenAnswer = vi.fn();
