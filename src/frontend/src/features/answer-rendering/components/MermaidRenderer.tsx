@@ -1,6 +1,6 @@
 import mermaid from "mermaid";
 import { Maximize2 } from "lucide-react";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -25,33 +25,36 @@ export function MermaidRenderer({ source }: { source: string }) {
   const [viewerOpen, setViewerOpen] = useState(false);
   const [renderFailed, setRenderFailed] = useState(false);
   const reactId = useId();
+  const renderSequenceRef = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
-    const renderId = `mock-flow-${reactId.replace(/[^a-zA-Z0-9_-]/g, "")}`;
+    const safeReactId = reactId.replace(/[^a-zA-Z0-9_-]/g, "");
+    const renderId = `mock-flow-${safeReactId}-${renderSequenceRef.current}`;
+    renderSequenceRef.current += 1;
     setSvg("");
     setRenderFailed(false);
 
     mermaid
       .render(renderId, source)
       .then(({ svg: renderedSvg }) => {
-        removeMermaidInjectedElement(renderId);
         if (!cancelled) {
           setSvg(renderedSvg);
           setRenderFailed(false);
         }
       })
       .catch(() => {
-        removeMermaidInjectedElement(renderId);
         if (!cancelled) {
           setSvg("");
           setRenderFailed(true);
         }
+      })
+      .finally(() => {
+        removeMermaidInjectedElement(renderId);
       });
 
     return () => {
       cancelled = true;
-      removeMermaidInjectedElement(renderId);
     };
   }, [reactId, source]);
 

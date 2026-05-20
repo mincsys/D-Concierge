@@ -1,6 +1,6 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ReactNode } from "react";
+import { StrictMode, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AppShell } from "@/components/layout/AppShell";
@@ -411,6 +411,41 @@ describe("frontend components", () => {
     );
   });
 
+  it("観点：MermaidRenderer。確認：再描画時に描画IDを使い回さない。", async () => {
+    const { rerender } = render(
+      <Providers>
+        <MermaidRenderer source="graph TD;A-->B;" />
+      </Providers>,
+    );
+    await waitFor(() => expect(mermaidMocks.render).toHaveBeenCalledTimes(1));
+
+    rerender(
+      <Providers>
+        <MermaidRenderer source="graph TD;A-->C;" />
+      </Providers>,
+    );
+    await waitFor(() => expect(mermaidMocks.render).toHaveBeenCalledTimes(2));
+
+    const firstId = mermaidMocks.render.mock.calls[0]?.[0];
+    const secondId = mermaidMocks.render.mock.calls[1]?.[0];
+    expect(firstId).toBeTruthy();
+    expect(secondId).toBeTruthy();
+    expect(firstId).not.toBe(secondId);
+  });
+
+  it("観点：MermaidRenderer。確認：StrictMode配下でも正常な図を失敗表示にしない。", async () => {
+    render(
+      <StrictMode>
+        <Providers>
+          <MermaidRenderer source="graph TD;A-->B;" />
+        </Providers>
+      </StrictMode>,
+    );
+
+    await waitFor(() => expect(screen.getByText("図")).toBeInTheDocument());
+    expect(screen.queryByText("Mermaid図を表示できませんでした。")).not.toBeInTheDocument();
+  });
+
   it("観点：MermaidRenderer。確認：描画失敗時にMermaidの一時エラーDOMを残さない。", async () => {
     mermaidMocks.render.mockImplementationOnce((id: string) => {
       const injectedError = document.createElement("div");
@@ -434,11 +469,16 @@ describe("frontend components", () => {
 
   it("観点：MermaidRendererのアンマウント。確認：描画完了前に破棄された場合は状態更新しない。", async () => {
     let resolveRender: (value: { svg: string }) => void = () => undefined;
-    mermaidMocks.render.mockReturnValueOnce(
-      new Promise((resolve) => {
+    let pendingRenderId = "";
+    mermaidMocks.render.mockImplementationOnce((id: string) => {
+      pendingRenderId = id;
+      const injectedElement = document.createElement("div");
+      injectedElement.id = id;
+      document.body.appendChild(injectedElement);
+      return new Promise((resolve) => {
         resolveRender = resolve;
-      }),
-    );
+      });
+    });
     const { unmount } = render(
       <Providers>
         <MermaidRenderer source="graph TD;A-->B;" />
@@ -446,15 +486,22 @@ describe("frontend components", () => {
     );
 
     unmount();
+    expect(document.getElementById(pendingRenderId)).toBeInTheDocument();
     await act(async () => resolveRender({ svg: "<svg><text>遅延図</text></svg>" }));
     expect(screen.queryByText("遅延図")).not.toBeInTheDocument();
+    expect(document.getElementById(pendingRenderId)).not.toBeInTheDocument();
 
     let rejectRender: (reason: Error) => void = () => undefined;
-    mermaidMocks.render.mockReturnValueOnce(
-      new Promise((_, reject) => {
+    let rejectedRenderId = "";
+    mermaidMocks.render.mockImplementationOnce((id: string) => {
+      rejectedRenderId = id;
+      const injectedElement = document.createElement("div");
+      injectedElement.id = id;
+      document.body.appendChild(injectedElement);
+      return new Promise((_, reject) => {
         rejectRender = reject;
-      }),
-    );
+      });
+    });
     const rejected = render(
       <Providers>
         <MermaidRenderer source="broken" />
@@ -462,8 +509,10 @@ describe("frontend components", () => {
     );
 
     rejected.unmount();
+    expect(document.getElementById(rejectedRenderId)).toBeInTheDocument();
     await act(async () => rejectRender(new Error("parse error")));
     expect(screen.queryByText("Mermaid図を表示できませんでした。")).not.toBeInTheDocument();
+    expect(document.getElementById(rejectedRenderId)).not.toBeInTheDocument();
   });
 
   it("観点：MermaidViewerDialog。確認：拡大縮小と全体表示を操作する。", async () => {
