@@ -29,6 +29,11 @@ UNEXPECTED_FAILURE_MESSAGE = (
 
 ANSWER_VALIDATION_FAILED_MESSAGE = "回答を検証できませんでした。"
 CHAT_NOT_FOUND_MESSAGE = "対象のチャットが見つかりません。"
+CHAT_DELETING_MESSAGE = "このチャットは削除中のため操作できません。"
+CHAT_DELETED_MESSAGE = "このチャットは削除されました。"
+CHAT_DELETE_FAILED_MESSAGE = (
+    "チャットを削除できませんでした。時間を置いて再度お試しください。"
+)
 RUN_NOT_FOUND_MESSAGE = "対象の実行処理が見つかりません。"
 CHAT_RUN_NOT_FOUND_MESSAGE = "対象のチャット実行処理が見つかりません。"
 REFERENCE_NOT_FOUND_MESSAGE = "対象の参照元が見つかりません。"

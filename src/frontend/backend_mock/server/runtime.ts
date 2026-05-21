@@ -6,6 +6,7 @@ import type {
   ChatRun,
   ChatRunResponse,
   ChatStartResponse,
+  DeleteChatResponse,
   SseEvent,
 } from "../../src/features/chat/model/types";
 import { randomUUID } from "node:crypto";
@@ -32,6 +33,24 @@ export function getStubActiveChatDetail(): ChatDetailResponse {
 
 export function getStubChatDetail(chatId: string): ChatDetailResponse {
   return runtimeChatDetails[chatId] ?? createFallbackChatDetail(chatId);
+}
+
+export function deleteStubChat(chatId: string): DeleteChatResponse {
+  const exists =
+    runtimeChatDetails[chatId] || runtimeChatHistories.some((item) => item.chat_id === chatId);
+  if (!exists) {
+    throw new Error("chat not found");
+  }
+
+  runtimeChatHistories = runtimeChatHistories.filter((history) => history.chat_id !== chatId);
+  const nextDetails = { ...runtimeChatDetails };
+  delete nextDetails[chatId];
+  runtimeChatDetails = nextDetails;
+
+  return {
+    chat_id: chatId,
+    chat_state: "削除中",
+  };
 }
 
 export function acceptStubStartChat(userInstruction: string) {

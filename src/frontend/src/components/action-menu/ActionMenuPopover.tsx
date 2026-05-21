@@ -6,6 +6,7 @@ export type ActionMenuItem = {
   disabled?: boolean;
   icon: ReactNode;
   label: string;
+  onSelect?: () => void;
   tone?: "default" | "danger";
 };
 
@@ -68,18 +69,27 @@ export function ActionMenuPopover({
       aria-label={ariaLabel}
     >
       {items.map((item) => (
-        <div
+        <button
           className={cn(
-            "flex min-h-10 items-center gap-3 rounded-[10px] px-3 text-[14px] leading-5 font-[700]",
+            "flex min-h-10 w-full items-center gap-3 rounded-[10px] px-3 text-left text-[14px] leading-5 font-[700] disabled:cursor-default",
             item.tone === "danger" ? "text-[var(--dc-danger)]" : "text-[var(--dc-text)]",
           )}
+          disabled={item.disabled}
           key={item.label}
           role="menuitem"
           aria-disabled={item.disabled ? "true" : undefined}
+          type="button"
+          onClick={() => {
+            if (item.disabled) {
+              return;
+            }
+            item.onSelect?.();
+            onOpenChange(false);
+          }}
         >
           {item.icon}
           <span>{item.label}</span>
-        </div>
+        </button>
       ))}
     </div>
   );

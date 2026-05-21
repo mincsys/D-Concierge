@@ -34,6 +34,9 @@ class ChatModel(Base):
         unique=True,
     )
     title: Mapped[str] = mapped_column(sa.String(50), nullable=False)
+    chat_state: Mapped[str] = mapped_column(
+        sa.String(20), nullable=False, default="有効"
+    )
     generation_conversation_id: Mapped[str | None] = mapped_column(sa.String(255))
     validation_conversation_id: Mapped[str | None] = mapped_column(sa.String(255))
     updated_at: Mapped[datetime] = mapped_column(

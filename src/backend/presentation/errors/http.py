@@ -7,6 +7,7 @@ from backend.shared.errors.errors import (
     ArtifactNotDisplayableError,
     ArtifactNotFoundError,
     CancelNotAllowedError,
+    ChatDeletingError,
     ChatNotFoundError,
     ChatRunNotFoundError,
     FileNotDisplayableError,
@@ -22,6 +23,7 @@ from backend.shared.user_messages import (
     ARTIFACT_NOT_DISPLAYABLE_MESSAGE,
     ARTIFACT_NOT_FOUND_MESSAGE,
     CANCEL_NOT_ALLOWED_MESSAGE,
+    CHAT_DELETING_MESSAGE,
     CHAT_NOT_FOUND_MESSAGE,
     CHAT_RUN_NOT_FOUND_MESSAGE,
     CONFIGURATION_FAILURE_MESSAGE,
@@ -52,6 +54,8 @@ def user_message_for_error(error: AppError) -> str:
             return USER_INSTRUCTION_REQUIRED_MESSAGE
         case ChatNotFoundError():
             return CHAT_NOT_FOUND_MESSAGE
+        case ChatDeletingError():
+            return CHAT_DELETING_MESSAGE
         case RunNotFoundError():
             return RUN_NOT_FOUND_MESSAGE
         case ChatRunNotFoundError():

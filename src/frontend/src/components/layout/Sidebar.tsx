@@ -17,6 +17,7 @@ export function Sidebar({
   histories,
   onStartNewChat,
   onOpenAnswer,
+  onRequestDeleteHistoryChat,
   onToggleCollapsed,
 }: {
   activeChatId?: string;
@@ -24,6 +25,7 @@ export function Sidebar({
   histories: ChatHistoryItem[];
   onStartNewChat: () => void;
   onOpenAnswer: (chatId: string) => void;
+  onRequestDeleteHistoryChat?: (chatId: string) => void;
   onToggleCollapsed: () => void;
 }) {
   if (collapsed) {
@@ -139,6 +141,7 @@ export function Sidebar({
           activeChatId={activeChatId}
           histories={histories}
           onOpenAnswer={onOpenAnswer}
+          onRequestDelete={onRequestDeleteHistoryChat}
         />
       </ScrollArea>
 

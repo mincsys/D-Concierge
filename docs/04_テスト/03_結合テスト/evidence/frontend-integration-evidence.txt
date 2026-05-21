@@ -1,10 +1,10 @@
 target=frontend
-executed_at=2026-05-12T12:17:57+09:00
-command=cd src/frontend && npm run test:integration -- --coverage
+executed_at=2026-05-21T16:47:22+09:00
+command=cd src/frontend && npm run test:integration -- --coverage --coverage.reporter=json-summary --coverage.reportsDirectory=coverage/integration
 design_coverage=ChatPage起点の初期表示、初期設定・履歴一覧・直近詳細取得失敗、新規チャット開始、受付失敗、SSE state/message/answer/error/canceled、SSE切断、履歴再表示、履歴詳細取得失敗、未完了runのSSE再接続、継続指示、継続受付失敗、キャンセル、参照元表示、旧ストリーム化、初期取得中破棄、回答終端連携を確認済み
-branch_coverage=80.55%
-covered_branches=58
-total_branches=72
+branch_coverage=63.24%
+covered_branches=74
+total_branches=117
 tests=10
 failures=0
-result=pass
+result=fail

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   appendChatRun,
   cancelChatRun,
+  deleteChat,
   getActiveChatSession,
   getAppConfig,
   getChatDetail,
@@ -111,6 +112,35 @@ describe("chatApi", () => {
     fetchMock.mockResolvedValueOnce(new Response("error", { status: 500 }));
 
     await expect(getAppConfig()).rejects.toThrow("API request failed: 500");
+  });
+
+  it("観点：チャット削除API。確認：DELETEを送信し、削除受付応答を画面モデルへ変換する。", async () => {
+    await expect(deleteChat("chat-1")).resolves.toEqual({
+      chatId: "chat-1",
+      chatState: "削除中",
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/chats/chat-1",
+      expect.objectContaining({ method: "DELETE" }),
+    );
+  });
+
+  it("観点：削除中・削除済み競合。確認：HTTPエラー応答の利用者向けメッセージを保持する。", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          error: "conflict",
+          message: "このチャットは削除中のため操作できません。",
+        }),
+        { headers: { "Content-Type": "application/json" }, status: 409 },
+      ),
+    );
+
+    await expect(getChatDetail("chat-deleting")).rejects.toMatchObject({
+      message: "このチャットは削除中のため操作できません。",
+      status: 409,
+    });
   });
 
   it("観点：詳細応答の任意項目。確認：中間メッセージ、回答、参照元が欠落しても画面モデルへ変換する。", async () => {
@@ -366,6 +396,9 @@ function responseByUrl(url: string, init?: RequestInit): JsonResponse | Response
       state: "キャンセル要求中",
       user_message: "処理をキャンセルしています。",
     };
+  }
+  if (url === "/api/chats/chat-1" && init?.method === "DELETE") {
+    return { chat_id: "chat-1", chat_state: "削除中" };
   }
   if (url === "/api/chats/chat-2") {
     return chatDetail("chat-2", "run-2");

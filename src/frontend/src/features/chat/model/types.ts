@@ -2,6 +2,8 @@ import type { DisplayReference } from "@/features/reference-viewer/model/types";
 
 export type ViewMode = "start" | "answer";
 
+export type ChatState = "有効" | "削除中";
+
 export type ChatRunState =
   | "受付"
   | "実行中"
@@ -36,6 +38,16 @@ export type CancelChatRunResponse = {
   run_id: string;
   state: "キャンセル要求中";
   user_message: string;
+};
+
+export type DeleteChatResponse = {
+  chat_id: string;
+  chat_state: "削除中";
+};
+
+export type DeletedChat = {
+  chatId: string;
+  chatState: "削除中";
 };
 
 export type ChatRunResponse = {

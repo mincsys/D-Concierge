@@ -15,6 +15,10 @@ from backend.application.artifacts.save_adopted_artifacts import (
     SaveAdoptedArtifactsUseCase,
 )
 from backend.application.chat.append_chat_run import AppendChatRunUseCase
+from backend.application.chat.delete_chat import DeleteChatUseCase
+from backend.application.chat.execute_chat_deletion import (
+    ExecuteChatDeletionUseCase,
+)
 from backend.application.chat.get_chat_detail import GetChatDetailUseCase
 from backend.application.chat.start_chat import StartChatUseCase
 from backend.application.execution.cancel_chat_run import CancelChatRunUseCase
@@ -29,6 +33,7 @@ from backend.application.ports.database.interface import (
 )
 from backend.application.ports.runtime.interface import (
     BackgroundExecutorPort,
+    ChatDeletionDispatcherPort,
     ClockPort,
     IdGeneratorPort,
     RunExecutionDispatcherPort,
@@ -52,6 +57,9 @@ from backend.infrastructure.codex.reference_validator import (
     CodexValidationRunnerAdapter,
 )
 from backend.infrastructure.codex.session_workdir import CodexSessionWorkdirResolver
+from backend.infrastructure.codex.session_workdir_cleanup import (
+    CodexSessionWorkdirCleanup,
+)
 from backend.infrastructure.config.loader import ConfigLoader
 from backend.infrastructure.config.models import AppConfig
 from backend.infrastructure.database.repositories.sqlalchemy_chat_repository import (
@@ -63,6 +71,9 @@ from backend.infrastructure.filesystem.artifacts.file_artifact_store import (
 )
 from backend.infrastructure.filesystem.references.file_reference_store import (
     FileReferenceStore,
+)
+from backend.infrastructure.runtime.chat_deletion_dispatcher import (
+    InProcessChatDeletionDispatcher,
 )
 from backend.infrastructure.runtime.run_execution_dispatcher import (
     InProcessRunExecutionDispatcher,
@@ -159,6 +170,7 @@ def create_app(
         runtime_run_event_source,
         cancel_requester,
         cancel_event_publisher,
+        chat_deletion_dispatcher,
     ) = _create_runtime_services(
         app_config=app_config,
         chat_repository=chat_repository,
@@ -188,6 +200,12 @@ def create_app(
         event_publisher=cancel_event_publisher,
         transaction_manager=runtime_transaction_manager,
     )
+    delete_chat_usecase = DeleteChatUseCase(
+        repository=chat_repository,
+        deletion_dispatcher=chat_deletion_dispatcher,
+        transaction_manager=runtime_transaction_manager,
+        trace_logger=trace_logger,
+    )
     list_histories_usecase = ListChatHistoriesUseCase(
         repository=chat_repository,
         transaction_manager=runtime_transaction_manager,
@@ -214,6 +232,14 @@ def create_app(
             transaction_manager=runtime_transaction_manager,
             trace_logger=trace_logger,
         ).execute(trace_id=_new_trace_id(runtime_id_generator))
+    if chat_deletion_dispatcher is not None:
+        with runtime_transaction_manager.transaction():
+            deleting_chat_ids = chat_repository.list_deleting_chats_for_recovery()
+        for deleting_chat_id in deleting_chat_ids:
+            chat_deletion_dispatcher.register(
+                deleting_chat_id,
+                _new_trace_id(runtime_id_generator),
+            )
 
     app = FastAPI(title="D-Concierge")
     _register_trace_context_middleware(app, runtime_id_generator)
@@ -226,6 +252,7 @@ def create_app(
             start_chat_usecase=start_chat_usecase,
             append_chat_run_usecase=append_chat_run_usecase,
             cancel_chat_run_usecase=cancel_chat_run_usecase,
+            delete_chat_usecase=delete_chat_usecase,
             list_histories_usecase=list_histories_usecase,
             get_chat_detail_usecase=get_chat_detail_usecase,
             get_reference_data_usecase=get_reference_data_usecase,
@@ -255,9 +282,10 @@ def _create_runtime_services(
     RunEventSource | None,
     CodexCancelRequester | None,
     RunEventBroker | None,
+    ChatDeletionDispatcherPort | None,
 ]:
     if not isinstance(run_dispatcher, _DefaultRunDispatcher):
-        return run_dispatcher, run_event_source, None, None
+        return run_dispatcher, run_event_source, None, None, None
 
     event_broker = RunEventBroker()
     runtime_codex_runner = codex_runner if codex_runner is not None else CodexRunner()
@@ -286,8 +314,9 @@ def _create_runtime_services(
         validator_codex_runner=validator_codex_runner,
         validator_max_retries=app_config.validator.max_retries,
     )
+    artifact_store = FileArtifactStore(app_config.generator.saved_artifacts_dir)
     artifact_saver = SaveAdoptedArtifactsUseCase(
-        artifact_store=FileArtifactStore(app_config.generator.saved_artifacts_dir),
+        artifact_store=artifact_store,
         id_generator=id_generator,
     )
     execute_usecase = ExecuteChatRunUseCase(
@@ -306,6 +335,17 @@ def _create_runtime_services(
         clock=clock,
         id_generator=id_generator,
     )
+    deletion_usecase = ExecuteChatDeletionUseCase(
+        repository=chat_repository,
+        cancel_requester=CodexCancelRequester(runtime_codex_runner),
+        session_workdir_cleanup=CodexSessionWorkdirCleanup(
+            generation_workdir=app_config.generator.workdir,
+            validation_workdir=app_config.validator.workdir,
+        ),
+        artifact_deletion=artifact_store,
+        transaction_manager=transaction_manager,
+        trace_logger=trace_logger,
+    )
     return (
         InProcessRunExecutionDispatcher(
             run_executor=execute_usecase,
@@ -314,6 +354,10 @@ def _create_runtime_services(
         run_event_source if run_event_source is not None else event_broker,
         CodexCancelRequester(runtime_codex_runner),
         event_broker,
+        InProcessChatDeletionDispatcher(
+            deletion_executor=deletion_usecase,
+            background_executor=background_executor,
+        ),
     )
 
 

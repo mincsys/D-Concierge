@@ -238,3 +238,26 @@ def test_file_artifact_store_rejects_saved_symlink_to_outside(
         )
 
     assert error_info.value.error_type is ErrorType.FORBIDDEN
+
+
+def test_file_artifact_store_deletes_saved_artifacts_and_empty_run_dir(
+    tmp_path: Path,
+) -> None:
+    """観点：成果物ファイルIF。
+
+    確認：保存済み成果物実体と空の親runディレクトリだけを削除する。
+    """
+    saved_root = tmp_path / "saved_artifacts"
+    target = saved_root / "run-target" / "chart.svg"
+    other = saved_root / "run-other" / "other.svg"
+    target.parent.mkdir(parents=True)
+    other.parent.mkdir(parents=True)
+    target.write_text("<svg />", encoding="utf-8")
+    other.write_text("<svg />", encoding="utf-8")
+    store = FileArtifactStore(saved_artifacts_dir=saved_root)
+
+    store.delete_saved_artifacts(("run-target/chart.svg",))
+
+    assert target.exists() is False
+    assert target.parent.exists() is False
+    assert other.read_text(encoding="utf-8") == "<svg />"

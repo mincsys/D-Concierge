@@ -44,6 +44,13 @@ class ChatNotFoundError(AppError):
         super().__init__(ErrorType.NOT_FOUND)
 
 
+class ChatDeletingError(AppError):
+    """対象チャットが削除中で操作できないことを示す。"""
+
+    def __init__(self) -> None:
+        super().__init__(ErrorType.CONFLICT)
+
+
 class RunNotFoundError(AppError):
     """対象runが存在しないことを示す。"""
 

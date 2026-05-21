@@ -10,10 +10,12 @@ export function ChatHistoryList({
   activeChatId,
   histories,
   onOpenAnswer,
+  onRequestDelete,
 }: {
   activeChatId?: string;
   histories: ChatHistoryItem[];
   onOpenAnswer: (chatId: string) => void;
+  onRequestDelete?: (chatId: string) => void;
 }) {
   const [openMenuChatId, setOpenMenuChatId] = useState<string | null>(null);
 
@@ -27,6 +29,7 @@ export function ChatHistoryList({
           menuOpen={openMenuChatId === item.chatId}
           onMenuOpenChange={(open) => setOpenMenuChatId(open ? item.chatId : null)}
           onOpenAnswer={onOpenAnswer}
+          onRequestDelete={onRequestDelete}
         />
       ))}
     </nav>
@@ -39,12 +42,14 @@ function ChatHistoryListItem({
   menuOpen,
   onMenuOpenChange,
   onOpenAnswer,
+  onRequestDelete,
 }: {
   active: boolean;
   item: ChatHistoryItem;
   menuOpen: boolean;
   onMenuOpenChange: (open: boolean) => void;
   onOpenAnswer: (chatId: string) => void;
+  onRequestDelete?: (chatId: string) => void;
 }) {
   const menuRootRef = useRef<HTMLDivElement | null>(null);
 
@@ -82,7 +87,15 @@ function ChatHistoryListItem({
         ariaLabel="履歴項目メニュー"
         className="top-[38px] right-2 z-10"
         dismissRootRef={menuRootRef}
-        items={[{ disabled: true, icon: <Trash2 size={18} />, label: "削除する", tone: "danger" }]}
+        items={[
+          {
+            disabled: !onRequestDelete,
+            icon: <Trash2 size={18} />,
+            label: "削除する",
+            onSelect: () => onRequestDelete?.(item.chatId),
+            tone: "danger",
+          },
+        ]}
         onOpenChange={onMenuOpenChange}
       />
     </div>

@@ -10,14 +10,18 @@ from backend.application.ports.database.dto import (
     AnswerBlockData,
     AnswerData,
     ArtifactData,
+    ChatDeletionRun,
+    ChatDeletionTarget,
     ChatDetail,
     ChatRuntimeContext,
+    DeleteChatResult,
     DisplayReferenceData,
     HistoryItem,
     IntermediateMessageData,
     RunDetail,
     UnfinishedRun,
 )
+from backend.domain.chat.chat_state import ChatState
 from backend.domain.chat.chat_title_policy import ChatTitlePolicy
 from backend.domain.chat.user_instruction import (
     InvalidUserInstructionError,
@@ -30,6 +34,7 @@ from backend.shared.errors.errors import (
     ActiveRunConflictError,
     ArtifactNotFoundError,
     CancelNotAllowedError,
+    ChatDeletingError,
     ChatNotFoundError,
     ReferenceNotFoundError,
     RunNotFoundError,
@@ -63,6 +68,7 @@ class _ChatRecord:
     updated_at: datetime
     generation_conversation_id: str | None = None
     validation_conversation_id: str | None = None
+    chat_state: ChatState = ChatState.ACTIVE
     run_ids: list[UUID] = field(default_factory=list)
 
 
@@ -75,6 +81,8 @@ class InMemoryChatRepository:
         self._runs: dict[UUID, _RunRecord] = {}
         self._references: dict[UUID, DisplayReferenceData] = {}
         self._artifacts: dict[UUID, ArtifactData] = {}
+        self._reference_chat_ids: dict[UUID, UUID] = {}
+        self._artifact_chat_ids: dict[UUID, UUID] = {}
         self._latest_artifact_id: UUID | None = None
         self._lock = RLock()
 
@@ -110,7 +118,7 @@ class InMemoryChatRepository:
         now = self._now()
         run_id = uuid4()
         with self._lock:
-            chat = self._get_chat_locked(chat_id)
+            chat = self._get_active_chat_locked(chat_id)
             for existing_run_id in chat.run_ids:
                 if RunStatePolicy.is_unfinished(self._runs[existing_run_id].state):
                     raise ActiveRunConflictError()
@@ -132,7 +140,7 @@ class InMemoryChatRepository:
             histories = [
                 self._to_history_item(chat)
                 for chat in self._chats.values()
-                if len(chat.run_ids) > 0
+                if len(chat.run_ids) > 0 and chat.chat_state is ChatState.ACTIVE
             ]
         return tuple(sorted(histories, key=lambda item: item.updated_at, reverse=True))
 
@@ -143,6 +151,7 @@ class InMemoryChatRepository:
                 run
                 for run in self._runs.values()
                 if RunStatePolicy.is_unfinished(run.state)
+                and self._chats[run.chat_id].chat_state is ChatState.ACTIVE
             ]
         return tuple(
             UnfinishedRun(chat_id=run.chat_id, run_id=run.id, state=run.state)
@@ -152,7 +161,7 @@ class InMemoryChatRepository:
     def get_chat_detail(self, chat_id: UUID) -> ChatDetail:
         """指定チャットの詳細を返す。"""
         with self._lock:
-            chat = self._get_chat_locked(chat_id)
+            chat = self._get_active_chat_locked(chat_id)
             runs = tuple(
                 self._to_run_detail(self._runs[run_id]) for run_id in chat.run_ids
             )
@@ -161,7 +170,7 @@ class InMemoryChatRepository:
     def get_chat_runtime_context(self, chat_id: UUID) -> ChatRuntimeContext:
         """Codex実行に必要なチャット単位の内部コンテキストを返す。"""
         with self._lock:
-            chat = self._get_chat_locked(chat_id)
+            chat = self._get_active_chat_locked(chat_id)
             return ChatRuntimeContext(
                 chat_id=chat.id,
                 local_user_id=chat.local_user_id,
@@ -257,8 +266,10 @@ class InMemoryChatRepository:
             for block in answer.blocks:
                 for reference in block.references:
                     self._references[reference.reference_id] = reference
+                    self._reference_chat_ids[reference.reference_id] = chat_id
                 for artifact in block.artifacts:
                     self._artifacts[artifact.artifact_id] = artifact
+                    self._artifact_chat_ids[artifact.artifact_id] = chat_id
                     self._latest_artifact_id = artifact.artifact_id
             self._chats[chat_id].updated_at = now
 
@@ -280,6 +291,7 @@ class InMemoryChatRepository:
         reference = self._references.get(reference_id)
         if reference is None:
             raise ReferenceNotFoundError()
+        self._raise_if_deleting(self._reference_chat_ids[reference_id])
         return reference
 
     def get_artifact(self, artifact_id: UUID) -> ArtifactData:
@@ -287,7 +299,69 @@ class InMemoryChatRepository:
         artifact = self._artifacts.get(artifact_id)
         if artifact is None:
             raise ArtifactNotFoundError()
+        self._raise_if_deleting(self._artifact_chat_ids[artifact_id])
         return artifact
+
+    def mark_chat_deleting(self, chat_id: UUID) -> DeleteChatResult:
+        """対象チャットを削除中にする。"""
+        with self._lock:
+            chat = self._get_chat_locked(chat_id)
+            chat.chat_state = ChatState.DELETING
+            return DeleteChatResult(chat_id=chat_id, chat_state=ChatState.DELETING)
+
+    def list_deleting_chats_for_recovery(self) -> tuple[UUID, ...]:
+        """削除中チャットIDを返す。"""
+        with self._lock:
+            return tuple(
+                chat.id
+                for chat in self._chats.values()
+                if chat.chat_state is ChatState.DELETING
+            )
+
+    def get_chat_deletion_target(self, chat_id: UUID) -> ChatDeletionTarget:
+        """物理削除に必要な対象情報を返す。"""
+        with self._lock:
+            chat = self._get_chat_locked(chat_id)
+            unfinished_runs = tuple(
+                ChatDeletionRun(run_id=run_id, state=self._runs[run_id].state)
+                for run_id in chat.run_ids
+                if RunStatePolicy.is_unfinished(self._runs[run_id].state)
+            )
+            artifact_storage_paths = tuple(
+                artifact.relative_path
+                for artifact_id, artifact in self._artifacts.items()
+                if self._artifact_chat_ids.get(artifact_id) == chat_id
+            )
+            return ChatDeletionTarget(
+                chat_id=chat.id,
+                local_user_id=chat.local_user_id,
+                session_id=chat.session_id,
+                unfinished_runs=unfinished_runs,
+                artifact_storage_paths=artifact_storage_paths,
+            )
+
+    def delete_chat_cascade(self, chat_id: UUID) -> None:
+        """対象チャット一式をメモリ上から削除する。"""
+        with self._lock:
+            chat = self._get_chat_locked(chat_id)
+            for run_id in chat.run_ids:
+                self._runs.pop(run_id, None)
+            for reference_id, parent_chat_id in tuple(self._reference_chat_ids.items()):
+                if parent_chat_id == chat_id:
+                    self._reference_chat_ids.pop(reference_id, None)
+                    self._references.pop(reference_id, None)
+            for artifact_id, parent_chat_id in tuple(self._artifact_chat_ids.items()):
+                if parent_chat_id == chat_id:
+                    self._artifact_chat_ids.pop(artifact_id, None)
+                    self._artifacts.pop(artifact_id, None)
+                    if self._latest_artifact_id == artifact_id:
+                        self._latest_artifact_id = None
+            self._chats.pop(chat_id, None)
+
+    def chat_state_for_test(self, chat_id: UUID) -> ChatState:
+        """テストでチャット状態を返す。"""
+        with self._lock:
+            return self._get_chat_locked(chat_id).chat_state
 
     def save_completed_answer_for_test(
         self,
@@ -327,6 +401,8 @@ class InMemoryChatRepository:
             )
             self._references[reference_id] = reference
             self._artifacts[artifact_id] = artifact
+            self._reference_chat_ids[reference_id] = accepted.chat_id
+            self._artifact_chat_ids[artifact_id] = accepted.chat_id
             self._latest_artifact_id = artifact_id
             return reference_id
 
@@ -372,6 +448,17 @@ class InMemoryChatRepository:
         if chat is None:
             raise ChatNotFoundError()
         return chat
+
+    def _get_active_chat_locked(self, chat_id: UUID) -> _ChatRecord:
+        chat = self._get_chat_locked(chat_id)
+        if chat.chat_state is ChatState.DELETING:
+            raise ChatDeletingError()
+        return chat
+
+    def _raise_if_deleting(self, chat_id: UUID) -> None:
+        chat = self._get_chat_locked(chat_id)
+        if chat.chat_state is ChatState.DELETING:
+            raise ChatDeletingError()
 
     def _get_run_locked(self, chat_id: UUID, run_id: UUID) -> _RunRecord:
         self._get_chat_locked(chat_id)

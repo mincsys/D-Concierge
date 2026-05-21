@@ -1,7 +1,7 @@
 target=backend
-executed_at=2026-05-12T12:17:57+09:00
+executed_at=2026-05-21T16:47:22+09:00
 command=UV_CACHE_DIR=/tmp/uv-cache uv run pytest src/backend/tests/unit --cov=src/backend --cov-branch --cov-report=json:.tmp/coverage-evidence/backend-unit-coverage.json --cov-report=
-branch_coverage=77.04%
-covered_branches=510
-total_branches=662
+branch_coverage=75.76%
+covered_branches=547
+total_branches=722
 result=fail

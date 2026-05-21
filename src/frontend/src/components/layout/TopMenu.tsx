@@ -4,7 +4,13 @@ import { useRef, useState } from "react";
 import { ActionMenuPopover } from "@/components/action-menu/ActionMenuPopover";
 import { Button } from "@/components/ui/button";
 
-export function TopMenu() {
+export function TopMenu({
+  deleteDisabled = false,
+  onRequestDelete,
+}: {
+  deleteDisabled?: boolean;
+  onRequestDelete?: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -25,7 +31,15 @@ export function TopMenu() {
         open={open}
         ariaLabel="その他メニュー"
         dismissRootRef={menuRef}
-        items={[{ disabled: true, icon: <Trash2 size={18} />, label: "削除する", tone: "danger" }]}
+        items={[
+          {
+            disabled: deleteDisabled || !onRequestDelete,
+            icon: <Trash2 size={18} />,
+            label: "削除する",
+            onSelect: onRequestDelete,
+            tone: "danger",
+          },
+        ]}
         onOpenChange={setOpen}
       />
     </div>

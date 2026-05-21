@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
 
+from backend.domain.chat.chat_state import ChatState
 from backend.domain.execution.run_state import RunState
 from backend.domain.references.source_type import SourceType
 
@@ -20,12 +21,39 @@ class AcceptedRun:
 
 
 @dataclass(frozen=True, slots=True)
+class DeleteChatResult:
+    """チャット削除受付APIの応答に必要な情報。"""
+
+    chat_id: UUID
+    chat_state: ChatState
+
+
+@dataclass(frozen=True, slots=True)
 class UnfinishedRun:
     """起動時回復対象の未完了run情報。"""
 
     chat_id: UUID
     run_id: UUID
     state: RunState
+
+
+@dataclass(frozen=True, slots=True)
+class ChatDeletionRun:
+    """チャット物理削除前に確認するrun情報。"""
+
+    run_id: UUID
+    state: RunState
+
+
+@dataclass(frozen=True, slots=True)
+class ChatDeletionTarget:
+    """チャット物理削除に必要な対象情報。"""
+
+    chat_id: UUID
+    local_user_id: UUID
+    session_id: UUID
+    unfinished_runs: tuple[ChatDeletionRun, ...]
+    artifact_storage_paths: tuple[str, ...]
 
 
 @dataclass(frozen=True, slots=True)

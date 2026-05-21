@@ -20,6 +20,7 @@ RUN_STATE_CHECK = (
     "state IN ('受付','実行中','検証中','キャンセル要求中',"
     "'キャンセル済み','完了','エラー','タイムアウト')"
 )
+CHAT_STATE_CHECK = "chat_state IN ('有効','削除中')"
 
 
 def upgrade() -> None:
@@ -37,12 +38,19 @@ def upgrade() -> None:
         sa.Column("local_user_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("session_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("title", sa.String(length=50), nullable=False),
+        sa.Column(
+            "chat_state",
+            sa.String(length=20),
+            nullable=False,
+            server_default="有効",
+        ),
         sa.Column("generation_conversation_id", sa.String(length=255), nullable=True),
         sa.Column("validation_conversation_id", sa.String(length=255), nullable=True),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.ForeignKeyConstraint(
             ["local_user_id"], ["local_users.id"], ondelete="RESTRICT"
         ),
+        sa.CheckConstraint(CHAT_STATE_CHECK, name="ck_chats_chat_state"),
         sa.UniqueConstraint("session_id", name="uq_chats_session_id"),
     )
     op.create_index(

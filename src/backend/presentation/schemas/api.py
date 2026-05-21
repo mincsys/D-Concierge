@@ -32,6 +32,13 @@ class CancelChatRunResponseSchema(BaseModel):
     user_message: str
 
 
+class DeleteChatResponseSchema(BaseModel):
+    """チャット削除受付APIの応答。"""
+
+    chat_id: str
+    chat_state: str
+
+
 class ChatHistoryItemResponseSchema(BaseModel):
     """履歴一覧APIの1件分の応答。"""
 

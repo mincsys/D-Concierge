@@ -49,6 +49,7 @@ const testState = vi.hoisted(() => ({
           runId: string,
         ) => Promise<{ run_id: string; state: ChatRun["state"]; user_message: string }>
       >(),
+    deleteChat: vi.fn<(chatId: string) => Promise<{ chatId: string; chatState: "削除中" }>>(),
     getActiveChatSession: vi.fn<() => Promise<ChatSession>>(),
     getAppConfig: vi.fn<() => Promise<AppConfigResponse>>(),
     getChatDetail: vi.fn<(chatId: string) => Promise<ChatSession>>(),
@@ -63,6 +64,7 @@ const testState = vi.hoisted(() => ({
 vi.mock("@/features/chat/api/chatApi", () => ({
   appendChatRun: testState.api.appendChatRun,
   cancelChatRun: testState.api.cancelChatRun,
+  deleteChat: testState.api.deleteChat,
   getActiveChatSession: testState.api.getActiveChatSession,
   getAppConfig: testState.api.getAppConfig,
   getChatDetail: testState.api.getChatDetail,
@@ -81,12 +83,16 @@ vi.mock("@/components/layout/AppShell", () => ({
     children,
     histories,
     onOpenAnswer,
+    onRequestDeleteCurrentChat,
+    onRequestDeleteHistoryChat,
     onStartNewChat,
   }: {
     activeChatId?: string;
     children: ReactNode | ((state: { sidebarCollapsed: boolean }) => ReactNode);
     histories: ChatHistoryItem[];
     onOpenAnswer: (chatId: string) => void;
+    onRequestDeleteCurrentChat: () => void;
+    onRequestDeleteHistoryChat: (chatId: string) => void;
     onStartNewChat: () => void;
   }) => (
     <section>
@@ -97,6 +103,12 @@ vi.mock("@/components/layout/AppShell", () => ({
       </button>
       <button type="button" onClick={onStartNewChat}>
         新規チャットへ戻る
+      </button>
+      <button type="button" onClick={onRequestDeleteCurrentChat}>
+        表示中チャットを削除する
+      </button>
+      <button type="button" onClick={() => onRequestDeleteHistoryChat("chat-other")}>
+        履歴項目を削除する
       </button>
       {typeof children === "function" ? children({ sidebarCollapsed: false }) : children}
     </section>
@@ -234,6 +246,7 @@ describe("ChatPage", () => {
       state: "キャンセル要求中",
       user_message: "キャンセルしています。",
     });
+    testState.api.deleteChat.mockResolvedValue({ chatId: "chat-history", chatState: "削除中" });
     testState.api.streamChatRun.mockImplementation(
       (options) =>
         new Promise<void>((resolve) => {
@@ -561,6 +574,72 @@ describe("ChatPage", () => {
     expect(
       await screen.findByText("キャンセルできませんでした。処理状態を確認してください。"),
     ).toBeInTheDocument();
+  });
+
+  it("観点：表示中チャット削除。確認：確認OK後に削除APIを呼び、開始画面へ戻して履歴を再取得する。", async () => {
+    const user = userEvent.setup();
+    testState.api.listChatHistories
+      .mockResolvedValueOnce([history("chat-history", "履歴")])
+      .mockResolvedValueOnce([]);
+
+    render(<ChatPage />);
+    await user.click(await screen.findByRole("button", { name: "履歴を開く" }));
+    await waitFor(() => expect(screen.getByTestId("session-id")).toHaveTextContent("chat-history"));
+
+    await user.click(screen.getByRole("button", { name: "表示中チャットを削除する" }));
+    expect(screen.getByRole("dialog", { name: "チャットを削除しますか？" })).toBeInTheDocument();
+    expect(screen.getByText("この操作は取り消せません。")).toBeInTheDocument();
+    expect(screen.queryByText(/履歴を削除します。/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "OK" })).toHaveClass(
+      "bg-[var(--dc-danger)]",
+      "text-white",
+    );
+    await user.click(screen.getByRole("button", { name: "OK" }));
+
+    await waitFor(() => expect(testState.api.deleteChat).toHaveBeenCalledWith("chat-history"));
+    expect(screen.getByTestId("start-screen")).toBeInTheDocument();
+    expect(screen.getByTestId("active-chat-id")).toHaveTextContent("none");
+    expect(screen.getByTestId("history-count")).toHaveTextContent("0");
+  });
+
+  it("観点：履歴項目削除。確認：表示中でない履歴削除時は現在表示中チャットを維持する。", async () => {
+    const user = userEvent.setup();
+    testState.api.listChatHistories
+      .mockResolvedValueOnce([history("chat-history", "表示中"), history("chat-other", "別履歴")])
+      .mockResolvedValueOnce([history("chat-history", "表示中")]);
+    testState.api.deleteChat.mockResolvedValueOnce({ chatId: "chat-other", chatState: "削除中" });
+
+    render(<ChatPage />);
+    await user.click(await screen.findByRole("button", { name: "履歴を開く" }));
+    await waitFor(() => expect(screen.getByTestId("session-id")).toHaveTextContent("chat-history"));
+
+    await user.click(screen.getByRole("button", { name: "履歴項目を削除する" }));
+    expect(screen.getByRole("dialog", { name: "チャットを削除しますか？" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "OK" }));
+
+    await waitFor(() => expect(testState.api.deleteChat).toHaveBeenCalledWith("chat-other"));
+    expect(screen.getByTestId("session-id")).toHaveTextContent("chat-history");
+    expect(screen.getByTestId("active-chat-id")).toHaveTextContent("chat-history");
+    expect(screen.getByTestId("history-count")).toHaveTextContent("1");
+  });
+
+  it("観点：削除中競合。確認：継続指示で削除中を検知した場合は開始画面へ戻す。", async () => {
+    const user = userEvent.setup();
+    testState.api.appendChatRun.mockRejectedValueOnce(
+      Object.assign(new Error("このチャットは削除中のため操作できません。"), {
+        status: 409,
+      }),
+    );
+    render(<ChatPage />);
+    await user.click(await screen.findByRole("button", { name: "履歴を開く" }));
+    await waitFor(() => expect(screen.getByTestId("session-id")).toHaveTextContent("chat-history"));
+
+    await user.click(screen.getByRole("button", { name: "継続依頼を送信" }));
+
+    expect(
+      await screen.findByText("このチャットは削除中のため操作できません。"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("start-screen")).toBeInTheDocument();
   });
 
   it("観点：旧ストリーム化。確認：受付応答前に別操作された場合は開始結果とSSE更新を無視する。", async () => {

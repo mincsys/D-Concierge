@@ -4,7 +4,7 @@ from concurrent.futures import Future
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from uuid import UUID
+from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -59,6 +59,7 @@ from backend.presentation.schemas.api import (
     ChatDetailResponseSchema,
     ChatHistoryItemResponseSchema,
     ChatStartResponseSchema,
+    DeleteChatResponseSchema,
 )
 from backend.presentation.sse.run_event_broker import RunEventSubscription
 from backend.shared.errors.error_type import ErrorType
@@ -481,6 +482,116 @@ def test_chat_detail_returns_completed_answer_and_references(tmp_path: Path) -> 
         == f"/api/references/{reference_id}"
     )
     assert detail.runs[0].answer.blocks[0].references[0].locator.page_start == 1
+
+
+def test_delete_chat_marks_deleting_and_excludes_history_and_detail(
+    tmp_path: Path,
+) -> None:
+    """観点：IF-SB-10。
+
+    確認：削除受付後、対象チャットを削除中にし、履歴一覧と履歴詳細の対象外にする。
+    """
+    client = _make_client(tmp_path)
+    start_response = client.post(
+        "/api/chats/start",
+        json={"user_instruction": "削除対象"},
+    )
+    accepted = TypeAdapter(ChatStartResponseSchema).validate_json(start_response.text)
+
+    delete_response = client.delete(f"/api/chats/{accepted.chat_id}")
+
+    assert delete_response.status_code == 202
+    deleted = TypeAdapter(DeleteChatResponseSchema).validate_json(delete_response.text)
+    assert deleted.chat_id == accepted.chat_id
+    assert deleted.chat_state == "削除中"
+    histories = TypeAdapter(list[ChatHistoryItemResponseSchema]).validate_json(
+        client.get("/api/chat-histories").text
+    )
+    assert [history.chat_id for history in histories] == []
+    detail_response = client.get(f"/api/chats/{accepted.chat_id}")
+    assert detail_response.status_code == 409
+    assert detail_response.json()["message"] == (
+        "このチャットは削除中のため操作できません。"
+    )
+
+
+def test_delete_chat_is_idempotent_while_chat_is_deleting(tmp_path: Path) -> None:
+    """観点：IF-SB-10冪等性。
+
+    確認：削除中チャットへの削除再送は受付済みとして扱う。
+    """
+    client = _make_client(tmp_path)
+    start_response = client.post(
+        "/api/chats/start",
+        json={"user_instruction": "削除対象"},
+    )
+    accepted = TypeAdapter(ChatStartResponseSchema).validate_json(start_response.text)
+
+    first_response = client.delete(f"/api/chats/{accepted.chat_id}")
+    second_response = client.delete(f"/api/chats/{accepted.chat_id}")
+
+    assert first_response.status_code == 202
+    assert second_response.status_code == 202
+    assert second_response.json()["chat_state"] == "削除中"
+
+
+def test_delete_chat_returns_not_found_after_physical_deletion(tmp_path: Path) -> None:
+    """観点：IF-SB-10対象なし。
+
+    確認：物理削除後または存在しないチャットへの削除要求は404として扱う。
+    """
+    client = _make_client(tmp_path)
+    missing_chat_id = uuid4()
+
+    response = client.delete(f"/api/chats/{missing_chat_id}")
+
+    assert response.status_code == 404
+
+
+def test_deleting_chat_rejects_followup_sse_reference_and_artifact(
+    tmp_path: Path,
+) -> None:
+    """観点：IF-SB-10削除中競合。
+
+    確認：削除中チャットへの継続指示、SSE購読、参照元取得、成果物取得を409で拒否する。
+    """
+    client, repository = _make_client_with_repository(tmp_path)
+    reference_id = repository.save_completed_answer_for_test(
+        markdown="回答",
+        reference_relative_path="manual.pdf",
+        artifact_relative_path="run-id/chart.svg",
+        artifact_mime_type="image/svg+xml",
+    )
+    artifact_id = repository.latest_artifact_id_for_test()
+    histories = TypeAdapter(list[ChatHistoryItemResponseSchema]).validate_json(
+        client.get("/api/chat-histories").text
+    )
+    detail = TypeAdapter(ChatDetailResponseSchema).validate_json(
+        client.get(f"/api/chats/{histories[0].chat_id}").text
+    )
+    chat_id = histories[0].chat_id
+    run_id = detail.runs[0].run_id
+
+    delete_response = client.delete(f"/api/chats/{chat_id}")
+
+    assert delete_response.status_code == 202
+    expected = "このチャットは削除中のため操作できません。"
+    followup_response = client.post(
+        f"/api/chats/{chat_id}/runs",
+        json={"user_instruction": "続けて"},
+    )
+    sse_response = client.get(f"/api/chats/{chat_id}/runs/{run_id}/sse")
+    reference_response = client.get(f"/api/references/{reference_id}")
+    artifact_response = client.get(f"/api/artifacts/{artifact_id}")
+
+    assert followup_response.status_code == 409
+    assert followup_response.json()["message"] == expected
+    assert sse_response.status_code == 409
+    assert sse_response.json()["message"] == expected
+    assert reference_response.status_code == 409
+    assert reference_response.json()["message"] == expected
+    assert artifact_response.status_code == 409
+    assert artifact_response.json()["message"] == expected
 
 
 def test_reference_endpoint_serves_saved_pdf_inside_datasource(tmp_path: Path) -> None:

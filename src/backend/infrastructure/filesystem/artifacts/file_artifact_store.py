@@ -89,6 +89,39 @@ class FileArtifactStore:
             raise ArtifactNotFoundError()
         return OpenedArtifactFile(path=saved_path, mime_type=mime_type)
 
+    def delete_saved_artifacts(self, storage_paths: tuple[str, ...]) -> None:
+        """保存済み成果物実体と空の親runディレクトリを削除する。"""
+        for storage_path in storage_paths:
+            saved_relative_path = _safe_relative_path(storage_path)
+            if len(saved_relative_path.parts) != 2:
+                raise ArtifactNotDisplayableError()
+            saved_path = self._resolve_saved_output_path(saved_relative_path)
+            try:
+                saved_path.unlink(missing_ok=True)
+            except FileNotFoundError:
+                continue
+            except OSError as exc:
+                raise AppError(
+                    ErrorType.SYSTEM,
+                    trace=True,
+                    diagnostic_message="保存済み成果物の削除に失敗しました。",
+                    cause=exc,
+                ) from exc
+
+            try:
+                saved_path.parent.rmdir()
+            except FileNotFoundError:
+                continue
+            except OSError as exc:
+                if saved_path.parent.exists() and any(saved_path.parent.iterdir()):
+                    continue
+                raise AppError(
+                    ErrorType.SYSTEM,
+                    trace=True,
+                    diagnostic_message="保存済み成果物の削除に失敗しました。",
+                    cause=exc,
+                ) from exc
+
     def _mime_type(self, relative_path: PurePosixPath) -> str:
         mime_type = _MIME_TYPE_BY_SUFFIX.get(relative_path.suffix.lower())
         if mime_type is None or mime_type not in self._allowed_mime_types:

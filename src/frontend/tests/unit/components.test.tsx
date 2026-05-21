@@ -203,11 +203,17 @@ describe("frontend components", () => {
   it("観点：ChatHistoryList。確認：履歴項目ホバー用メニューから削除項目を表示し、履歴選択を抑止する。", async () => {
     const user = userEvent.setup();
     const onOpenAnswer = vi.fn();
+    const onRequestDelete = vi.fn();
     const histories = [history("chat-1", "Codex 実行時フォーマット検査")];
 
     render(
       <Providers>
-        <ChatHistoryList activeChatId="chat-1" histories={histories} onOpenAnswer={onOpenAnswer} />
+        <ChatHistoryList
+          activeChatId="chat-1"
+          histories={histories}
+          onOpenAnswer={onOpenAnswer}
+          onRequestDelete={onRequestDelete}
+        />
       </Providers>,
     );
 
@@ -223,6 +229,8 @@ describe("frontend components", () => {
     expect(screen.getByRole("menuitem", { name: "削除する" })).toHaveClass(
       "text-[var(--dc-danger)]",
     );
+    await user.click(screen.getByRole("menuitem", { name: "削除する" }));
+    expect(onRequestDelete).toHaveBeenCalledWith("chat-1");
   });
 
   it("観点：ActionMenuPopover。確認：通常項目は黒系、削除項目だけ赤系で表示する。", () => {
@@ -284,6 +292,19 @@ describe("frontend components", () => {
     expect(screen.getByText("狭い")).toBeInTheDocument();
   });
 
+  it("観点：AppShell。確認：開始画面では右上のその他メニューを表示しない。", () => {
+    render(
+      <Providers>
+        <AppShell histories={[]} onOpenAnswer={vi.fn()} onStartNewChat={vi.fn()}>
+          <div>開始画面</div>
+        </AppShell>
+      </Providers>,
+    );
+
+    expect(screen.getByText("開始画面")).toBeInTheDocument();
+    expect(screen.queryByLabelText("その他")).not.toBeInTheDocument();
+  });
+
   it("観点：AppShell自動折りたたみ。確認：狭い幅で折りたたみ、広い幅で復帰し、通常childrenも表示する。", async () => {
     Object.defineProperty(window, "innerWidth", {
       configurable: true,
@@ -313,19 +334,18 @@ describe("frontend components", () => {
 
   it("観点：TopMenu。確認：その他メニューから削除項目を表示する。", async () => {
     const user = userEvent.setup();
+    const onRequestDelete = vi.fn();
     render(
       <Providers>
-        <TopMenu />
+        <TopMenu onRequestDelete={onRequestDelete} />
       </Providers>,
     );
 
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
     await user.click(screen.getByLabelText("その他"));
     expect(screen.getByRole("menu", { name: "その他メニュー" })).toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: "削除する" })).toHaveAttribute(
-      "aria-disabled",
-      "true",
-    );
+    await user.click(screen.getByRole("menuitem", { name: "削除する" }));
+    expect(onRequestDelete).toHaveBeenCalledTimes(1);
   });
 
   it("観点：ChatThread。確認：中間、回答、状態メッセージ、キャンセル、継続指示を表示・通知する。", async () => {

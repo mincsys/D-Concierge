@@ -9,6 +9,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from backend.application.artifacts.get_artifact import GetArtifactUseCase
 from backend.application.chat.acceptance import AcceptedChatRunResult
 from backend.application.chat.append_chat_run import AppendChatRunUseCase
+from backend.application.chat.delete_chat import DeleteChatUseCase
 from backend.application.chat.get_chat_detail import GetChatDetailUseCase
 from backend.application.chat.start_chat import StartChatUseCase
 from backend.application.execution.cancel_chat_run import CancelChatRunUseCase
@@ -41,6 +42,7 @@ from backend.presentation.schemas.api import (
     ChatRunResponseSchema,
     ChatStartRequestSchema,
     ChatStartResponseSchema,
+    DeleteChatResponseSchema,
     DisplayReferenceSchema,
     IntermediateMessageResponseSchema,
     PdfLocatorSchema,
@@ -86,6 +88,7 @@ def create_api_router(
     start_chat_usecase: StartChatUseCase,
     append_chat_run_usecase: AppendChatRunUseCase,
     cancel_chat_run_usecase: CancelChatRunUseCase,
+    delete_chat_usecase: DeleteChatUseCase,
     list_histories_usecase: ListChatHistoriesUseCase,
     get_chat_detail_usecase: GetChatDetailUseCase,
     get_reference_data_usecase: GetReferenceDataUseCase,
@@ -158,6 +161,21 @@ def create_api_router(
         )
         return _chat_detail_response(get_chat_detail_usecase.execute(chat_id))
 
+    @router.delete(
+        "/api/chats/{chat_id}",
+        response_model=DeleteChatResponseSchema,
+        status_code=202,
+    )
+    def delete_chat(chat_id: UUID, request: Request) -> DeleteChatResponseSchema:
+        trace_id = _set_request_trace(
+            request, trace_id_factory, stage="delete_chat", chat_id=chat_id
+        )
+        deleted = delete_chat_usecase.execute(chat_id=chat_id, trace_id=trace_id)
+        return DeleteChatResponseSchema(
+            chat_id=str(deleted.chat_id),
+            chat_state=deleted.chat_state.value,
+        )
+
     @router.post(
         "/api/chats/{chat_id}/runs/{run_id}/cancel",
         response_model=CancelChatRunResponseSchema,
@@ -190,6 +208,7 @@ def create_api_router(
         trace_id = _set_request_trace(
             request, trace_id_factory, stage="sse", chat_id=chat_id, run_id=run_id
         )
+        get_chat_detail_usecase.execute(chat_id)
         return StreamingResponse(
             _run_sse_events(
                 get_chat_detail_usecase,

@@ -13,13 +13,16 @@ from backend.application.ports.database.dto import (
     AnswerBlockData,
     AnswerData,
     ArtifactData,
+    ChatDeletionTarget,
     ChatDetail,
     ChatRuntimeContext,
+    DeleteChatResult,
     DisplayReferenceData,
     HistoryItem,
     UnfinishedRun,
 )
 from backend.application.ports.runtime.interface import ClockPort
+from backend.domain.chat.chat_state import ChatState
 from backend.domain.execution.run_state import RunState
 from backend.domain.references.source_type import SourceType
 from backend.infrastructure.database.models.answer import (
@@ -377,6 +380,70 @@ def test_sqlalchemy_repository_rejects_missing_reference_and_artifact() -> None:
         raise AssertionError("対象なし成果物の例外が発生しませんでした。")
 
 
+def test_sqlalchemy_repository_excludes_deleting_chat_and_returns_deletion_target() -> (
+    None
+):
+    """観点：チャット削除Repository IF。
+
+    確認：削除中チャットを履歴と詳細から除外し、物理削除対象情報を返す。
+    """
+    repository = _make_repository()
+    accepted = repository.create_chat_with_first_run("削除対象")
+    artifact_id = UUID("00000000-0000-0000-0000-000000000701")
+    repository.save_completed_answer(
+        accepted.chat_id,
+        accepted.run_id,
+        AnswerData(
+            blocks=(
+                AnswerBlockData(
+                    markdown="回答",
+                    artifacts=(
+                        ArtifactData(
+                            artifact_id=artifact_id,
+                            mime_type="image/svg+xml",
+                            relative_path="run-id/chart.svg",
+                        ),
+                    ),
+                ),
+            ),
+        ),
+    )
+
+    deleted = repository.mark_chat_deleting(accepted.chat_id)
+    target = repository.get_chat_deletion_target(accepted.chat_id)
+
+    assert deleted.chat_state is ChatState.DELETING
+    assert repository.list_histories() == ()
+    assert target.artifact_storage_paths == ("run-id/chart.svg",)
+    assert target.unfinished_runs[0].run_id == accepted.run_id
+    try:
+        repository.get_chat_detail(accepted.chat_id)
+    except AppError as exc:
+        assert exc.error_type is ErrorType.CONFLICT
+    else:
+        raise AssertionError("削除中チャットの競合が発生しませんでした。")
+
+
+def test_sqlalchemy_repository_delete_chat_cascade_removes_related_records() -> None:
+    """観点：チャット削除Repository IF。
+
+    確認：対象チャット一式をDBから削除する。
+    """
+    repository = _make_repository()
+    accepted = repository.create_chat_with_first_run("削除対象")
+    repository.set_run_state(accepted.chat_id, accepted.run_id, RunState.COMPLETED)
+    repository.mark_chat_deleting(accepted.chat_id)
+
+    repository.delete_chat_cascade(accepted.chat_id)
+
+    try:
+        repository.get_chat_deletion_target(accepted.chat_id)
+    except AppError as exc:
+        assert exc.error_type is ErrorType.NOT_FOUND
+    else:
+        raise AssertionError("削除後チャットの対象なしが発生しませんでした。")
+
+
 def test_sqlalchemy_repository_rejects_blank_instruction() -> None:
     """観点：Repository IF入力検証。確認：空白だけの指示をINPUTとして拒否する。"""
     repository = _make_repository()
@@ -636,6 +703,22 @@ class TransactionalSqlAlchemyChatRepository(SqlAlchemyChatRepository):
     def get_artifact(self, artifact_id: UUID) -> ArtifactData:
         with self._transaction_manager.transaction():
             return super().get_artifact(artifact_id)
+
+    def mark_chat_deleting(self, chat_id: UUID) -> DeleteChatResult:
+        with self._transaction_manager.transaction():
+            return super().mark_chat_deleting(chat_id)
+
+    def list_deleting_chats_for_recovery(self) -> tuple[UUID, ...]:
+        with self._transaction_manager.transaction():
+            return super().list_deleting_chats_for_recovery()
+
+    def get_chat_deletion_target(self, chat_id: UUID) -> ChatDeletionTarget:
+        with self._transaction_manager.transaction():
+            return super().get_chat_deletion_target(chat_id)
+
+    def delete_chat_cascade(self, chat_id: UUID) -> None:
+        with self._transaction_manager.transaction():
+            super().delete_chat_cascade(chat_id)
 
 
 class SequenceClock:

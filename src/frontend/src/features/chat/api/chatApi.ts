@@ -9,6 +9,8 @@ import type {
   ChatRunResponse,
   ChatSession,
   ChatStartResponse,
+  DeletedChat,
+  DeleteChatResponse,
   IntermediateMessageResponse,
   SseEvent,
 } from "@/features/chat/model/types";
@@ -23,6 +25,18 @@ type StreamChatRunOptions = {
   isCurrent: () => boolean;
   onEvent: (event: SseEvent) => Promise<void> | void;
 };
+
+export class ChatApiError extends Error {
+  readonly error?: string;
+  readonly status: number;
+
+  constructor(status: number, message: string, error?: string) {
+    super(message);
+    this.name = "ChatApiError";
+    this.status = status;
+    this.error = error;
+  }
+}
 
 export async function getAppConfig(): Promise<AppConfigResponse> {
   return requestJson<AppConfigResponse>("/api/app-config");
@@ -81,6 +95,16 @@ export async function cancelChatRun(chatId: string, runId: string): Promise<Canc
   return requestJson<CancelChatRunResponse>(`/api/chats/${chatId}/runs/${runId}/cancel`, {
     method: "POST",
   });
+}
+
+export async function deleteChat(chatId: string): Promise<DeletedChat> {
+  const response = await requestJson<DeleteChatResponse>(`/api/chats/${chatId}`, {
+    method: "DELETE",
+  });
+  return {
+    chatId: response.chat_id,
+    chatState: response.chat_state,
+  };
 }
 
 export function streamChatRun({ sseUrl, isCurrent, onEvent }: StreamChatRunOptions) {
@@ -201,10 +225,33 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
-    throw new Error(`API request failed: ${response.status}`);
+    const payload = await parseErrorPayload(response);
+    throw new ChatApiError(
+      response.status,
+      payload?.message ?? `API request failed: ${response.status}`,
+      payload?.error,
+    );
   }
 
   return response.json() as Promise<T>;
+}
+
+async function parseErrorPayload(
+  response: Response,
+): Promise<{ error?: string; message?: string } | null> {
+  try {
+    const payload: unknown = await response.json();
+    if (payload === null || typeof payload !== "object") {
+      return null;
+    }
+    const error =
+      "error" in payload && typeof payload.error === "string" ? payload.error : undefined;
+    const message =
+      "message" in payload && typeof payload.message === "string" ? payload.message : undefined;
+    return { error, message };
+  } catch {
+    return null;
+  }
 }
 
 function parseSseEvent(eventName: SseEvent["event"], event: MessageEvent<string>): SseEvent {

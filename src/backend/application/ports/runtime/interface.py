@@ -14,6 +14,13 @@ class ChatRunExecutorPort(Protocol):
         """指定runを実行する。"""
 
 
+class ChatDeletionExecutorPort(Protocol):
+    """チャット物理削除ユースケース境界。"""
+
+    def execute(self, chat_id: UUID, trace_id: str = "") -> None:
+        """指定チャットを物理削除する。"""
+
+
 class BackgroundExecutorPort(Protocol):
     """バックグラウンド実行基盤境界。"""
 
@@ -50,3 +57,10 @@ class RunExecutionDispatcherPort(Protocol):
 
     def register(self, chat_id: UUID, run_id: UUID, trace_id: str) -> DispatchResult:
         """対象runの実行を登録する。"""
+
+
+class ChatDeletionDispatcherPort(Protocol):
+    """削除中チャットをバックグラウンド登録する境界。"""
+
+    def register(self, chat_id: UUID, trace_id: str) -> DispatchResult:
+        """対象チャットの物理削除を登録する。"""

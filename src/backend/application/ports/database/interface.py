@@ -7,8 +7,10 @@ from backend.application.ports.database.dto import (
     AcceptedRun,
     AnswerData,
     ArtifactData,
+    ChatDeletionTarget,
     ChatDetail,
     ChatRuntimeContext,
+    DeleteChatResult,
     DisplayReferenceData,
     HistoryItem,
     UnfinishedRun,
@@ -64,6 +66,9 @@ class RecoveryRepositoryPort(Protocol):
         user_message: str | None = None,
     ) -> None:
         """runの状態と利用者向けメッセージを更新する。"""
+
+    def list_deleting_chats_for_recovery(self) -> tuple[UUID, ...]:
+        """起動時に物理削除を再登録する削除中チャットIDを返す。"""
 
 
 class ChatExecutionRepositoryPort(Protocol):
@@ -160,6 +165,28 @@ class ChatReadRepositoryPort(Protocol):
         """成果物配信メタ情報を返す。"""
 
 
+class ChatDeletionRepositoryPort(Protocol):
+    """チャット削除に必要なRepository境界。"""
+
+    def mark_chat_deleting(self, chat_id: UUID) -> DeleteChatResult:
+        """対象チャットを削除中へ更新する。"""
+
+    def get_chat_deletion_target(self, chat_id: UUID) -> ChatDeletionTarget:
+        """物理削除に必要な対象情報を返す。"""
+
+    def set_run_state(
+        self,
+        chat_id: UUID,
+        run_id: UUID,
+        state: RunState,
+        user_message: str | None = None,
+    ) -> None:
+        """run状態を更新する。"""
+
+    def delete_chat_cascade(self, chat_id: UUID) -> None:
+        """対象チャット一式をDBから削除する。"""
+
+
 class ChatRepositoryPort(
     StartChatRepositoryPort,
     AppendChatRunRepositoryPort,
@@ -168,6 +195,7 @@ class ChatRepositoryPort(
     CancelChatRunRepositoryPort,
     ChatRuntimeRepositoryPort,
     ChatReadRepositoryPort,
+    ChatDeletionRepositoryPort,
     Protocol,
 ):
     """チャット永続化と参照を行うRepository境界。"""

@@ -1,9 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 
 import { AppShell } from "@/components/layout/AppShell";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   appendChatRun,
   cancelChatRun,
+  deleteChat,
   getActiveChatSession,
   getAppConfig,
   getChatDetail,
@@ -33,6 +42,15 @@ const SSE_DISCONNECTED_MESSAGE = "回答生成中の接続が切れました。�
 const CANCEL_FAILED_MESSAGE = "キャンセルできませんでした。処理状態を確認してください。";
 const HISTORY_LIST_FAILED_MESSAGE = "チャット履歴を読み込めませんでした。";
 const HISTORY_DETAIL_FAILED_MESSAGE = "選択したチャットを読み込めませんでした。";
+const CHAT_DELETE_FAILED_MESSAGE =
+  "チャットを削除できませんでした。時間を置いて再度お試しください。";
+const CHAT_DELETING_MESSAGE = "このチャットは削除中のため操作できません。";
+const CHAT_DELETED_MESSAGE = "このチャットは削除されました。";
+
+type DeleteTarget = {
+  chatId: string;
+  title: string;
+};
 
 export function ChatPage() {
   const [mode, setMode] = useState<ViewMode>("start");
@@ -46,6 +64,8 @@ export function ChatPage() {
   const [cancelingRunId, setCancelingRunId] = useState<string | null>(null);
   const [scrollTargetRunId, setScrollTargetRunId] = useState<string | undefined>();
   const [scrollReserveRunId, setScrollReserveRunId] = useState<string | undefined>();
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
   const streamRunIdRef = useRef(0);
 
   useEffect(() => {
@@ -161,6 +181,15 @@ export function ChatPage() {
         return;
       case "error":
       case "canceled":
+        if (
+          event.event === "error" &&
+          (event.payload.user_message === CHAT_DELETING_MESSAGE ||
+            event.payload.user_message === CHAT_DELETED_MESSAGE)
+        ) {
+          moveToStart(event.payload.user_message);
+          void refreshHistories();
+          return;
+        }
         setCancelingRunId((currentRunId) =>
           currentRunId === event.payload.run_id ? null : currentRunId,
         );
@@ -304,8 +333,11 @@ export function ChatPage() {
         streamId,
         countDisplayedIntermediateMessages(accepted.session, accepted.response.run_id),
       );
-    } catch {
+    } catch (error) {
       if (isCurrentStream(streamId)) {
+        if (handleDeletedChatError(error)) {
+          return;
+        }
         setSystemMessage(ACCEPTANCE_FAILED_MESSAGE);
       }
     }
@@ -316,8 +348,11 @@ export function ChatPage() {
     let nextSession: ChatSession;
     try {
       nextSession = await getChatDetail(chatId);
-    } catch {
+    } catch (error) {
       if (isCurrentStream(streamId)) {
+        if (handleDeletedChatError(error)) {
+          return;
+        }
         setSystemMessage(HISTORY_DETAIL_FAILED_MESSAGE);
       }
       return;
@@ -353,9 +388,13 @@ export function ChatPage() {
   }
 
   function startNewChat() {
+    moveToStart(null);
+  }
+
+  function moveToStart(message: string | null) {
     nextStreamRunId();
     setMode("start");
-    setSystemMessage(null);
+    setSystemMessage(message);
     setPdfOpen(false);
     setReference(null);
     setCancelingRunId(null);
@@ -417,6 +456,65 @@ export function ChatPage() {
     setPdfOpen(true);
   }
 
+  function requestDeleteCurrentChat() {
+    if (!session?.id) {
+      return;
+    }
+    setDeleteTarget({ chatId: session.id, title: session.title });
+  }
+
+  function requestDeleteHistoryChat(chatId: string) {
+    const targetHistory = histories.find((history) => history.chatId === chatId);
+    setDeleteTarget({ chatId, title: targetHistory?.title ?? "チャット" });
+  }
+
+  async function confirmDeleteChat() {
+    if (!deleteTarget) {
+      return;
+    }
+    const target = deleteTarget;
+    const deletingCurrentChat = session?.id === target.chatId;
+    setDeleteSubmitting(true);
+    try {
+      await deleteChat(target.chatId);
+      setDeleteTarget(null);
+      setHistories((currentHistories) =>
+        currentHistories.filter((history) => history.chatId !== target.chatId),
+      );
+      if (deletingCurrentChat) {
+        moveToStart(null);
+      }
+      await refreshHistories();
+    } catch (error) {
+      if (isDeletingOrDeletedError(error)) {
+        setDeleteTarget(null);
+        const message = statusOf(error) === 404 ? CHAT_DELETED_MESSAGE : CHAT_DELETING_MESSAGE;
+        setHistories((currentHistories) =>
+          currentHistories.filter((history) => history.chatId !== target.chatId),
+        );
+        if (deletingCurrentChat) {
+          moveToStart(message);
+        } else {
+          setSystemMessage(message);
+        }
+        await refreshHistories();
+      } else {
+        setSystemMessage(CHAT_DELETE_FAILED_MESSAGE);
+      }
+    } finally {
+      setDeleteSubmitting(false);
+    }
+  }
+
+  function handleDeletedChatError(error: unknown) {
+    if (!isDeletingOrDeletedError(error)) {
+      return false;
+    }
+    moveToStart(statusOf(error) === 404 ? CHAT_DELETED_MESSAGE : CHAT_DELETING_MESSAGE);
+    void refreshHistories();
+    return true;
+  }
+
   return (
     <>
       <AppShell
@@ -424,6 +522,8 @@ export function ChatPage() {
         histories={histories}
         onStartNewChat={startNewChat}
         onOpenAnswer={openHistorySession}
+        onRequestDeleteCurrentChat={requestDeleteCurrentChat}
+        onRequestDeleteHistoryChat={requestDeleteHistoryChat}
       >
         {({ sidebarCollapsed }) => (
           <>
@@ -462,9 +562,62 @@ export function ChatPage() {
           </>
         )}
       </AppShell>
+      <Dialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && !deleteSubmitting) {
+            setDeleteTarget(null);
+          }
+        }}
+      >
+        <DialogContent className="w-[min(420px,calc(100%-32px))] gap-5 p-6">
+          <DialogHeader>
+            <DialogTitle>チャットを削除しますか？</DialogTitle>
+            <DialogDescription>この操作は取り消せません。</DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-3">
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={deleteSubmitting}
+              onClick={() => setDeleteTarget(null)}
+            >
+              キャンセル
+            </Button>
+            <Button
+              type="button"
+              className="bg-[var(--dc-danger)] text-white shadow-[0_8px_18px_rgba(211,63,73,0.22)] hover:bg-[#b8323d] disabled:bg-[var(--dc-danger)] disabled:text-white disabled:opacity-60"
+              disabled={deleteSubmitting}
+              onClick={confirmDeleteChat}
+            >
+              OK
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       <ReferenceViewerDialog open={pdfOpen} reference={reference} onOpenChange={setPdfOpen} />
     </>
   );
+}
+
+function isDeletingOrDeletedError(error: unknown) {
+  const status = statusOf(error);
+  return status === 404 || (status === 409 && messageOf(error) === CHAT_DELETING_MESSAGE);
+}
+
+function statusOf(error: unknown) {
+  if (error === null || typeof error !== "object" || !("status" in error)) {
+    return undefined;
+  }
+  const status = error.status;
+  return typeof status === "number" ? status : undefined;
+}
+
+function messageOf(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return undefined;
 }
 
 function isInProgressRun(state: ChatRunState) {

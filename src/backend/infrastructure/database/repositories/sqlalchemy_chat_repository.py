@@ -12,8 +12,11 @@ from backend.application.ports.database.dto import (
     AnswerBlockData,
     AnswerData,
     ArtifactData,
+    ChatDeletionRun,
+    ChatDeletionTarget,
     ChatDetail,
     ChatRuntimeContext,
+    DeleteChatResult,
     DisplayReferenceData,
     HistoryItem,
     IntermediateMessageData,
@@ -21,6 +24,7 @@ from backend.application.ports.database.dto import (
     UnfinishedRun,
 )
 from backend.application.ports.runtime.interface import ClockPort, IdGeneratorPort
+from backend.domain.chat.chat_state import ChatState
 from backend.domain.chat.chat_title_policy import ChatTitlePolicy
 from backend.domain.chat.user_instruction import (
     InvalidUserInstructionError,
@@ -52,6 +56,7 @@ from backend.shared.errors.errors import (
     AppError,
     ArtifactNotFoundError,
     CancelNotAllowedError,
+    ChatDeletingError,
     ChatNotFoundError,
     ReferenceNotFoundError,
     RunNotFoundError,
@@ -102,6 +107,7 @@ class SqlAlchemyChatRepository:
                 local_user_id=SHARED_LOCAL_USER_ID,
                 session_id=self._id_generator.new_uuid(),
                 title=ChatTitlePolicy.make_title(instruction),
+                chat_state=ChatState.ACTIVE.value,
                 updated_at=now,
             )
         )
@@ -130,7 +136,7 @@ class SqlAlchemyChatRepository:
         now = self._clock.now()
         run_id = self._id_generator.new_uuid()
         session = self._session()
-        chat = self._get_chat(session, chat_id)
+        chat = self._get_active_chat(session, chat_id)
         unfinished = session.scalar(
             sa.select(ChatRunModel).where(
                 ChatRunModel.chat_id == chat_id,
@@ -164,7 +170,9 @@ class SqlAlchemyChatRepository:
         """チャット履歴を更新日時降順で返す。"""
         session = self._session()
         chats = session.scalars(
-            sa.select(ChatModel).order_by(ChatModel.updated_at.desc())
+            sa.select(ChatModel)
+            .where(ChatModel.chat_state == ChatState.ACTIVE.value)
+            .order_by(ChatModel.updated_at.desc())
         ).all()
         histories = [self._to_history_item(session, chat) for chat in chats]
         return tuple(
@@ -176,10 +184,12 @@ class SqlAlchemyChatRepository:
         session = self._session()
         runs = session.scalars(
             sa.select(ChatRunModel)
+            .join(ChatModel, ChatModel.id == ChatRunModel.chat_id)
             .where(
                 ChatRunModel.state.in_(
                     tuple(state.value for state in UNFINISHED_STATES)
-                )
+                ),
+                ChatModel.chat_state == ChatState.ACTIVE.value,
             )
             .order_by(ChatRunModel.started_at, ChatRunModel.id)
         ).all()
@@ -191,7 +201,7 @@ class SqlAlchemyChatRepository:
     def get_chat_detail(self, chat_id: UUID) -> ChatDetail:
         """指定チャットの詳細を返す。"""
         session = self._session()
-        chat = self._get_chat(session, chat_id)
+        chat = self._get_active_chat(session, chat_id)
         runs = session.scalars(
             sa.select(ChatRunModel)
             .where(ChatRunModel.chat_id == chat_id)
@@ -206,7 +216,7 @@ class SqlAlchemyChatRepository:
     def get_chat_runtime_context(self, chat_id: UUID) -> ChatRuntimeContext:
         """Codex実行に必要なチャット単位の内部コンテキストを返す。"""
         session = self._session()
-        chat = self._get_chat(session, chat_id)
+        chat = self._get_active_chat(session, chat_id)
         return ChatRuntimeContext(
             chat_id=chat.id,
             local_user_id=chat.local_user_id,
@@ -372,6 +382,7 @@ class SqlAlchemyChatRepository:
         reference = session.get(ReferenceModel, reference_id)
         if reference is None:
             raise ReferenceNotFoundError()
+        self._raise_if_reference_chat_deleting(session, reference_id)
         path_value = reference.locator.get("path")
         page_start_value = reference.locator.get("page_start")
         page_end_value = reference.locator.get("page_end")
@@ -396,11 +407,115 @@ class SqlAlchemyChatRepository:
         artifact = session.get(ArtifactModel, artifact_id)
         if artifact is None:
             raise ArtifactNotFoundError()
+        self._raise_if_artifact_chat_deleting(session, artifact_id)
         return ArtifactData(
             artifact_id=artifact.id,
             mime_type=artifact.mime_type,
             relative_path=artifact.storage_path,
         )
+
+    def mark_chat_deleting(self, chat_id: UUID) -> DeleteChatResult:
+        """対象チャットを削除中へ更新する。"""
+        session = self._session()
+        chat = self._get_chat(session, chat_id)
+        chat.chat_state = ChatState.DELETING.value
+        chat.updated_at = self._clock.now()
+        return DeleteChatResult(chat_id=chat_id, chat_state=ChatState.DELETING)
+
+    def list_deleting_chats_for_recovery(self) -> tuple[UUID, ...]:
+        """起動時再登録対象の削除中チャットIDを返す。"""
+        session = self._session()
+        return tuple(
+            session.scalars(
+                sa.select(ChatModel.id)
+                .where(ChatModel.chat_state == ChatState.DELETING.value)
+                .order_by(ChatModel.updated_at, ChatModel.id)
+            ).all()
+        )
+
+    def get_chat_deletion_target(self, chat_id: UUID) -> ChatDeletionTarget:
+        """物理削除対象のチャット関連情報を返す。"""
+        session = self._session()
+        chat = self._get_chat(session, chat_id)
+        unfinished_runs = tuple(
+            ChatDeletionRun(run_id=run.id, state=_run_state(run))
+            for run in session.scalars(
+                sa.select(ChatRunModel)
+                .where(
+                    ChatRunModel.chat_id == chat_id,
+                    ChatRunModel.state.in_(
+                        tuple(state.value for state in UNFINISHED_STATES)
+                    ),
+                )
+                .order_by(ChatRunModel.started_at, ChatRunModel.id)
+            ).all()
+        )
+        artifact_storage_paths = tuple(
+            session.scalars(
+                sa.select(ArtifactModel.storage_path)
+                .select_from(ArtifactModel)
+                .join(
+                    AnswerBlockModel,
+                    AnswerBlockModel.id == ArtifactModel.answer_block_id,
+                )
+                .join(ChatRunModel, ChatRunModel.id == AnswerBlockModel.run_id)
+                .where(ChatRunModel.chat_id == chat_id)
+                .order_by(ArtifactModel.created_at, ArtifactModel.id)
+            ).all()
+        )
+        return ChatDeletionTarget(
+            chat_id=chat.id,
+            local_user_id=chat.local_user_id,
+            session_id=chat.session_id,
+            unfinished_runs=unfinished_runs,
+            artifact_storage_paths=artifact_storage_paths,
+        )
+
+    def delete_chat_cascade(self, chat_id: UUID) -> None:
+        """対象チャット一式をDBから削除する。"""
+        session = self._session()
+        self._get_chat(session, chat_id)
+        run_ids = tuple(
+            session.scalars(
+                sa.select(ChatRunModel.id).where(ChatRunModel.chat_id == chat_id)
+            ).all()
+        )
+        block_ids: tuple[UUID, ...] = ()
+        if run_ids:
+            block_ids = tuple(
+                session.scalars(
+                    sa.select(AnswerBlockModel.id).where(
+                        AnswerBlockModel.run_id.in_(run_ids)
+                    )
+                ).all()
+            )
+        if block_ids:
+            session.execute(
+                sa.delete(ReferenceModel).where(
+                    ReferenceModel.answer_block_id.in_(block_ids)
+                )
+            )
+            session.execute(
+                sa.delete(ArtifactModel).where(
+                    ArtifactModel.answer_block_id.in_(block_ids)
+                )
+            )
+            session.execute(
+                sa.delete(AnswerBlockModel).where(AnswerBlockModel.id.in_(block_ids))
+            )
+        if run_ids:
+            session.execute(
+                sa.delete(IntermediateMessageModel).where(
+                    IntermediateMessageModel.run_id.in_(run_ids)
+                )
+            )
+            session.execute(
+                sa.delete(UserInstructionModel).where(
+                    UserInstructionModel.run_id.in_(run_ids)
+                )
+            )
+            session.execute(sa.delete(ChatRunModel).where(ChatRunModel.id.in_(run_ids)))
+        session.execute(sa.delete(ChatModel).where(ChatModel.id == chat_id))
 
     def _to_history_item(self, session: Session, chat: ChatModel) -> HistoryItem:
         latest_run = session.scalar(
@@ -518,6 +633,12 @@ class SqlAlchemyChatRepository:
             raise ChatNotFoundError()
         return chat
 
+    def _get_active_chat(self, session: Session, chat_id: UUID) -> ChatModel:
+        chat = self._get_chat(session, chat_id)
+        if chat.chat_state == ChatState.DELETING.value:
+            raise ChatDeletingError()
+        return chat
+
     def _get_run(self, session: Session, chat_id: UUID, run_id: UUID) -> ChatRunModel:
         self._get_chat(session, chat_id)
         run = session.get(ChatRunModel, run_id)
@@ -532,6 +653,40 @@ class SqlAlchemyChatRepository:
         if instruction is None:
             raise _system_error("履歴データが不整合です。")
         return instruction
+
+    def _raise_if_reference_chat_deleting(
+        self, session: Session, reference_id: UUID
+    ) -> None:
+        chat_state = session.scalar(
+            sa.select(ChatModel.chat_state)
+            .select_from(ReferenceModel)
+            .join(
+                AnswerBlockModel,
+                AnswerBlockModel.id == ReferenceModel.answer_block_id,
+            )
+            .join(ChatRunModel, ChatRunModel.id == AnswerBlockModel.run_id)
+            .join(ChatModel, ChatModel.id == ChatRunModel.chat_id)
+            .where(ReferenceModel.id == reference_id)
+        )
+        if chat_state == ChatState.DELETING.value:
+            raise ChatDeletingError()
+
+    def _raise_if_artifact_chat_deleting(
+        self, session: Session, artifact_id: UUID
+    ) -> None:
+        chat_state = session.scalar(
+            sa.select(ChatModel.chat_state)
+            .select_from(ArtifactModel)
+            .join(
+                AnswerBlockModel,
+                AnswerBlockModel.id == ArtifactModel.answer_block_id,
+            )
+            .join(ChatRunModel, ChatRunModel.id == AnswerBlockModel.run_id)
+            .join(ChatModel, ChatModel.id == ChatRunModel.chat_id)
+            .where(ArtifactModel.id == artifact_id)
+        )
+        if chat_state == ChatState.DELETING.value:
+            raise ChatDeletingError()
 
 
 def _user_instruction(user_instruction: str) -> UserInstruction:

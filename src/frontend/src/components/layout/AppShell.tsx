@@ -18,12 +18,16 @@ export function AppShell({
   histories,
   onStartNewChat,
   onOpenAnswer,
+  onRequestDeleteCurrentChat,
+  onRequestDeleteHistoryChat,
 }: {
   activeChatId?: string;
   children: ReactNode | ((state: AppShellRenderState) => ReactNode);
   histories: ChatHistoryItem[];
   onStartNewChat: () => void;
   onOpenAnswer: (chatId: string) => void;
+  onRequestDeleteCurrentChat?: () => void;
+  onRequestDeleteHistoryChat?: (chatId: string) => void;
 }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const autoCollapsedRef = useRef(false);
@@ -72,10 +76,13 @@ export function AppShell({
         histories={histories}
         onStartNewChat={onStartNewChat}
         onOpenAnswer={onOpenAnswer}
+        onRequestDeleteHistoryChat={onRequestDeleteHistoryChat}
         onToggleCollapsed={handleToggleCollapsed}
       />
       <main className="relative min-h-screen min-w-0 overflow-hidden bg-[var(--dc-app-bg)]">
-        <TopMenu />
+        {activeChatId ? (
+          <TopMenu deleteDisabled={false} onRequestDelete={onRequestDeleteCurrentChat} />
+        ) : null}
         {typeof children === "function" ? children({ sidebarCollapsed }) : children}
       </main>
     </div>

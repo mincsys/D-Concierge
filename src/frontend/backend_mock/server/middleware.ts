@@ -10,6 +10,7 @@ import {
   applyStubSseEvent,
   cancelStubRun,
   createStubCanceledEvent,
+  deleteStubChat,
   getStubAppConfig,
   getStubChatDetail,
   isStubRunCancelRequested,
@@ -56,6 +57,18 @@ export function createBackendMockMiddleware(mockRootDir: string): Connect.NextHa
       }
 
       const chatDetailMatch = pathname.match(/^\/api\/chats\/([^/]+)$/);
+      if (method === "DELETE" && chatDetailMatch) {
+        try {
+          sendJson(res, 202, deleteStubChat(chatDetailMatch[1]));
+        } catch {
+          sendJson(res, 404, {
+            error: "not_found",
+            message: "このチャットは削除されました。",
+          });
+        }
+        return;
+      }
+
       if (method === "GET" && chatDetailMatch) {
         sendJson(res, 200, getStubChatDetail(chatDetailMatch[1]));
         return;
