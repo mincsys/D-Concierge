@@ -7,7 +7,7 @@
 ## 2. 前提
 
 - 呼出方式: Pythonメソッド呼出。
-- 呼出主体: `SaveAdoptedArtifactsUseCase`、`GetArtifactUseCase`。
+- 呼出主体: `SaveAdoptedArtifactsUseCase`、`GetArtifactUseCase`、`ExecuteChatDeletionUseCase`。
 - 本IFはCodex作業領域内の成果物候補と、保存済み成果物領域を分離して扱う。
 - セッション内 `artifacts/` は採用前の一時領域であり、履歴表示やブラウザ配信では直接参照しない。
 - 回答本文内の成果物リンクは固定検証で `artifacts/...` または `./artifacts/...` 形式に限定される。
@@ -17,10 +17,10 @@
 | 項目 | 内容 |
 | --- | --- |
 | IF名 | 成果物ファイルIF |
-| 呼出元 | 成果物保存、成果物配信ユースケース |
+| 呼出元 | 成果物保存、成果物配信、チャット物理削除ユースケース |
 | 呼出先 | `src/backend/application/ports/filesystem/interface.py`。具象実装は `FileArtifactStore` |
-| 目的 | 許可されたCodex成果物だけを採用済み領域へ保存し、配信時に安全に読み込む。 |
-| 冪等性 | 同一artifact IDへの保存は重複不可。配信用読込は冪等。 |
+| 目的 | 許可されたCodex成果物だけを採用済み領域へ保存し、配信時に安全に読み込み、チャット削除時に対象成果物実体を削除する。 |
+| 冪等性 | 同一artifact IDへの保存は重複不可。配信用読込は冪等。削除対象ファイルが存在しない場合は削除済みとして扱う。 |
 
 ### 3.1. Port構成
 
@@ -28,6 +28,7 @@
 | --- | --- |
 | `AdoptedArtifactStorePort` | 採用済み回答が参照したCodex成果物候補を保存済み成果物領域へコピーする。 |
 | `ArtifactStorePort` | `AdoptedArtifactStorePort` の保存責務に加え、保存済み成果物を配信用に開く。 |
+| `SavedArtifactDeletionPort` | DBに保存された `storage_path` をもとに、保存済み成果物実体と空になった親runディレクトリを削除する。 |
 
 ## 4. 呼出シーケンス
 
@@ -60,6 +61,7 @@ sequenceDiagram
 - 保存済み成果物の配信用URLへ置換できる保存参照が返る。
 - 配信時は保存済み成果物領域内の実体だけを読み込む。
 - 回答ブロック本文へ保存する成果物URLは `/api/artifacts/{artifact_id}` 形式になる。
+- チャット物理削除時は、対象チャットに紐づく保存済み成果物実体が削除され、空になった親runディレクトリも削除される。
 
 ### 5.3. 不変条件
 
@@ -68,6 +70,8 @@ sequenceDiagram
 - 成果物保存は回答採用後の参照済みファイルに限定する。
 - 失敗、再生成前候補、キャンセル、タイムアウトの成果物候補は保存済み成果物領域へコピーしない。
 - 共有データソース配下のファイルはCodex成果物として扱わない。
+- 保存済み成果物削除は `generator.saved_artifacts_dir` 配下へ正規化できる `storage_path` だけを対象にする。
+- 保存済み成果物削除は `generator.saved_artifacts_dir` 自体や他runのディレクトリを削除しない。
 
 ## 6. 入出力とデータ項目
 
@@ -80,6 +84,7 @@ sequenceDiagram
 | `run_id` | 保存先run ID |
 | `artifact_id` | 保存済み成果物ID |
 | `relative_path` | 保存済み成果物領域からの相対パス。読込時に使用する |
+| `storage_paths` | 削除対象の保存済み成果物相対パス一覧 |
 
 ### 6.2. 出力
 
@@ -87,6 +92,7 @@ sequenceDiagram
 | --- | --- |
 | `SavedArtifactFile` | 保存先相対参照、MIMEタイプ |
 | `OpenedArtifactFile` | 配信用ファイルパスとMIMEタイプ |
+| `deleted_paths` | 削除済みとして扱った保存済み成果物相対パス一覧 |
 
 ### 6.3. パス検証対象
 
@@ -115,6 +121,9 @@ sequenceDiagram
 | パストラバーサル検知 | 表示不可分類の `AppError` とする。通常の入力拒否として扱い、共通ハンドラではトレースログへ記録しない |
 | 許可外MIMEタイプ | 採用対象から除外し、必要に応じて検証失敗にする |
 | 保存失敗 | `ErrorType.SYSTEM` かつ `trace=True` の `AppError` として上位へ返し、DB保存はcommitしない |
+| 削除対象ファイルが存在しない | 冪等な削除済みとして扱う |
+| 保存済み成果物削除時のパストラバーサル検知 | `ErrorType.SYSTEM` かつ `trace=True` の `AppError` とし、DB削除へ進まない |
+| 保存済み成果物削除失敗 | `ErrorType.SYSTEM` かつ `trace=True` の `AppError` として上位へ返し、対象チャットは`削除中`のまま維持する |
 
 ## 8. 留意事項
 

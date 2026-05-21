@@ -7,11 +7,11 @@
 ## 2. 前提
 
 - 呼出方式: PythonのProtocol相当の同期または非同期メソッド呼出。
-- 呼出主体: チャット、履歴、実行、検証、成果物、参照元の各ユースケース。
+- 呼出主体: チャット、履歴、実行、検証、成果物、参照元、削除の各ユースケース。
 - Repository抽象とDTOは `src/backend/application/ports/database/` に置く。
 - 実装はSQLAlchemyを用いるが、application層はSQLAlchemyモデルやSQLAlchemy Sessionを直接扱わない。
 - DBトランザクション境界は `TransactionManagerPort` で表し、Repositoryは現在のトランザクションSessionを使ってDB操作を行う。
-- application層へ返す実行状態と参照元種別は通常Enumとして扱い、DBカラムでは物理データ設計どおり文字列として保存する。
+- application層へ返す実行状態、チャット状態、参照元種別は通常Enumとして扱い、DBカラムでは物理データ設計どおり文字列として保存する。
 
 ## 3. IF概要
 
@@ -20,8 +20,8 @@
 | IF名 | チャットRepository IF |
 | 呼出元 | `src/backend/application/*` |
 | 呼出先 | `src/backend/application/ports/database/interface.py`。具象実装は `src/backend/infrastructure/database/repositories/SqlAlchemyChatRepository` |
-| 目的 | DB永続化と問い合わせをapplication層から抽象化し、状態条件付き更新を一貫させる。 |
-| 冪等性 | 参照系は冪等。作成、状態更新、回答保存、成果物保存は非冪等。 |
+| 目的 | DB永続化と問い合わせをapplication層から抽象化し、状態条件付き更新、チャット状態更新、削除対象取得を一貫させる。 |
+| 冪等性 | 参照系は冪等。削除受付は対象がすでに`削除中`の場合も成功扱い。作成、回答保存、成果物保存、DBカスケード削除は非冪等。 |
 
 ### 3.1. Port構成
 
@@ -36,6 +36,7 @@
 | `CancelChatRunRepositoryPort` | キャンセル要求時の状態取得、キャンセル状態更新、条件付き状態更新を行う。 |
 | `ChatRuntimeRepositoryPort` | 生成用/検証用Codex側resume用IDと実行時コンテキストを扱う。 |
 | `ChatReadRepositoryPort` | 履歴一覧、履歴詳細、参照元、成果物メタ情報を取得する。 |
+| `DeleteChatRepositoryPort` | チャット削除受付、削除対象取得、`削除中`チャット再取得、DBカスケード削除を行う。 |
 | `ChatRepositoryPort` | 上記Repository Protocolを束ねる集約Protocol。 |
 
 ## 4. 呼出シーケンス
@@ -69,6 +70,8 @@ sequenceDiagram
 - 状態条件付き更新は、期待状態と一致する場合だけ更新済みとして返す。
 - 生成用/検証用Codex側resume用IDの保存は、対象チャットが存在する場合だけ成立する。
 - 参照系は表示に必要な関連データを欠落なく返す。
+- 履歴一覧と履歴詳細取得は、有効なチャットだけを返す。
+- 参照元取得と成果物取得は、関連するチャットが`削除中`の場合、通常競合として扱える結果または例外を返す。
 - チャット詳細取得では、runを開始日時とIDの安定順、中間メッセージを作成日時とIDの安定順で返す。
 - 回答ブロックと参照元はDB上に表示順を持ち、履歴再表示ではその順序で返す。
 - Codex成果物メタ情報はDB上の表示順を持たず、回答ブロック本文内の参照位置に従う。
@@ -81,6 +84,10 @@ sequenceDiagram
 - 途中失敗時に一部だけcommitしない。
 - 同一チャットに未完了runを複数保存しない。Repositoryの事前確認に加え、DBの部分UNIQUE制約違反も競合として扱う。
 - `session_id` はD-Conciergeの作業領域IDとして扱い、Codex側resume用IDと混同しない。
+- `ChatState` はチャット単位のライフサイクル状態として保存する。
+- `RunState` にはチャット単位のライフサイクル状態を保存しない。
+- `削除中`のチャットは、削除対象取得と起動時再登録以外の通常参照系から除外する。
+- DBカスケード削除の前に、作業領域削除と保存済み成果物削除に必要な `ChatDeletionTarget` を取得できること。
 
 ## 6. 入出力とデータ項目
 
@@ -99,6 +106,7 @@ sequenceDiagram
 | `artifacts` | 保存済み成果物のメタ情報 |
 | `generation_conversation_id` | 生成用Codex側のresume用ID |
 | `validation_conversation_id` | 検証用Codex側のresume用ID |
+| `chat_state` | チャット単位のライフサイクル状態 |
 
 ### 6.2. 出力
 
@@ -112,6 +120,7 @@ sequenceDiagram
 | `AnswerData` | 採用済み回答ブロック、表示用参照元、成果物メタ情報 |
 | `DisplayReferenceData` | 画面表示と参照元取得に使う参照元DTO |
 | `ArtifactData` | 画面表示と成果物取得に使う成果物DTO |
+| `ChatDeletionTarget` | 物理削除に必要なチャットID、ローカル利用者ID、セッションID、未完了run一覧、保存済み成果物の `storage_path` 一覧 |
 | `updated` | 状態条件付き更新が成立したか |
 | `not_found` | 対象IDが存在しないことを示す結果または例外 |
 
@@ -137,12 +146,17 @@ sequenceDiagram
 | `get_chat_detail` | 履歴詳細を取得する | チャットID | `ChatDetail` |
 | `get_reference` | 参照元IDから参照元メタ情報を取得する | 参照元ID | `DisplayReferenceData` |
 | `get_artifact` | 成果物IDから成果物メタ情報を取得する | 成果物ID | `ArtifactData` |
+| `mark_chat_deleting` | チャット削除受付時にチャット状態を`削除中`へ更新する | チャットID、ローカル利用者ID、更新日時 | 更新結果。対象なし、更新済み、すでに`削除中`を区別できること |
+| `get_chat_deletion_target` | 物理削除に必要なDB上の削除対象情報を取得する | チャットID | `ChatDeletionTarget` または対象なし |
+| `list_deleting_chats_for_recovery` | 起動時に削除ジョブへ再登録するチャットを取得する | なし | チャットID一覧 |
+| `delete_chat_cascade` | チャットに紐づくDBデータをカスケード削除する | チャットID | 削除成否 |
 
 ## 7. 例外処理
 
 | 条件 | 扱い |
 | --- | --- |
 | 対象チャットまたはrunが存在しない | `AppError` の対象なし分類へ変換できる例外を返す |
+| 対象チャットが`削除中` | 通常操作では `ChatDeletingError` へ変換できる競合結果または例外を返す |
 | 状態条件付き更新が不成立 | 例外ではなく不成立結果を返し、呼出元がキャンセル済み等の扱いを判断する |
 | 未完了run一意制約違反 | トランザクションをrollbackし、競合分類の `AppError` へ変換する |
 | その他のDB制約違反 | トランザクションをrollbackし、`ErrorType.SYSTEM` かつ `trace=True` の `AppError` へ変換する |

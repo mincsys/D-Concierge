@@ -7,8 +7,8 @@
 ## 2. 前提
 
 - 呼出方式: 非同期メソッド呼出と非同期イベントストリーム。
-- 呼出主体: `ExecuteChatRunUseCase`、`ValidateAnswerUseCase`、`CancelChatRunUseCase`。
-- 生成用Codex実行、参照元検証、終了要求、作業領域解決は別々のProtocolとして定義する。
+- 呼出主体: `ExecuteChatRunUseCase`、`ValidateAnswerUseCase`、`CancelChatRunUseCase`、`ExecuteChatDeletionUseCase`。
+- 生成用Codex実行、参照元検証、終了要求、作業領域解決、作業領域削除は別々のProtocolとして定義する。
 - 生成用と検証用でCodexホーム、作業ディレクトリ、出力スキーマ、Codex側resume用IDを分離する。
 - 生成用Codexは `codex/sessions/<user-id>/<session-id>/` を作業領域とし、検証用Codexは `codex/sessions_validator/<user-id>/<session-id>/` を作業領域とする。
 - `session_id` はD-Conciergeが作業領域を決定するための内部IDであり、Codex側resume用IDは `codex_conversation_id` として別に受け渡す。
@@ -20,10 +20,10 @@
 | 項目 | 内容 |
 | --- | --- |
 | IF名 | Codex実行IF |
-| 呼出元 | 実行、検証、キャンセルのユースケース |
-| 呼出先 | `src/backend/application/ports/codex/interface.py`。具象実装は `CodexGenerationRunnerAdapter`、`CodexReferenceFileValidator`、`CodexValidationRunnerAdapter`、`CodexCancelRequester`、`CodexSessionWorkdirResolver` |
-| 目的 | 生成用Codex実行、参照元PDF固定検証、検証用Codex 1回実行、resume、JSONLイベント解析、タイムアウト、終了要求、作業領域解決をapplication層から抽象化する。 |
-| 冪等性 | codex exec起動は非冪等。JSONL解析は同一行に対して冪等。終了要求は対象プロセスが生存している場合に限り効果を持つ。 |
+| 呼出元 | 実行、検証、キャンセル、チャット物理削除のユースケース |
+| 呼出先 | `src/backend/application/ports/codex/interface.py`。具象実装は `CodexGenerationRunnerAdapter`、`CodexReferenceFileValidator`、`CodexValidationRunnerAdapter`、`CodexCancelRequester`、`CodexSessionWorkdirResolver`、`CodexSessionWorkdirCleaner` |
+| 目的 | 生成用Codex実行、参照元PDF固定検証、検証用Codex 1回実行、resume、JSONLイベント解析、タイムアウト、終了要求、作業領域解決、作業領域削除をapplication層から抽象化する。 |
+| 冪等性 | codex exec起動は非冪等。JSONL解析は同一行に対して冪等。終了要求は対象プロセスが生存している場合に限り効果を持つ。作業領域削除は対象ディレクトリが存在しない場合も削除済みとして扱う。 |
 
 ### 3.1. Port構成
 
@@ -34,6 +34,7 @@
 | `ValidatorCodexRunnerPort` | 検証用codex execを1回起動し、中間メッセージとrawな最終検証結果JSONを返す。 |
 | `CancelRequesterPort` | 実行中codex execへ終了要求を送る。 |
 | `SessionWorkdirResolverPort` | 生成用Codex作業領域をチャットIDから解決する。 |
+| `SessionWorkdirCleanupPort` | 生成用・検証用Codex作業領域をローカル利用者IDとセッションIDから解決し、安全に削除する。 |
 
 ## 4. 呼出シーケンス
 
@@ -81,6 +82,9 @@ sequenceDiagram
 - `item.completed.agent_message.text` が `payload.kind="progress"` のJSONである場合だけ、`payload.text` を利用者向け中間メッセージとして返す。
 - `payload.kind="final"` の生成結果JSONまたは検証結果JSONは利用者向け中間メッセージとして返さない。
 - コマンド、標準出力、絶対パスは利用者向け中間メッセージとして返さない。
+- 作業領域削除は、生成用と検証用それぞれの設定済みworkdir配下にある `<user-id>/<session-id>` ディレクトリだけを対象にする。
+- 作業領域削除では `readonly/` シンボリックリンク自体を削除対象に含めるが、リンク先の共有データソース実体は削除しない。
+- 作業領域削除は、対象runが終端状態になってから実行する。
 
 ## 6. 入出力とデータ項目
 
@@ -96,6 +100,8 @@ sequenceDiagram
 | `timeout_seconds` | 全体deadlineから算出した当該codex execの残り秒数 |
 | `trace_id` | 実行ログとAPI呼出を関連付けるID |
 | `session_workdir` | 生成用または検証用のセッション作業領域 |
+| `local_user_id` | 削除対象作業領域のローカル利用者ID |
+| `session_id` | 削除対象作業領域のセッションID |
 | `on_intermediate_message` | 生成用または検証用Codex由来の中間メッセージを即時配信するコールバック |
 
 ### 6.2. 生成用Codex入力
@@ -147,6 +153,7 @@ sequenceDiagram
 | `ReferenceValidationResult` | 検証用Codexの合否と指摘コメント、または検証用Codex起動前の固定検証で得た構造化失敗理由 |
 | `CancelRequestResult` | 終了要求結果。内部では通常Enum、境界では `sent`、`already_exited`、`not_registered` のいずれか |
 | `Path` | `SessionWorkdirResolverPort` が返す生成用Codex作業領域 |
+| `deleted_workdirs` | 削除済みとして扱った生成用・検証用作業領域 |
 
 ### 6.4. Codex作業領域
 
@@ -157,6 +164,8 @@ sequenceDiagram
 | 生成用 | `codex/sessions/<user-id>/<session-id>/artifacts/` | 採用前のCodex成果物候補を一時配置する。 |
 | 検証用 | `codex/sessions_validator/<user-id>/<session-id>/readonly/` | 共有データソースディレクトリへのシンボリックリンクとして作成し、検証用Codexへ生成用と同じ読み取り専用データを提示する。回答候補は `ValidatorCodexInput` として検証プロンプト本文で渡す。 |
 | 検証用 | `codex/sessions_validator/<user-id>/<session-id>/tmp/` | 検証用Codexがresumeをまたいで使う中間作業ファイルを配置する。 |
+| 削除対象 | `codex/sessions/<user-id>/<session-id>/` | チャット物理削除時に、生成用作業領域としてディレクトリごと削除する。 |
+| 削除対象 | `codex/sessions_validator/<user-id>/<session-id>/` | チャット物理削除時に、検証用作業領域としてディレクトリごと削除する。 |
 
 ### 6.5. JSONLイベント採用規則
 
@@ -177,6 +186,9 @@ sequenceDiagram
 | キャンセル要求 | ユーザキャンセル要求、`sent` / `already_exited` / `not_registered` の終了要求結果、プロセス終了結果を合わせて判定し、run状態を `キャンセル済み` へ更新できる結果を返す |
 | 検証用Codex資産不足 | 設定不備分類として起動前に失敗させる |
 | 検証用Codex最終出力形式不正 | application層が `validator.max_retries` の範囲で同じ検証用Codex会話へ最終検証結果JSONだけの再出力を依頼し、上限後も不正な場合は検証フェーズのシステムエラーへ変換する |
+| 作業領域削除対象が存在しない | 冪等な削除済みとして扱う |
+| 作業領域削除時のパストラバーサル検知 | `ErrorType.SYSTEM` かつ `trace=True` の `AppError` とし、DB削除へ進まない |
+| 作業領域削除失敗 | `ErrorType.SYSTEM` かつ `trace=True` の `AppError` として上位へ返し、対象チャットは`削除中`のまま維持する |
 
 ## 8. 留意事項
 
