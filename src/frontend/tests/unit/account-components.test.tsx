@@ -173,10 +173,14 @@ describe("account components", () => {
     renderSettings({ onUserChange: userChanged });
 
     expect(screen.getByRole("dialog", { name: "設定" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "ユーザ名変更" })).toBeInTheDocument();
+    expect(screen.getByText("ユーザID")).toBeInTheDocument();
+    expect(screen.getByText("demo-user")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /ユーザ名/ })).toBeInTheDocument();
+    expect(screen.getByText("デモユーザ")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "パスワード変更" })).toBeInTheDocument();
+    expect(screen.getByText("アカウント削除")).toBeInTheDocument();
 
-    await testUser.click(screen.getByRole("button", { name: "ユーザ名変更" }));
+    await testUser.click(screen.getByRole("button", { name: /ユーザ名/ }));
     expect(screen.getByLabelText("新しいユーザ名")).not.toHaveAttribute("autoComplete");
     expect(screen.getByLabelText("新しいユーザ名")).toHaveAttribute(
       "placeholder",
@@ -187,7 +191,7 @@ describe("account components", () => {
     await waitFor(() =>
       expect(userChanged).toHaveBeenCalledWith(user("demo-user", "変更後ユーザ")),
     );
-    expect(screen.getByRole("button", { name: "ユーザ名変更" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /ユーザ名/ })).toBeInTheDocument();
 
     await testUser.click(screen.getByRole("button", { name: "パスワード変更" }));
     expect(screen.getByLabelText("現在のパスワード")).not.toHaveAttribute("placeholder");

@@ -1,4 +1,4 @@
-import { ArrowLeft, KeyRound, LogOut, Trash2, UserRound } from "lucide-react";
+import { ArrowLeft, ChevronRight, LogOut, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
@@ -135,16 +135,17 @@ export function AccountSettingsDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="grid w-[min(760px,calc(100%-32px))] grid-cols-[190px_minmax(0,1fr)] overflow-hidden p-0">
-          <aside className="border-r border-[var(--dc-border-soft)] bg-[var(--dc-panel)] p-5">
+        <DialogContent className="grid w-[min(700px,calc(100%-32px))] grid-cols-[190px_minmax(0,1fr)] gap-0 overflow-hidden bg-[var(--dc-app-bg)]">
+          <aside className="border-r border-[var(--dc-border-soft)] bg-linear-to-b from-[var(--dc-sidebar-from)] via-[var(--dc-sidebar-via)] to-[var(--dc-sidebar-to)] p-5">
             <DialogTitle className="mb-5 text-lg font-[780]">設定</DialogTitle>
-            <div className="rounded-lg bg-white px-3 py-2.5 text-sm font-[760] text-[var(--dc-primary-strong)] shadow-xs">
+            <div className="-mx-5 min-h-[46px] border-y border-l-[5px] border-y-[var(--dc-border-soft)] border-l-[var(--dc-primary)] bg-transparent px-5 py-3 pl-[22px] text-[15.5px] font-[620] text-[var(--dc-primary)]">
               アカウント
             </div>
           </aside>
-          <section className="min-h-[430px] p-6">
+          <section className="min-h-[430px] bg-[var(--dc-app-bg)] p-5">
             {view === "list" ? (
               <AccountList
+                user={user}
                 onDelete={() => setConfirmAction("delete")}
                 onLogout={() => setConfirmAction("logout")}
                 onOpenName={() => {
@@ -184,14 +185,11 @@ export function AccountSettingsDialog({
                   ) : null}
                 </div>
                 <FormErrorMessage fieldErrors={fieldErrors} message={message} />
-                <Button
-                  className="mt-5"
-                  disabled={submitting}
-                  type="button"
-                  onClick={handleChangeUserName}
-                >
-                  変更する
-                </Button>
+                <div className="mt-5 flex justify-end">
+                  <Button disabled={submitting} type="button" onClick={handleChangeUserName}>
+                    変更する
+                  </Button>
+                </div>
               </section>
             ) : null}
             {view === "password" ? (
@@ -230,14 +228,11 @@ export function AccountSettingsDialog({
                   />
                 </div>
                 <FormErrorMessage fieldErrors={fieldErrors} message={message} />
-                <Button
-                  className="mt-5"
-                  disabled={submitting}
-                  type="button"
-                  onClick={handleChangePassword}
-                >
-                  変更する
-                </Button>
+                <div className="mt-5 flex justify-end">
+                  <Button disabled={submitting} type="button" onClick={handleChangePassword}>
+                    変更する
+                  </Button>
+                </div>
               </section>
             ) : null}
           </section>
@@ -285,11 +280,13 @@ export function AccountSettingsDialog({
 }
 
 function AccountList({
+  user,
   onDelete,
   onLogout,
   onOpenName,
   onOpenPassword,
 }: {
+  user: AccountUser;
   onDelete: () => void;
   onLogout: () => void;
   onOpenName: () => void;
@@ -297,22 +294,22 @@ function AccountList({
 }) {
   return (
     <div>
-      <h2 className="text-xl font-[780] text-[var(--dc-text-strong)]">アカウント</h2>
-      <div className="mt-6 grid gap-3">
-        <AccountActionButton
-          icon={<UserRound size={20} />}
-          label="ユーザ名変更"
-          onClick={onOpenName}
+      <h2 className="mb-5 text-lg font-[780]">アカウント</h2>
+      <div className="border-y border-[var(--dc-border-soft)]">
+        <DisplayAccountRow label="ユーザID" value={user.userId} />
+        <NavigationAccountRow label="ユーザ名" value={user.userName} onClick={onOpenName} />
+        <NavigationAccountRow label="パスワード変更" onClick={onOpenPassword} />
+        <ActionAccountRow
+          buttonLabel="ログアウト"
+          icon={<LogOut size={17} />}
+          label="ログアウト"
+          onClick={onLogout}
         />
-        <AccountActionButton
-          icon={<KeyRound size={20} />}
-          label="パスワード変更"
-          onClick={onOpenPassword}
-        />
-        <AccountActionButton icon={<LogOut size={20} />} label="ログアウト" onClick={onLogout} />
-        <AccountActionButton
+        <ActionAccountRow
           danger
-          icon={<Trash2 size={20} />}
+          actionLabel="アカウント削除"
+          buttonLabel="削除する"
+          icon={<Trash2 size={17} />}
           label="アカウント削除"
           onClick={onDelete}
         />
@@ -321,30 +318,70 @@ function AccountList({
   );
 }
 
-function AccountActionButton({
+function DisplayAccountRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="grid min-h-[60px] grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 border-b border-[var(--dc-border-soft)]">
+      <span className="min-w-0 truncate text-[15px] text-[var(--dc-text-strong)]">{label}</span>
+      <span className="min-w-0 truncate">{value}</span>
+      <span className="ml-5 w-6" aria-hidden="true" />
+    </div>
+  );
+}
+
+function NavigationAccountRow({
+  label,
+  value,
+  onClick,
+}: {
+  label: string;
+  value?: string;
+  onClick: () => void;
+}) {
+  return (
+    <Button
+      className="grid min-h-[60px] w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 rounded-none border-b border-[var(--dc-border-soft)] bg-transparent px-0 text-left text-[15px] font-[760] text-[var(--dc-text-strong)] shadow-none hover:bg-[var(--dc-primary-hover)]"
+      type="button"
+      variant="ghost"
+      onClick={onClick}
+    >
+      <span className="min-w-0 truncate">{label}</span>
+      {value ? <span className="min-w-0 truncate">{value}</span> : <span />}
+      <ChevronRight className="ml-5 text-[var(--dc-muted-strong)]" size={24} />
+    </Button>
+  );
+}
+
+function ActionAccountRow({
+  actionLabel,
+  buttonLabel,
   danger = false,
   icon,
   label,
   onClick,
 }: {
+  actionLabel?: string;
+  buttonLabel: string;
   danger?: boolean;
   icon: ReactNode;
   label: string;
   onClick: () => void;
 }) {
   return (
-    <Button
-      className={cn(
-        "h-12 justify-start rounded-lg border border-[var(--dc-border)] bg-white px-4 text-[15px] font-[760] text-[var(--dc-text)] hover:bg-[var(--dc-primary-softer)]",
-        danger ? "text-[var(--dc-danger)] hover:text-[var(--dc-danger)]" : undefined,
-      )}
-      type="button"
-      variant="outline"
-      onClick={onClick}
-    >
-      {icon}
-      {label}
-    </Button>
+    <div className="grid min-h-[60px] grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-b border-[var(--dc-border-soft)] last:border-b-0">
+      <span className="min-w-0 truncate text-[15px] text-[var(--dc-text-strong)]">
+        {label}
+      </span>
+      <Button
+        className={cn("gap-2", danger ? "px-4" : undefined)}
+        type="button"
+        variant={danger ? "destructive" : undefined}
+        aria-label={actionLabel ?? buttonLabel}
+        onClick={onClick}
+      >
+        {icon}
+        {buttonLabel}
+      </Button>
+    </div>
   );
 }
 
@@ -360,7 +397,7 @@ function ContentHeader({ onBack, title }: { onBack: () => void; title: string })
       >
         <ArrowLeft size={22} />
       </Button>
-      <h2 className="text-xl font-[780] text-[var(--dc-text-strong)]">{title}</h2>
+      <h2 className="text-lg font-[780] text-[var(--dc-text-strong)]">{title}</h2>
     </div>
   );
 }
