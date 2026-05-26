@@ -4,11 +4,11 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { login } from "@/features/account/api/accountApi";
+import { readAccountFieldErrors, readAccountMessage } from "@/features/account/lib/formErrors";
 import type { AccountFieldErrors, AccountUser } from "@/features/account/model/types";
 import { cn } from "@/lib/utils";
 import { AuthLayout } from "./AuthLayout";
 import { PasswordFields } from "./PasswordFields";
-import { readAccountFieldErrors, readAccountMessage } from "./formErrors";
 
 export function LoginPage({ onAuthenticated }: { onAuthenticated: (user: AccountUser) => void }) {
   const navigate = useNavigate();

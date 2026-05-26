@@ -4,10 +4,10 @@ import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Providers } from "@/app/providers";
-import { AccountSettingsDialog } from "@/features/account/components/AccountSettingsDialog";
 import { LoginPage } from "@/features/account/components/LoginPage";
 import { RegisterPage } from "@/features/account/components/RegisterPage";
 import type { AccountUser } from "@/features/account/model/types";
+import { SettingsDialog } from "@/features/settings/components/SettingsDialog";
 
 const accountApiMocks = vi.hoisted(() => ({
   changePassword: vi.fn(),
@@ -173,6 +173,16 @@ describe("account components", () => {
     renderSettings({ onUserChange: userChanged });
 
     expect(screen.getByRole("dialog", { name: "設定" })).toBeInTheDocument();
+    expect(screen.getByTestId("settings-sidebar-header")).toHaveTextContent("設定");
+    expect(screen.getByTestId("settings-main-header")).toHaveTextContent("アカウント");
+    expect(screen.getByTestId("settings-main-header")).toHaveClass(
+      "min-h-[68px]",
+      "after:border-b",
+      "text-lg",
+    );
+    expect(screen.getByTestId("settings-main-content")).toHaveClass("px-5", "pt-0", "pb-5");
+    expect(screen.getByTestId("account-settings-list")).toHaveClass("border-b");
+    expect(screen.getByTestId("account-settings-list")).not.toHaveClass("border-y");
     expect(screen.getByText("ユーザID")).toBeInTheDocument();
     expect(screen.getByText("demo-user")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /ユーザ名/ })).toBeInTheDocument();
@@ -181,6 +191,8 @@ describe("account components", () => {
     expect(screen.getByText("アカウント削除")).toBeInTheDocument();
 
     await testUser.click(screen.getByRole("button", { name: /ユーザ名/ }));
+    expect(screen.getByTestId("settings-main-header")).toHaveTextContent("ユーザ名変更");
+    expect(screen.getByTestId("user-name-settings-form")).toHaveClass("pt-5");
     expect(screen.getByLabelText("新しいユーザ名")).not.toHaveAttribute("autoComplete");
     expect(screen.getByLabelText("新しいユーザ名")).toHaveAttribute(
       "placeholder",
@@ -194,6 +206,8 @@ describe("account components", () => {
     expect(screen.getByRole("button", { name: /ユーザ名/ })).toBeInTheDocument();
 
     await testUser.click(screen.getByRole("button", { name: "パスワード変更" }));
+    expect(screen.getByTestId("settings-main-header")).toHaveTextContent("パスワード変更");
+    expect(screen.getByTestId("password-settings-form")).toHaveClass("pt-5");
     expect(screen.getByLabelText("現在のパスワード")).not.toHaveAttribute("placeholder");
     expect(screen.getByLabelText("新しいパスワード")).toHaveAttribute(
       "placeholder",
@@ -262,7 +276,7 @@ function renderSettings({
 }) {
   return render(
     <Providers>
-      <AccountSettingsDialog
+      <SettingsDialog
         open
         user={user("demo-user", "デモユーザ")}
         onLoggedOut={onLoggedOut}

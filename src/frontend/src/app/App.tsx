@@ -2,10 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useNavigate } from "react-router";
 
 import { getCurrentUser, isAccountApiError } from "@/features/account/api/accountApi";
-import { AccountSettingsDialog } from "@/features/account/components/AccountSettingsDialog";
 import { LoginPage } from "@/features/account/components/LoginPage";
 import { RegisterPage } from "@/features/account/components/RegisterPage";
 import type { AccountUser } from "@/features/account/model/types";
+import { SettingsDialog } from "@/features/settings/components/SettingsDialog";
 import { ChatPage } from "@/pages/chat/ChatPage";
 import { Providers } from "./providers";
 
@@ -57,7 +57,7 @@ function AppRoutes() {
         <Route path="*" element={<Navigate replace to="/" />} />
       </Routes>
       {currentUser ? (
-        <AccountSettingsDialog
+        <SettingsDialog
           open={settingsOpen}
           user={currentUser}
           onLoggedOut={handleLoggedOut}
