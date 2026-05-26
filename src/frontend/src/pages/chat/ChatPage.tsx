@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ import {
   startChat,
   streamChatRun,
 } from "@/features/chat/api/chatApi";
+import type { AccountUser } from "@/features/account/model/types";
 import { ChatStartScreen } from "@/features/chat/components/ChatStartScreen";
 import { ChatThread } from "@/features/chat/components/ChatThread";
 import { revealSubmittedAnswer } from "@/features/chat/lib/revealAnswer";
@@ -52,7 +53,20 @@ type DeleteTarget = {
   title: string;
 };
 
-export function ChatPage() {
+const DEFAULT_DISPLAY_USER: AccountUser = {
+  userId: "demo-user",
+  userName: "デモユーザ",
+};
+
+export function ChatPage({
+  currentUser = DEFAULT_DISPLAY_USER,
+  onOpenAccountSettings,
+  onUnauthorized,
+}: {
+  currentUser?: AccountUser;
+  onOpenAccountSettings?: () => void;
+  onUnauthorized?: () => void;
+} = {}) {
   const [mode, setMode] = useState<ViewMode>("start");
   const [appConfig, setAppConfig] = useState<AppConfigResponse>({});
   const [histories, setHistories] = useState<ChatHistoryItem[]>([]);
@@ -67,6 +81,17 @@ export function ChatPage() {
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
   const streamRunIdRef = useRef(0);
+  const handleUnauthorizedError = useCallback(
+    (error: unknown) => {
+      if (statusOf(error) !== 401) {
+        return false;
+      }
+      streamRunIdRef.current += 1;
+      onUnauthorized?.();
+      return true;
+    },
+    [onUnauthorized],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -75,18 +100,30 @@ export function ChatPage() {
     async function loadInitialData() {
       let historyListFailed = false;
       let activeSessionFailed = false;
+      let unauthorized = false;
+      function handleInitialError<T>(error: unknown, fallback: T, onFailure?: () => void): T {
+        if (handleUnauthorizedError(error)) {
+          unauthorized = true;
+          return fallback;
+        }
+        onFailure?.();
+        return fallback;
+      }
+
       const [nextAppConfig, nextHistories, nextSession] = await Promise.all([
-        getAppConfig().catch(() => ({})),
-        listChatHistories().catch(() => {
-          historyListFailed = true;
-          return [];
-        }),
-        getActiveChatSession().catch(() => {
-          activeSessionFailed = true;
-          return null;
-        }),
+        getAppConfig().catch((error: unknown) => handleInitialError(error, {})),
+        listChatHistories().catch((error: unknown) =>
+          handleInitialError(error, [], () => {
+            historyListFailed = true;
+          }),
+        ),
+        getActiveChatSession().catch((error: unknown) =>
+          handleInitialError(error, null, () => {
+            activeSessionFailed = true;
+          }),
+        ),
       ]);
-      if (!cancelled && isCurrentStream(initialStreamId)) {
+      if (!cancelled && isCurrentStream(initialStreamId) && !unauthorized) {
         setAppConfig(nextAppConfig);
         setHistories(nextHistories);
         setSession(nextSession);
@@ -105,7 +142,7 @@ export function ChatPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [handleUnauthorizedError]);
 
   useEffect(() => {
     return () => {
@@ -225,7 +262,10 @@ export function ChatPage() {
   async function refreshHistories() {
     try {
       setHistories(await listChatHistories());
-    } catch {
+    } catch (error) {
+      if (handleUnauthorizedError(error)) {
+        return;
+      }
       setSystemMessage(HISTORY_LIST_FAILED_MESSAGE);
     }
   }
@@ -296,8 +336,11 @@ export function ChatPage() {
         streamId,
         countDisplayedIntermediateMessages(accepted.session, accepted.response.run_id),
       );
-    } catch {
+    } catch (error) {
       if (isCurrentStream(streamId)) {
+        if (handleUnauthorizedError(error)) {
+          return;
+        }
         setSystemMessage(ACCEPTANCE_FAILED_MESSAGE);
         setMode("start");
       }
@@ -335,6 +378,9 @@ export function ChatPage() {
       );
     } catch (error) {
       if (isCurrentStream(streamId)) {
+        if (handleUnauthorizedError(error)) {
+          return;
+        }
         if (handleDeletedChatError(error)) {
           return;
         }
@@ -350,6 +396,9 @@ export function ChatPage() {
       nextSession = await getChatDetail(chatId);
     } catch (error) {
       if (isCurrentStream(streamId)) {
+        if (handleUnauthorizedError(error)) {
+          return;
+        }
         if (handleDeletedChatError(error)) {
           return;
         }
@@ -441,7 +490,10 @@ export function ChatPage() {
         state: response.state,
         statusMessage: response.user_message,
       }));
-    } catch {
+    } catch (error) {
+      if (handleUnauthorizedError(error)) {
+        return;
+      }
       setCancelingRunId(null);
       updateDisplayedRun(runId, (run) => ({
         ...run,
@@ -486,6 +538,9 @@ export function ChatPage() {
       }
       await refreshHistories();
     } catch (error) {
+      if (handleUnauthorizedError(error)) {
+        return;
+      }
       if (isDeletingOrDeletedError(error)) {
         setDeleteTarget(null);
         const message = statusOf(error) === 404 ? CHAT_DELETED_MESSAGE : CHAT_DELETING_MESSAGE;
@@ -519,9 +574,11 @@ export function ChatPage() {
     <>
       <AppShell
         activeChatId={mode === "answer" ? session?.id : undefined}
+        currentUser={currentUser}
         histories={histories}
         onStartNewChat={startNewChat}
         onOpenAnswer={openHistorySession}
+        onOpenAccountSettings={onOpenAccountSettings}
         onRequestDeleteCurrentChat={requestDeleteCurrentChat}
         onRequestDeleteHistoryChat={requestDeleteHistoryChat}
       >
@@ -573,7 +630,9 @@ export function ChatPage() {
         <DialogContent className="w-[min(420px,calc(100%-32px))] gap-5 p-6">
           <DialogHeader>
             <DialogTitle>チャットを削除しますか？</DialogTitle>
-            <DialogDescription>この操作は取り消せません。</DialogDescription>
+            <DialogDescription className="font-bold text-[var(--dc-danger)]">
+              この操作は取り消せません。
+            </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end gap-3">
             <Button
@@ -586,7 +645,8 @@ export function ChatPage() {
             </Button>
             <Button
               type="button"
-              className="bg-[var(--dc-danger)] text-white shadow-[0_8px_18px_rgba(211,63,73,0.22)] hover:bg-[#b8323d] disabled:bg-[var(--dc-danger)] disabled:text-white disabled:opacity-60"
+              variant="destructive"
+              className="disabled:opacity-60"
               disabled={deleteSubmitting}
               onClick={confirmDeleteChat}
             >

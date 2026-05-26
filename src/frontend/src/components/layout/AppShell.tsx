@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
 import type { ChatHistoryItem } from "@/features/chat/model/types";
+import type { AccountUser } from "@/features/account/model/types";
 import { cn } from "@/lib/utils";
 import { Sidebar } from "./Sidebar";
 import { TopMenu } from "./TopMenu";
@@ -15,17 +16,21 @@ const AUTO_COLLAPSE_WIDTH = 1100;
 export function AppShell({
   activeChatId,
   children,
+  currentUser,
   histories,
   onStartNewChat,
   onOpenAnswer,
+  onOpenAccountSettings,
   onRequestDeleteCurrentChat,
   onRequestDeleteHistoryChat,
 }: {
   activeChatId?: string;
   children: ReactNode | ((state: AppShellRenderState) => ReactNode);
+  currentUser: AccountUser;
   histories: ChatHistoryItem[];
   onStartNewChat: () => void;
   onOpenAnswer: (chatId: string) => void;
+  onOpenAccountSettings?: () => void;
   onRequestDeleteCurrentChat?: () => void;
   onRequestDeleteHistoryChat?: (chatId: string) => void;
 }) {
@@ -73,9 +78,11 @@ export function AppShell({
       <Sidebar
         activeChatId={activeChatId}
         collapsed={sidebarCollapsed}
+        currentUser={currentUser}
         histories={histories}
         onStartNewChat={onStartNewChat}
         onOpenAnswer={onOpenAnswer}
+        onOpenAccountSettings={onOpenAccountSettings}
         onRequestDeleteHistoryChat={onRequestDeleteHistoryChat}
         onToggleCollapsed={handleToggleCollapsed}
       />

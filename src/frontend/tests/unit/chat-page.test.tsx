@@ -593,6 +593,11 @@ describe("ChatPage", () => {
     expect(screen.getByRole("button", { name: "OK" })).toHaveClass(
       "bg-[var(--dc-danger)]",
       "text-white",
+      "shadow-xs",
+    );
+    expect(screen.getByRole("button", { name: "OK" })).not.toHaveClass("bg-linear-to-b");
+    expect(screen.getByRole("button", { name: "OK" })).not.toHaveClass(
+      "shadow-[0_8px_18px_rgba(211,63,73,0.22)]",
     );
     await user.click(screen.getByRole("button", { name: "OK" }));
 

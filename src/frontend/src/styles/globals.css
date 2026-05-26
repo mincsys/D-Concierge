@@ -47,7 +47,7 @@
   --dc-text-strong: #0f1f35;
   --dc-muted: #667694;
   --dc-muted-strong: #4f607c;
-  --dc-danger: #d33f49;
+  --dc-danger: #bd3b44;
   --dc-user-bubble: #e7f0ff;
   --dc-shadow-primary: rgba(15, 85, 173, 0.24);
   --dc-shadow-soft: rgba(25, 42, 70, 0.1);
@@ -94,6 +94,17 @@ input {
 
 button {
   cursor: pointer;
+}
+
+.dc-password-input::-ms-reveal,
+.dc-password-input::-ms-clear {
+  display: none;
+}
+
+.dc-password-input::-webkit-credentials-auto-fill-button {
+  display: none !important;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .mermaid-preview svg {

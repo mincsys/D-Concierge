@@ -269,6 +269,7 @@ describe("frontend components", () => {
       <Providers>
         <AppShell
           activeChatId="chat-2"
+          currentUser={{ userId: "demo-user", userName: "デモユーザ" }}
           histories={histories}
           onOpenAnswer={onOpen}
           onStartNewChat={onStart}
@@ -285,17 +286,28 @@ describe("frontend components", () => {
     );
     await user.click(screen.getByRole("button", { name: "履歴1" }));
     expect(onOpen).toHaveBeenCalledWith("chat-1");
-    await user.click(screen.getByRole("button", { name: /新しいチャット/ }));
+    const newChatButton = screen.getByRole("button", { name: /新しいチャット/ });
+    expect(newChatButton).toHaveClass("shadow-xs");
+    expect(newChatButton).not.toHaveClass("shadow-[0_10px_18px_var(--dc-shadow-primary)]");
+    await user.click(newChatButton);
     expect(onStart).toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "サイドバー切替" }));
     expect(screen.getByLabelText("折りたたみサイドバー")).toBeInTheDocument();
+    const collapsedNewChatButton = screen.getByRole("button", { name: "新しいチャット" });
+    expect(collapsedNewChatButton).toHaveClass("shadow-xs");
+    expect(collapsedNewChatButton).not.toHaveClass("shadow-[0_10px_18px_var(--dc-shadow-primary)]");
     expect(screen.getByText("狭い")).toBeInTheDocument();
   });
 
   it("観点：AppShell。確認：開始画面では右上のその他メニューを表示しない。", () => {
     render(
       <Providers>
-        <AppShell histories={[]} onOpenAnswer={vi.fn()} onStartNewChat={vi.fn()}>
+        <AppShell
+          currentUser={{ userId: "demo-user", userName: "デモユーザ" }}
+          histories={[]}
+          onOpenAnswer={vi.fn()}
+          onStartNewChat={vi.fn()}
+        >
           <div>開始画面</div>
         </AppShell>
       </Providers>,
@@ -314,7 +326,12 @@ describe("frontend components", () => {
 
     render(
       <Providers>
-        <AppShell histories={[]} onOpenAnswer={vi.fn()} onStartNewChat={vi.fn()}>
+        <AppShell
+          currentUser={{ userId: "demo-user", userName: "デモユーザ" }}
+          histories={[]}
+          onOpenAnswer={vi.fn()}
+          onStartNewChat={vi.fn()}
+        >
           <div>固定children</div>
         </AppShell>
       </Providers>,

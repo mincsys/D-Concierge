@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import type { AccountUser } from "@/features/account/model/types";
 import { ChatHistoryList } from "@/features/chat/components/ChatHistoryList";
 import type { ChatHistoryItem } from "@/features/chat/model/types";
 import { cn } from "@/lib/utils";
@@ -14,20 +15,26 @@ const brandLogoUrl = new URL("../../assets/d-concierge-logo.png", import.meta.ur
 export function Sidebar({
   activeChatId,
   collapsed,
+  currentUser,
   histories,
   onStartNewChat,
   onOpenAnswer,
+  onOpenAccountSettings,
   onRequestDeleteHistoryChat,
   onToggleCollapsed,
 }: {
   activeChatId?: string;
   collapsed: boolean;
+  currentUser: AccountUser;
   histories: ChatHistoryItem[];
   onStartNewChat: () => void;
   onOpenAnswer: (chatId: string) => void;
+  onOpenAccountSettings?: () => void;
   onRequestDeleteHistoryChat?: (chatId: string) => void;
   onToggleCollapsed: () => void;
 }) {
+  const userInitial = currentUser.userId.charAt(0).toUpperCase();
+
   if (collapsed) {
     return (
       <aside
@@ -45,7 +52,7 @@ export function Sidebar({
         </Button>
 
         <Button
-          className="mx-auto mt-[35px] grid size-[38px] place-items-center rounded-lg bg-linear-to-b from-[var(--dc-primary)] to-[var(--dc-primary-strong)] p-0 text-white shadow-[0_10px_18px_var(--dc-shadow-primary)] hover:from-[var(--dc-primary)] hover:to-[var(--dc-primary-strong)]"
+          className="mx-auto mt-[35px] grid size-[38px] place-items-center rounded-lg p-0"
           type="button"
           aria-label="新しいチャット"
           onClick={onStartNewChat}
@@ -76,8 +83,13 @@ export function Sidebar({
           type="button"
           variant="ghost"
           aria-label="設定"
+          onClick={onOpenAccountSettings}
         >
-          <Settings size={27} />
+          <Avatar className="size-[34px] bg-[var(--dc-primary)] text-white">
+            <AvatarFallback className="bg-[var(--dc-primary)] text-[14px] font-[760] text-white">
+              {userInitial}
+            </AvatarFallback>
+          </Avatar>
         </Button>
       </aside>
     );
@@ -107,7 +119,7 @@ export function Sidebar({
       </div>
 
       <Button
-        className="mx-4 h-[45px] w-auto gap-[11px] rounded-lg bg-linear-to-b from-[var(--dc-primary)] to-[var(--dc-primary-strong)] text-base font-bold text-white shadow-[0_10px_18px_var(--dc-shadow-primary)] hover:from-[var(--dc-primary)] hover:to-[var(--dc-primary-strong)]"
+        className="mx-4 h-[45px] w-auto gap-[11px] rounded-lg text-base font-bold"
         type="button"
         onClick={onStartNewChat}
       >
@@ -145,22 +157,22 @@ export function Sidebar({
         />
       </ScrollArea>
 
-      <div className="mt-auto grid min-h-[82px] grid-cols-[38px_1fr_34px] items-center gap-3 border-t border-[var(--dc-border-soft)] bg-[var(--dc-sidebar-to)] px-4 py-3.5 text-base font-[750]">
+      <button
+        className="mt-auto grid min-h-[82px] grid-cols-[38px_1fr_34px] items-center gap-3 border-t border-[var(--dc-border-soft)] bg-[var(--dc-sidebar-to)] px-4 py-3.5 text-left text-base font-[750] hover:bg-[var(--dc-primary-softer)]"
+        type="button"
+        aria-label="設定"
+        onClick={onOpenAccountSettings}
+      >
         <Avatar className="size-[38px] bg-[var(--dc-primary)] text-white">
           <AvatarFallback className="bg-[var(--dc-primary)] font-[760] text-white">
-            A
+            {userInitial}
           </AvatarFallback>
         </Avatar>
-        <span>山田 太郎</span>
-        <Button
-          className="grid size-[34px] place-items-center rounded-lg bg-transparent p-0 text-[var(--dc-muted-strong)] hover:bg-transparent hover:text-[var(--dc-muted-strong)]"
-          type="button"
-          variant="ghost"
-          aria-label="設定"
-        >
+        <span className="min-w-0 truncate">{currentUser.userName}</span>
+        <span className="grid size-[34px] place-items-center rounded-lg text-[var(--dc-muted-strong)]">
           <Settings size={21} />
-        </Button>
-      </div>
+        </span>
+      </button>
       <Separator className="sr-only" />
     </aside>
   );
