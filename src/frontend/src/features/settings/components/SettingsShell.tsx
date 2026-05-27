@@ -19,7 +19,7 @@ export function SettingsShell({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="grid w-[min(760px,calc(100%-32px))] grid-cols-[190px_minmax(0,1fr)] gap-0 overflow-hidden bg-[var(--dc-app-bg)] p-0">
+      <DialogContent className="grid w-[min(680px,calc(100%-32px))] grid-cols-[190px_minmax(0,1fr)] gap-0 overflow-hidden bg-[var(--dc-app-bg)] p-0">
         <aside className="border-r border-[var(--dc-border-soft)] bg-linear-to-b from-[var(--dc-sidebar-from)] via-[var(--dc-sidebar-via)] to-[var(--dc-sidebar-to)]">
           <div
             className="flex min-h-[68px] items-center border-b border-[var(--dc-border-soft)] px-5 text-lg font-[780] text-[var(--dc-text-strong)]"
