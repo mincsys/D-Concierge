@@ -60,7 +60,7 @@ sequenceDiagram
 
 ### 5.1. 事前条件
 
-- 呼出元はtrace_idとローカル利用者IDを保持している。
+- 呼出元はtrace_idとユーザIDを保持している。
 - 更新系は対象ID、期待状態、更新後状態を明確にして呼び出す。
 - DBトランザクション境界はユースケース単位または短いDB操作単位で決める。
 
@@ -95,7 +95,7 @@ sequenceDiagram
 
 | 項目 | 内容 |
 | --- | --- |
-| `local_user_id` | 共有利用するローカル利用者ID |
+| `user_id` | ログインユーザのユーザID |
 | `chat_id` | チャットID |
 | `run_id` | チャット実行処理ID |
 | `user_instruction` | 利用者指示本文 |
@@ -120,7 +120,7 @@ sequenceDiagram
 | `AnswerData` | 採用済み回答ブロック、表示用参照元、成果物メタ情報 |
 | `DisplayReferenceData` | 画面表示と参照元取得に使う参照元DTO |
 | `ArtifactData` | 画面表示と成果物取得に使う成果物DTO |
-| `ChatDeletionTarget` | 物理削除に必要なチャットID、ローカル利用者ID、セッションID、未完了run一覧、保存済み成果物の `storage_path` 一覧 |
+| `ChatDeletionTarget` | 物理削除に必要なチャットID、ユーザID、セッションID、未完了run一覧、保存済み成果物の `storage_path` 一覧 |
 | `updated` | 状態条件付き更新が成立したか |
 | `not_found` | 対象IDが存在しないことを示す結果または例外 |
 
@@ -142,11 +142,11 @@ sequenceDiagram
 | `get_chat_runtime_context` | 実行・検証に必要なコンテキストを取得する | chat ID、run ID | `ChatRuntimeContext` |
 | `save_generation_conversation_id` | 生成用Codex側resume用IDを保存する | チャットID、生成用Codex側resume用ID | 更新成否 |
 | `save_validation_conversation_id` | 検証用Codex側resume用IDを保存する | チャットID、検証用Codex側resume用ID | 更新成否 |
-| `list_histories` | 履歴一覧を取得する | ローカル利用者ID | `HistoryItem` 一覧 |
-| `get_chat_detail` | 履歴詳細を取得する | チャットID | `ChatDetail` |
-| `get_reference` | 参照元IDから参照元メタ情報を取得する | 参照元ID | `DisplayReferenceData` |
-| `get_artifact` | 成果物IDから成果物メタ情報を取得する | 成果物ID | `ArtifactData` |
-| `mark_chat_deleting` | チャット削除受付時にチャット状態を`削除中`へ更新する | チャットID、ローカル利用者ID、更新日時 | 更新結果。対象なし、更新済み、すでに`削除中`を区別できること |
+| `list_histories` | 履歴一覧を取得する | ユーザID | `HistoryItem` 一覧 |
+| `get_chat_detail` | 履歴詳細を取得する | ユーザID、チャットID | `ChatDetail` |
+| `get_reference` | 参照元IDから参照元メタ情報を取得する | ユーザID、参照元ID | `DisplayReferenceData` |
+| `get_artifact` | 成果物IDから成果物メタ情報を取得する | ユーザID、成果物ID | `ArtifactData` |
+| `mark_chat_deleting` | チャット削除受付時にチャット状態を`削除中`へ更新する | チャットID、ユーザID、更新日時 | 更新結果。対象なし、更新済み、すでに`削除中`を区別できること |
 | `get_chat_deletion_target` | 物理削除に必要なDB上の削除対象情報を取得する | チャットID | `ChatDeletionTarget` または対象なし |
 | `list_deleting_chats_for_recovery` | 起動時に削除ジョブへ再登録するチャットを取得する | なし | チャットID一覧 |
 | `delete_chat_cascade` | チャットに紐づくDBデータをカスケード削除する | チャットID | 削除成否 |

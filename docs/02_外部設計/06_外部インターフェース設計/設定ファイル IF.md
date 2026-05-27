@@ -82,13 +82,13 @@
 - 生成回答の再生成上限は `generator.max_retries` から決まる。
 - 生成用 `CODEX_HOME` は `generator.home` から決まる。
 - 生成指示と生成用Skillsは、`generator.home` 配下の `AGENTS.md` とSkillsから決まる。
-- 生成用作業ディレクトリは、DBに保存された利用者IDとセッションIDを使い、`generator.workdir/<user-id>/<session-id>` から決まる。
+- 生成用作業ディレクトリは、DBに保存されたユーザIDとセッションIDを使い、`generator.workdir/<user-id>/<session-id>` から決まる。
 - 生成用出力スキーマは `generator.output_schema` から決まる。
 - 保存済みCodex成果物領域は `generator.saved_artifacts_dir` から決まる。
 - 検証用Codexの最終出力形式不正時の再出力上限は `validator.max_retries` から決まる。
 - 検証用 `CODEX_HOME` は `validator.home` から決まる。
 - 検証指示と検証用Skillsは、`validator.home` 配下の `AGENTS.md` とSkillsから決まる。
-- 検証用作業ディレクトリは、DBに保存された利用者IDとセッションIDを使い、`validator.workdir/<user-id>/<session-id>` から決まる。
+- 検証用作業ディレクトリは、DBに保存されたユーザIDとセッションIDを使い、`validator.workdir/<user-id>/<session-id>` から決まる。
 - 検証用出力スキーマは `validator.output_schema` から決まる。
 - トレースログ保存期間は `trace_log.retention_days` から決まる。
 - アプリケーション起動ごとの同日トレースログ最大保存件数は `trace_log.max_files_per_day` から決まる。

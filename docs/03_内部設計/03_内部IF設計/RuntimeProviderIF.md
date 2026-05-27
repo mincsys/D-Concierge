@@ -54,13 +54,14 @@ sequenceDiagram
 ### 5.2. 事後条件
 
 - ID発番はUUIDとして返る。
+- `login_sessions.id` のようなDB内部連番IDはDB側のIDENTITYで発番し、本IFでは発番しない。
 - 内部処理向け現在時刻はUTCのタイムゾーン付き日時として返る。
 - 運用者向け日時が必要な場合はアプリ共通タイムゾーンのタイムゾーン付き日時として返る。
 
 ### 5.3. 不変条件
 
 - application層は `datetime.now()` やUUID生成ライブラリを直接呼び出さない。
-- DB主キー、SSE payload、traceログで同一ID値を使い回す。
+- DB主キー、SSE payload、traceログで用途の異なるID値を使い回さない。
 - DB保存、実行deadline、タイムアウト計算はUTC基準に統一する。
 - トレースログなど運用者向け日時は `app.timezone` のアプリ共通タイムゾーン基準で扱う。
 
