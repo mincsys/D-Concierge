@@ -9,6 +9,55 @@ class AppConfigResponseSchema(BaseModel):
     input_suggestions: list[str] = Field(default_factory=list)
 
 
+class AuthUserResponseSchema(BaseModel):
+    """認証済みユーザ公開情報。"""
+
+    user_id: str
+    user_name: str
+
+
+class CurrentUserResponseSchema(BaseModel):
+    """現在ユーザ応答。"""
+
+    user: AuthUserResponseSchema
+
+
+class RegisterAccountRequestSchema(BaseModel):
+    """アカウント登録APIの要求。"""
+
+    user_id: str
+    user_name: str
+    password: str
+    password_confirmation: str
+
+
+class LoginRequestSchema(BaseModel):
+    """ログインAPIの要求。"""
+
+    user_id: str
+    password: str
+
+
+class ChangeUserNameRequestSchema(BaseModel):
+    """ユーザ名変更APIの要求。"""
+
+    user_name: str
+
+
+class ChangePasswordRequestSchema(BaseModel):
+    """パスワード変更APIの要求。"""
+
+    current_password: str
+    new_password: str
+    new_password_confirmation: str
+
+
+class DeleteAccountResponseSchema(BaseModel):
+    """アカウント削除受付APIの応答。"""
+
+    account_state: str
+
+
 class ChatStartRequestSchema(BaseModel):
     """新規チャット開始と継続指示受付APIの要求。"""
 
@@ -110,3 +159,4 @@ class ErrorResponseSchema(BaseModel):
 
     error: str
     message: str
+    field_errors: dict[str, str] | None = None

@@ -10,6 +10,16 @@ from starlette.responses import Response
 
 from backend.app.router.registration import register_api_router
 from backend.app.static.spa import mount_spa_static_files
+from backend.application.account.authenticate_session import AuthenticateSessionUseCase
+from backend.application.account.change_password import ChangePasswordUseCase
+from backend.application.account.change_user_name import ChangeUserNameUseCase
+from backend.application.account.delete_account import DeleteAccountUseCase
+from backend.application.account.execute_account_deletion import (
+    ExecuteAccountDeletionUseCase,
+)
+from backend.application.account.login import LoginUseCase
+from backend.application.account.logout import LogoutUseCase
+from backend.application.account.register_account import RegisterAccountUseCase
 from backend.application.artifacts.get_artifact import GetArtifactUseCase
 from backend.application.artifacts.save_adopted_artifacts import (
     SaveAdoptedArtifactsUseCase,
@@ -28,6 +38,7 @@ from backend.application.execution.recover_unfinished_runs import (
 )
 from backend.application.history.list_chat_histories import ListChatHistoriesUseCase
 from backend.application.ports.database.interface import (
+    AccountRepositoryPort,
     ChatRepositoryPort,
     TransactionManagerPort,
 )
@@ -72,6 +83,9 @@ from backend.infrastructure.filesystem.artifacts.file_artifact_store import (
 from backend.infrastructure.filesystem.references.file_reference_store import (
     FileReferenceStore,
 )
+from backend.infrastructure.runtime.account_deletion_dispatcher import (
+    InProcessAccountDeletionDispatcher,
+)
 from backend.infrastructure.runtime.chat_deletion_dispatcher import (
     InProcessChatDeletionDispatcher,
 )
@@ -80,6 +94,10 @@ from backend.infrastructure.runtime.run_execution_dispatcher import (
 )
 from backend.infrastructure.runtime.system_clock import SystemClock
 from backend.infrastructure.runtime.uuid_generator import UuidGenerator
+from backend.infrastructure.security.password_hasher import PasslibPasswordHasher
+from backend.infrastructure.security.session_token_provider import (
+    SecretsSessionTokenProvider,
+)
 from backend.infrastructure.trace_log.trace_log_writer import TraceLogWriter
 from backend.presentation.errors.http import (
     error_response_payload,
@@ -94,7 +112,7 @@ from backend.presentation.rest.trace_context import (
 )
 from backend.presentation.sse.run_event_broker import RunEventBroker
 from backend.shared.errors.error_type import ErrorType
-from backend.shared.errors.errors import AppError
+from backend.shared.errors.errors import AppError, FieldValidationError
 from backend.shared.tracing.exception import exception_message, exception_stacktrace
 from backend.shared.user_messages import (
     REQUEST_VALIDATION_FAILURE_MESSAGE,
@@ -115,6 +133,10 @@ class ApplicationCodexRunner(Protocol):
         """実行中codex execへ終了要求を送る。"""
 
 
+class ApplicationRepositoryPort(ChatRepositoryPort, AccountRepositoryPort, Protocol):
+    """アプリ全体で利用するRepository境界。"""
+
+
 class _DefaultRunDispatcher:
     """create_app省略時に既定実行構成を使うためのsentinel。"""
 
@@ -124,7 +146,7 @@ _DEFAULT_RUN_DISPATCHER = _DefaultRunDispatcher()
 
 def create_app(
     config: AppConfig | None = None,
-    repository: ChatRepositoryPort | None = None,
+    repository: ApplicationRepositoryPort | None = None,
     run_dispatcher: RunExecutionDispatcherPort | None | _DefaultRunDispatcher = (
         _DEFAULT_RUN_DISPATCHER
     ),
@@ -142,16 +164,19 @@ def create_app(
     runtime_clock = clock if clock is not None else SystemClock(app_config.app.timezone)
     runtime_id_generator = id_generator if id_generator is not None else UuidGenerator()
     runtime_transaction_manager: TransactionManagerPort
+    account_repository: AccountRepositoryPort
     if repository is None:
         sql_transaction_manager = create_transaction_manager(app_config.database.url)
-        chat_repository: ChatRepositoryPort = SqlAlchemyChatRepository(
+        chat_repository: ApplicationRepositoryPort = SqlAlchemyChatRepository(
             session_provider=sql_transaction_manager,
             clock=runtime_clock,
             id_generator=runtime_id_generator,
         )
+        account_repository = chat_repository
         runtime_transaction_manager = sql_transaction_manager
     else:
         chat_repository = repository
+        account_repository = repository
         runtime_transaction_manager = (
             transaction_manager
             if transaction_manager is not None
@@ -224,6 +249,64 @@ def create_app(
         artifact_store=FileArtifactStore(app_config.generator.saved_artifacts_dir),
         transaction_manager=runtime_transaction_manager,
     )
+    password_hasher = PasslibPasswordHasher()
+    session_token_provider = SecretsSessionTokenProvider()
+    authenticate_session_usecase = AuthenticateSessionUseCase(
+        repository=account_repository,
+        token_provider=session_token_provider,
+        clock=runtime_clock,
+        transaction_manager=runtime_transaction_manager,
+    )
+    register_account_usecase = RegisterAccountUseCase(
+        repository=account_repository,
+        password_hasher=password_hasher,
+        token_provider=session_token_provider,
+        clock=runtime_clock,
+        transaction_manager=runtime_transaction_manager,
+    )
+    login_usecase = LoginUseCase(
+        repository=account_repository,
+        password_hasher=password_hasher,
+        token_provider=session_token_provider,
+        clock=runtime_clock,
+        transaction_manager=runtime_transaction_manager,
+    )
+    logout_usecase = LogoutUseCase(
+        repository=account_repository,
+        token_provider=session_token_provider,
+        transaction_manager=runtime_transaction_manager,
+    )
+    change_user_name_usecase = ChangeUserNameUseCase(
+        repository=account_repository,
+        clock=runtime_clock,
+        transaction_manager=runtime_transaction_manager,
+    )
+    change_password_usecase = ChangePasswordUseCase(
+        repository=account_repository,
+        password_hasher=password_hasher,
+        clock=runtime_clock,
+        transaction_manager=runtime_transaction_manager,
+    )
+    account_deletion_executor = ExecuteAccountDeletionUseCase(
+        repository=account_repository,
+        cancel_requester=cancel_requester,
+        session_workdir_cleanup=CodexSessionWorkdirCleanup(
+            generation_workdir=app_config.generator.workdir,
+            validation_workdir=app_config.validator.workdir,
+        ),
+        artifact_deletion=FileArtifactStore(app_config.generator.saved_artifacts_dir),
+        transaction_manager=runtime_transaction_manager,
+    )
+    account_deletion_dispatcher = InProcessAccountDeletionDispatcher(
+        deletion_executor=account_deletion_executor,
+        background_executor=background_executor,
+    )
+    delete_account_usecase = DeleteAccountUseCase(
+        repository=account_repository,
+        deletion_dispatcher=account_deletion_dispatcher,
+        transaction_manager=runtime_transaction_manager,
+        clock=runtime_clock,
+    )
 
     if runtime_run_dispatcher is not None:
         RecoverUnfinishedRunsUseCase(
@@ -240,6 +323,14 @@ def create_app(
                 deleting_chat_id,
                 _new_trace_id(runtime_id_generator),
             )
+    with runtime_transaction_manager.transaction():
+        account_repository.delete_expired_sessions(runtime_clock.now())
+        deleting_user_ids = account_repository.list_deleting_user_ids()
+    for deleting_user_id in deleting_user_ids:
+        account_deletion_dispatcher.register(
+            deleting_user_id,
+            _new_trace_id(runtime_id_generator),
+        )
 
     app = FastAPI(title="D-Concierge")
     _register_trace_context_middleware(app, runtime_id_generator)
@@ -260,6 +351,13 @@ def create_app(
             run_event_source=runtime_run_event_source,
             trace_logger=trace_logger,
             trace_id_factory=lambda: _new_trace_id(runtime_id_generator),
+            authenticate_session_usecase=authenticate_session_usecase,
+            register_account_usecase=register_account_usecase,
+            login_usecase=login_usecase,
+            logout_usecase=logout_usecase,
+            change_user_name_usecase=change_user_name_usecase,
+            change_password_usecase=change_password_usecase,
+            delete_account_usecase=delete_account_usecase,
         ),
     )
     mount_spa_static_files(app, Path(__file__).parent / "static" / "dist")
@@ -390,10 +488,13 @@ def _register_error_handlers(app: FastAPI, trace_logger: TraceLogWriter) -> None
                 status=http_status,
                 message=exc.diagnostic_message,
             )
-        payload = error_response_payload(exc.error_type, user_message)
+        field_errors = (
+            exc.field_errors if isinstance(exc, FieldValidationError) else None
+        )
+        payload = error_response_payload(exc.error_type, user_message, field_errors)
         return JSONResponse(
             status_code=http_status,
-            content=payload.model_dump(),
+            content=payload.model_dump(exclude_none=True),
         )
 
     @app.exception_handler(RequestValidationError)
@@ -405,7 +506,10 @@ def _register_error_handlers(app: FastAPI, trace_logger: TraceLogWriter) -> None
             ErrorType.INPUT,
             REQUEST_VALIDATION_FAILURE_MESSAGE,
         )
-        return JSONResponse(status_code=422, content=payload.model_dump())
+        return JSONResponse(
+            status_code=422,
+            content=payload.model_dump(exclude_none=True),
+        )
 
     @app.exception_handler(Exception)
     async def handle_unexpected_error(request: Request, exc: Exception) -> JSONResponse:
@@ -422,7 +526,10 @@ def _register_error_handlers(app: FastAPI, trace_logger: TraceLogWriter) -> None
             ErrorType.SYSTEM,
             UNEXPECTED_FAILURE_MESSAGE,
         )
-        return JSONResponse(status_code=500, content=payload.model_dump())
+        return JSONResponse(
+            status_code=500,
+            content=payload.model_dump(exclude_none=True),
+        )
 
 
 def _write_api_failure_trace(

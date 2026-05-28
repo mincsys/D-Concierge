@@ -103,7 +103,7 @@ def test_codex_validation_runner_runs_validation_and_saves_resume_id(
     assert codex_runner.requests[0].workdir == (
         tmp_path
         / "codex/sessions_validator"
-        / str(saved_context.local_user_id)
+        / saved_context.user_id
         / str(saved_context.session_id)
     )
     assert codex_runner.requests[0].timeout_seconds == 55
@@ -154,10 +154,7 @@ def test_codex_validation_runner_links_generation_artifacts_when_needed(
     datasource_dir.mkdir()
     _write_pdf(datasource_dir / "manual.pdf", page_count=2)
     generation_workdir = (
-        tmp_path
-        / "codex/sessions"
-        / str(context.local_user_id)
-        / str(context.session_id)
+        tmp_path / "codex/sessions" / context.user_id / str(context.session_id)
     )
     generation_artifacts = generation_workdir / "artifacts"
     generation_artifacts.mkdir(parents=True)

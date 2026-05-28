@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
 
+from backend.domain.account.user_state import UserState
 from backend.domain.chat.chat_state import ChatState
 from backend.domain.execution.run_state import RunState
 from backend.domain.references.source_type import SourceType
@@ -18,6 +19,60 @@ class AcceptedRun:
     chat_id: UUID
     run_id: UUID
     state: RunState
+
+
+@dataclass(frozen=True, slots=True)
+class AuthenticatedUser:
+    """認証済みユーザの公開情報。"""
+
+    user_id: str
+    user_name: str
+
+
+@dataclass(frozen=True, slots=True)
+class AccountUserData:
+    """ログイン検証とアカウント更新に使うユーザ情報。"""
+
+    user_id: str
+    user_name: str
+    password_hash: str
+    user_state: UserState
+
+
+@dataclass(frozen=True, slots=True)
+class LoginSessionData:
+    """ログインセッションと所有ユーザの情報。"""
+
+    session_id: int
+    token_hash: str
+    user_id: str
+    user_name: str
+    user_state: UserState
+    expires_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class IssuedLoginSession:
+    """Cookie設定を伴う認証成功結果。"""
+
+    user: AuthenticatedUser
+    session_token: str
+    expires_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class AccountDeletionAccepted:
+    """アカウント削除受付結果。"""
+
+    account_state: UserState
+
+
+@dataclass(frozen=True, slots=True)
+class AccountDeletionTarget:
+    """アカウント物理削除対象。"""
+
+    user_id: str
+    unfinished_runs: tuple[ChatDeletionRun, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,6 +105,7 @@ class ChatDeletionTarget:
     """チャット物理削除に必要な対象情報。"""
 
     chat_id: UUID
+    user_id: str
     local_user_id: UUID
     session_id: UUID
     unfinished_runs: tuple[ChatDeletionRun, ...]
@@ -61,6 +117,7 @@ class ChatRuntimeContext:
     """Codex実行時に必要なチャット単位の内部コンテキスト。"""
 
     chat_id: UUID
+    user_id: str
     local_user_id: UUID
     session_id: UUID
     generation_conversation_id: str | None

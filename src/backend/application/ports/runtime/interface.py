@@ -21,6 +21,13 @@ class ChatDeletionExecutorPort(Protocol):
         """指定チャットを物理削除する。"""
 
 
+class AccountDeletionExecutorPort(Protocol):
+    """アカウント物理削除ユースケース境界。"""
+
+    def execute(self, user_id: str, trace_id: str = "") -> None:
+        """指定アカウントを物理削除する。"""
+
+
 class BackgroundExecutorPort(Protocol):
     """バックグラウンド実行基盤境界。"""
 
@@ -64,3 +71,10 @@ class ChatDeletionDispatcherPort(Protocol):
 
     def register(self, chat_id: UUID, trace_id: str) -> DispatchResult:
         """対象チャットの物理削除を登録する。"""
+
+
+class AccountDeletionDispatcherPort(Protocol):
+    """削除中アカウントをバックグラウンド登録する境界。"""
+
+    def register(self, user_id: str, trace_id: str) -> DispatchResult:
+        """対象アカウントの物理削除を登録する。"""

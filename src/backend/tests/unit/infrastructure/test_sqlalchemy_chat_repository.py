@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 from sqlite3 import Connection as SQLiteConnection
 from uuid import UUID, uuid4
 
+import pytest
 import sqlalchemy as sa
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -35,6 +36,7 @@ from backend.infrastructure.database.models.chat import (
     ChatRunModel,
     LocalUserModel,
     UserInstructionModel,
+    UserModel,
 )
 from backend.infrastructure.database.repositories.sqlalchemy_chat_repository import (
     SqlAlchemyChatRepository,
@@ -93,6 +95,69 @@ def test_sqlalchemy_repository_lists_histories_by_updated_desc() -> None:
 
     assert [item.chat_id for item in histories] == [second.chat_id, first.chat_id]
     assert histories[0].latest_state is RunState.ACCEPTED
+
+
+def test_sqlalchemy_repository_filters_chat_data_by_account_user() -> None:
+    """観点：ユーザ単位の履歴分離。
+
+    確認：アカウントユーザIDを指定したチャットは、別ユーザの履歴・詳細・削除対象にならない。
+    """
+    repository, session_factory = _make_repository_with_session_factory()
+    _insert_user(session_factory, "demo-user")
+    _insert_user(session_factory, "other-user")
+
+    own = repository.create_chat_with_first_run("自分の履歴", user_id="demo-user")
+    other = repository.create_chat_with_first_run("他人の履歴", user_id="other-user")
+
+    histories = repository.list_histories(user_id="demo-user")
+    assert [history.chat_id for history in histories] == [own.chat_id]
+    assert repository.get_chat_detail(own.chat_id, user_id="demo-user").title == (
+        "自分の履歴"
+    )
+
+    with pytest.raises(AppError) as detail_error:
+        repository.get_chat_detail(other.chat_id, user_id="demo-user")
+    assert detail_error.value.error_type is ErrorType.NOT_FOUND
+
+    with pytest.raises(AppError) as delete_error:
+        repository.mark_chat_deleting(other.chat_id, user_id="demo-user")
+    assert delete_error.value.error_type is ErrorType.NOT_FOUND
+
+
+def test_sqlalchemy_repository_marks_and_deletes_account_user_chats() -> None:
+    """観点：アカウント削除処理。
+
+    確認：対象ユーザのチャットだけを削除中にし、アカウント物理削除でDBから削除する。
+    """
+    repository, session_factory = _make_repository_with_session_factory()
+    _insert_user(session_factory, "demo-user")
+    _insert_user(session_factory, "other-user")
+    own = repository.create_chat_with_first_run("削除対象", user_id="demo-user")
+    other = repository.create_chat_with_first_run("保持対象", user_id="other-user")
+
+    with repository._transaction_manager.transaction():
+        repository.mark_user_chats_deleting(
+            "demo-user", datetime(2026, 5, 9, 10, 0, tzinfo=UTC)
+        )
+
+    with session_factory() as session:
+        own_chat = session.get(ChatModel, own.chat_id)
+        other_chat = session.get(ChatModel, other.chat_id)
+        assert own_chat is not None
+        assert other_chat is not None
+        assert own_chat.chat_state == ChatState.DELETING.value
+        assert other_chat.chat_state == ChatState.ACTIVE.value
+
+    with repository._transaction_manager.transaction():
+        target = repository.get_account_deletion_target("demo-user")
+        repository.delete_account_data("demo-user")
+
+    assert target is not None
+    assert target.user_id == "demo-user"
+    assert repository.list_histories(user_id="demo-user") == ()
+    assert [
+        history.chat_id for history in repository.list_histories(user_id="other-user")
+    ] == [other.chat_id]
 
 
 def test_sqlalchemy_repository_persists_execution_result_for_detail() -> None:
@@ -591,6 +656,25 @@ def _make_repository_with_foreign_key_checks() -> (
     return TransactionalSqlAlchemyChatRepository(transaction_manager)
 
 
+def _insert_user(
+    session_factory: sessionmaker[Session],
+    user_id: str,
+    user_name: str = "テストユーザ",
+) -> None:
+    with session_factory() as session:
+        with session.begin():
+            session.add(
+                UserModel(
+                    id=user_id,
+                    user_name=user_name,
+                    password_hash="hashed-password",
+                    user_state="通常",
+                    created_at=datetime(2026, 5, 9, 10, 0, tzinfo=UTC),
+                    updated_at=datetime(2026, 5, 9, 10, 0, tzinfo=UTC),
+                )
+            )
+
+
 class TransactionalSqlAlchemyChatRepository(SqlAlchemyChatRepository):
     """Repositoryテスト用に各呼び出しを明示トランザクションへ包む。"""
 
@@ -602,25 +686,29 @@ class TransactionalSqlAlchemyChatRepository(SqlAlchemyChatRepository):
         super().__init__(session_provider=transaction_manager, clock=clock)
         self._transaction_manager = transaction_manager
 
-    def create_chat_with_first_run(self, user_instruction: str) -> AcceptedRun:
+    def create_chat_with_first_run(
+        self, user_instruction: str, user_id: str = ""
+    ) -> AcceptedRun:
         with self._transaction_manager.transaction():
-            return super().create_chat_with_first_run(user_instruction)
+            return super().create_chat_with_first_run(user_instruction, user_id)
 
-    def append_run(self, chat_id: UUID, user_instruction: str) -> AcceptedRun:
+    def append_run(
+        self, chat_id: UUID, user_instruction: str, user_id: str = ""
+    ) -> AcceptedRun:
         with self._transaction_manager.transaction():
-            return super().append_run(chat_id, user_instruction)
+            return super().append_run(chat_id, user_instruction, user_id)
 
-    def list_histories(self) -> tuple[HistoryItem, ...]:
+    def list_histories(self, user_id: str = "") -> tuple[HistoryItem, ...]:
         with self._transaction_manager.transaction():
-            return super().list_histories()
+            return super().list_histories(user_id)
 
     def list_unfinished_runs_for_recovery(self) -> tuple[UnfinishedRun, ...]:
         with self._transaction_manager.transaction():
             return super().list_unfinished_runs_for_recovery()
 
-    def get_chat_detail(self, chat_id: UUID) -> ChatDetail:
+    def get_chat_detail(self, chat_id: UUID, user_id: str = "") -> ChatDetail:
         with self._transaction_manager.transaction():
-            return super().get_chat_detail(chat_id)
+            return super().get_chat_detail(chat_id, user_id)
 
     def get_chat_runtime_context(self, chat_id: UUID) -> ChatRuntimeContext:
         with self._transaction_manager.transaction():
@@ -704,9 +792,9 @@ class TransactionalSqlAlchemyChatRepository(SqlAlchemyChatRepository):
         with self._transaction_manager.transaction():
             return super().get_artifact(artifact_id)
 
-    def mark_chat_deleting(self, chat_id: UUID) -> DeleteChatResult:
+    def mark_chat_deleting(self, chat_id: UUID, user_id: str = "") -> DeleteChatResult:
         with self._transaction_manager.transaction():
-            return super().mark_chat_deleting(chat_id)
+            return super().mark_chat_deleting(chat_id, user_id)
 
     def list_deleting_chats_for_recovery(self) -> tuple[UUID, ...]:
         with self._transaction_manager.transaction():

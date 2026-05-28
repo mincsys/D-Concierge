@@ -145,7 +145,7 @@ def test_execute_chat_deletion_removes_files_then_database_for_terminal_chat() -
 
     usecase.execute(accepted.chat_id, trace_id="trace-physical-2")
 
-    assert workdir_cleanup.deleted == [(target.local_user_id, target.session_id)]
+    assert workdir_cleanup.deleted == [(target.user_id, target.session_id)]
     assert artifact_deletion.deleted == [("run-id/chart.svg",)]
     with pytest.raises(ChatNotFoundError):
         repository.get_chat_detail(accepted.chat_id)
@@ -203,15 +203,15 @@ class RecordingCancelRequester:
 
 @dataclass(slots=True)
 class RecordingSessionWorkdirCleanup:
-    deleted: list[tuple[UUID, UUID]] = field(default_factory=list)
+    deleted: list[tuple[str, UUID]] = field(default_factory=list)
 
-    def delete_session_workdirs(self, local_user_id: UUID, session_id: UUID) -> None:
-        self.deleted.append((local_user_id, session_id))
+    def delete_session_workdirs(self, user_id: str, session_id: UUID) -> None:
+        self.deleted.append((user_id, session_id))
 
 
 class FailingSessionWorkdirCleanup:
-    def delete_session_workdirs(self, local_user_id: UUID, session_id: UUID) -> None:
-        _ = local_user_id, session_id
+    def delete_session_workdirs(self, user_id: str, session_id: UUID) -> None:
+        _ = user_id, session_id
         raise OSError("cleanup failed")
 
 

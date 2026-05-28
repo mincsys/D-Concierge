@@ -1,5 +1,5 @@
 from pathlib import Path, PurePosixPath
-from shutil import copy2
+from shutil import copy2, rmtree
 from uuid import UUID
 
 from backend.application.ports.filesystem.dto import (
@@ -53,7 +53,9 @@ class FileArtifactStore:
         if not source_path.exists() or not source_path.is_file():
             raise ArtifactNotFoundError()
 
-        saved_relative_path = _saved_relative_path(run_id, artifact_id, candidate_path)
+        saved_relative_path = _saved_relative_path(
+            _session_user_id(session_workdir), run_id, artifact_id, candidate_path
+        )
         saved_path = self._resolve_saved_output_path(saved_relative_path)
         if saved_path.exists():
             raise ArtifactAlreadySavedError()
@@ -78,7 +80,7 @@ class FileArtifactStore:
     def open_saved_file(self, relative_path: str, mime_type: str) -> OpenedArtifactFile:
         """保存済み成果物領域内のファイルを配信用に開く。"""
         saved_relative_path = _safe_relative_path(relative_path)
-        if len(saved_relative_path.parts) != 2:
+        if len(saved_relative_path.parts) != 3:
             raise ArtifactNotDisplayableError()
         expected_mime_type = self._mime_type(saved_relative_path)
         if mime_type != expected_mime_type:
@@ -93,7 +95,7 @@ class FileArtifactStore:
         """保存済み成果物実体と空の親runディレクトリを削除する。"""
         for storage_path in storage_paths:
             saved_relative_path = _safe_relative_path(storage_path)
-            if len(saved_relative_path.parts) != 2:
+            if len(saved_relative_path.parts) != 3:
                 raise ArtifactNotDisplayableError()
             saved_path = self._resolve_saved_output_path(saved_relative_path)
             try:
@@ -121,6 +123,26 @@ class FileArtifactStore:
                     diagnostic_message="保存済み成果物の削除に失敗しました。",
                     cause=exc,
                 ) from exc
+
+    def delete_user_artifacts(self, user_id: str) -> None:
+        """ユーザ単位の保存済み成果物領域を削除する。"""
+        if "\x00" in user_id or "/" in user_id or "\\" in user_id:
+            raise ArtifactNotDisplayableError()
+        saved_root = self._saved_artifacts_dir.resolve()
+        user_dir = (self._saved_artifacts_dir / user_id).resolve()
+        if not user_dir.is_relative_to(saved_root):
+            raise ArtifactNotDisplayableError()
+        if not user_dir.exists():
+            return
+        try:
+            rmtree(user_dir)
+        except OSError as exc:
+            raise AppError(
+                ErrorType.SYSTEM,
+                trace=True,
+                diagnostic_message="保存済み成果物の削除に失敗しました。",
+                cause=exc,
+            ) from exc
 
     def _mime_type(self, relative_path: PurePosixPath) -> str:
         mime_type = _MIME_TYPE_BY_SUFFIX.get(relative_path.suffix.lower())
@@ -161,9 +183,19 @@ def _has_windows_drive(path: str) -> bool:
     return len(path) >= 2 and path[1] == ":" and path[0].isalpha()
 
 
+def _session_user_id(session_workdir: Path) -> str:
+    user_id = session_workdir.parent.name
+    if user_id in {"", ".", ".."} or "/" in user_id or "\\" in user_id:
+        raise ArtifactNotDisplayableError()
+    return user_id
+
+
 def _saved_relative_path(
+    user_id: str,
     run_id: UUID,
     artifact_id: UUID,
     candidate_path: PurePosixPath,
 ) -> PurePosixPath:
-    return PurePosixPath(str(run_id), f"{artifact_id}{candidate_path.suffix.lower()}")
+    return PurePosixPath(
+        user_id, str(run_id), f"{artifact_id}{candidate_path.suffix.lower()}"
+    )

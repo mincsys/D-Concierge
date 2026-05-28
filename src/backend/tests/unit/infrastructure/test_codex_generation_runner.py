@@ -101,7 +101,7 @@ def test_codex_generation_runner_builds_request_and_saves_resume_id(
     assert codex_runner.requests[0].workdir == (
         tmp_path
         / "codex/sessions"
-        / str(saved_context.local_user_id)
+        / saved_context.user_id
         / str(saved_context.session_id)
     )
     assert codex_runner.requests[0].timeout_seconds == 45

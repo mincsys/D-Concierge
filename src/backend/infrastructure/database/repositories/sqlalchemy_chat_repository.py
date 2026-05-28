@@ -9,6 +9,8 @@ from sqlalchemy.orm import Session
 from backend.application.ports.database.dto import (
     SHARED_LOCAL_USER_ID,
     AcceptedRun,
+    AccountDeletionTarget,
+    AccountUserData,
     AnswerBlockData,
     AnswerData,
     ArtifactData,
@@ -20,10 +22,12 @@ from backend.application.ports.database.dto import (
     DisplayReferenceData,
     HistoryItem,
     IntermediateMessageData,
+    LoginSessionData,
     RunDetail,
     UnfinishedRun,
 )
 from backend.application.ports.runtime.interface import ClockPort, IdGeneratorPort
+from backend.domain.account.user_state import UserState
 from backend.domain.chat.chat_state import ChatState
 from backend.domain.chat.chat_title_policy import ChatTitlePolicy
 from backend.domain.chat.user_instruction import (
@@ -46,7 +50,9 @@ from backend.infrastructure.database.models.chat import (
     ChatRunModel,
     IntermediateMessageModel,
     LocalUserModel,
+    LoginSessionModel,
     UserInstructionModel,
+    UserModel,
 )
 from backend.infrastructure.runtime.system_clock import SystemClock
 from backend.infrastructure.runtime.uuid_generator import UuidGenerator
@@ -92,7 +98,191 @@ class SqlAlchemyChatRepository:
     def _session(self) -> Session:
         return self._session_provider.current_session()
 
-    def create_chat_with_first_run(self, user_instruction: str) -> AcceptedRun:
+    def create_user(
+        self, user_id: str, user_name: str, password_hash: str, now: datetime
+    ) -> None:
+        """アカウントユーザを作成する。"""
+        self._session().add(
+            UserModel(
+                id=user_id,
+                user_name=user_name,
+                password_hash=password_hash,
+                user_state=UserState.ACTIVE.value,
+                created_at=now,
+                updated_at=now,
+            )
+        )
+
+    def get_user_for_login(self, user_id: str) -> AccountUserData | None:
+        """ログイン検証用ユーザ情報を返す。"""
+        user = self._session().get(UserModel, user_id)
+        if user is None:
+            return None
+        return _account_user_data(user)
+
+    def update_user_name(
+        self, user_id: str, user_name: str, now: datetime
+    ) -> AccountUserData:
+        """ユーザ名を更新する。"""
+        user = self._get_user(user_id)
+        user.user_name = user_name
+        user.updated_at = now
+        return _account_user_data(user)
+
+    def update_password_hash(
+        self, user_id: str, password_hash: str, now: datetime
+    ) -> None:
+        """パスワードハッシュを更新する。"""
+        user = self._get_user(user_id)
+        user.password_hash = password_hash
+        user.updated_at = now
+
+    def create_login_session(
+        self, token_hash: str, user_id: str, expires_at: datetime, now: datetime
+    ) -> LoginSessionData:
+        """ログインセッションを作成する。"""
+        session = self._session()
+        user = self._get_user(user_id)
+        login_session = LoginSessionModel(
+            token_hash=token_hash,
+            user_id=user_id,
+            expires_at=expires_at,
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(login_session)
+        session.flush()
+        return _login_session_data(login_session, user)
+
+    def find_session_by_token_hash(self, token_hash: str) -> LoginSessionData | None:
+        """ログインセッションと所有ユーザを返す。"""
+        session = self._session()
+        login_session = session.scalar(
+            sa.select(LoginSessionModel).where(
+                LoginSessionModel.token_hash == token_hash
+            )
+        )
+        if login_session is None:
+            return None
+        user = session.get(UserModel, login_session.user_id)
+        if user is None:
+            return None
+        return _login_session_data(login_session, user)
+
+    def delete_session_by_token_hash(self, token_hash: str) -> int:
+        """現在セッションを削除する。"""
+        session = self._session()
+        session_ids = tuple(
+            session.scalars(
+                sa.select(LoginSessionModel.id).where(
+                    LoginSessionModel.token_hash == token_hash
+                )
+            ).all()
+        )
+        if not session_ids:
+            return 0
+        session.execute(
+            sa.delete(LoginSessionModel).where(LoginSessionModel.id.in_(session_ids))
+        )
+        return len(session_ids)
+
+    def delete_sessions_by_user_id(self, user_id: str) -> int:
+        """ユーザの全ログインセッションを削除する。"""
+        session = self._session()
+        session_ids = tuple(
+            session.scalars(
+                sa.select(LoginSessionModel.id).where(
+                    LoginSessionModel.user_id == user_id
+                )
+            ).all()
+        )
+        if not session_ids:
+            return 0
+        session.execute(
+            sa.delete(LoginSessionModel).where(LoginSessionModel.id.in_(session_ids))
+        )
+        return len(session_ids)
+
+    def delete_expired_sessions(self, now: datetime) -> int:
+        """期限切れログインセッションを削除する。"""
+        session = self._session()
+        session_ids = tuple(
+            session.scalars(
+                sa.select(LoginSessionModel.id).where(
+                    LoginSessionModel.expires_at <= now
+                )
+            ).all()
+        )
+        if not session_ids:
+            return 0
+        session.execute(
+            sa.delete(LoginSessionModel).where(LoginSessionModel.id.in_(session_ids))
+        )
+        return len(session_ids)
+
+    def mark_user_deleting(self, user_id: str, now: datetime) -> None:
+        """ユーザを削除中へ更新する。"""
+        user = self._get_user(user_id)
+        user.user_state = UserState.DELETING.value
+        user.updated_at = now
+
+    def mark_user_chats_deleting(self, user_id: str, now: datetime) -> None:
+        """ユーザの全チャットを削除中へ更新する。"""
+        self._session().execute(
+            sa.update(ChatModel)
+            .where(ChatModel.user_id == user_id)
+            .values(chat_state=ChatState.DELETING.value, updated_at=now)
+        )
+
+    def list_deleting_user_ids(self) -> tuple[str, ...]:
+        """削除中ユーザIDを返す。"""
+        return tuple(
+            self._session()
+            .scalars(
+                sa.select(UserModel.id)
+                .where(UserModel.user_state == UserState.DELETING.value)
+                .order_by(UserModel.updated_at, UserModel.id)
+            )
+            .all()
+        )
+
+    def get_account_deletion_target(self, user_id: str) -> AccountDeletionTarget | None:
+        """アカウント物理削除対象を返す。"""
+        session = self._session()
+        if session.get(UserModel, user_id) is None:
+            return None
+        unfinished_runs = tuple(
+            ChatDeletionRun(run_id=run.id, state=_run_state(run))
+            for run in session.scalars(
+                sa.select(ChatRunModel)
+                .join(ChatModel, ChatModel.id == ChatRunModel.chat_id)
+                .where(
+                    ChatModel.user_id == user_id,
+                    ChatRunModel.state.in_(
+                        tuple(state.value for state in UNFINISHED_STATES)
+                    ),
+                )
+                .order_by(ChatRunModel.started_at, ChatRunModel.id)
+            ).all()
+        )
+        return AccountDeletionTarget(user_id=user_id, unfinished_runs=unfinished_runs)
+
+    def delete_account_data(self, user_id: str) -> None:
+        """アカウント関連DBデータを削除する。"""
+        session = self._session()
+        self.delete_sessions_by_user_id(user_id)
+        chat_ids = tuple(
+            session.scalars(
+                sa.select(ChatModel.id).where(ChatModel.user_id == user_id)
+            ).all()
+        )
+        for chat_id in chat_ids:
+            self.delete_chat_cascade(chat_id)
+        session.execute(sa.delete(UserModel).where(UserModel.id == user_id))
+
+    def create_chat_with_first_run(
+        self, user_instruction: str, user_id: str = ""
+    ) -> AcceptedRun:
         """新規チャット、初回run、初回指示を同一トランザクションで保存する。"""
         instruction = _user_instruction(user_instruction)
         now = self._clock.now()
@@ -104,6 +294,7 @@ class SqlAlchemyChatRepository:
         session.add(
             ChatModel(
                 id=chat_id,
+                user_id=user_id or None,
                 local_user_id=SHARED_LOCAL_USER_ID,
                 session_id=self._id_generator.new_uuid(),
                 title=ChatTitlePolicy.make_title(instruction),
@@ -130,13 +321,15 @@ class SqlAlchemyChatRepository:
         )
         return AcceptedRun(chat_id=chat_id, run_id=run_id, state=RunState.ACCEPTED)
 
-    def append_run(self, chat_id: UUID, user_instruction: str) -> AcceptedRun:
+    def append_run(
+        self, chat_id: UUID, user_instruction: str, user_id: str = ""
+    ) -> AcceptedRun:
         """既存チャットへ受付runと指示を追加する。"""
         instruction = _user_instruction(user_instruction)
         now = self._clock.now()
         run_id = self._id_generator.new_uuid()
         session = self._session()
-        chat = self._get_active_chat(session, chat_id)
+        chat = self._get_active_chat(session, chat_id, user_id=user_id)
         unfinished = session.scalar(
             sa.select(ChatRunModel).where(
                 ChatRunModel.chat_id == chat_id,
@@ -166,14 +359,17 @@ class SqlAlchemyChatRepository:
         )
         return AcceptedRun(chat_id=chat_id, run_id=run_id, state=RunState.ACCEPTED)
 
-    def list_histories(self) -> tuple[HistoryItem, ...]:
+    def list_histories(self, user_id: str = "") -> tuple[HistoryItem, ...]:
         """チャット履歴を更新日時降順で返す。"""
         session = self._session()
-        chats = session.scalars(
+        query = (
             sa.select(ChatModel)
             .where(ChatModel.chat_state == ChatState.ACTIVE.value)
             .order_by(ChatModel.updated_at.desc())
-        ).all()
+        )
+        if user_id:
+            query = query.where(ChatModel.user_id == user_id)
+        chats = session.scalars(query).all()
         histories = [self._to_history_item(session, chat) for chat in chats]
         return tuple(
             history for history in histories if history.latest_run_id is not None
@@ -198,10 +394,10 @@ class SqlAlchemyChatRepository:
             for run in runs
         )
 
-    def get_chat_detail(self, chat_id: UUID) -> ChatDetail:
+    def get_chat_detail(self, chat_id: UUID, user_id: str = "") -> ChatDetail:
         """指定チャットの詳細を返す。"""
         session = self._session()
-        chat = self._get_active_chat(session, chat_id)
+        chat = self._get_active_chat(session, chat_id, user_id=user_id)
         runs = session.scalars(
             sa.select(ChatRunModel)
             .where(ChatRunModel.chat_id == chat_id)
@@ -219,6 +415,7 @@ class SqlAlchemyChatRepository:
         chat = self._get_active_chat(session, chat_id)
         return ChatRuntimeContext(
             chat_id=chat.id,
+            user_id=_chat_user_id(chat),
             local_user_id=chat.local_user_id,
             session_id=chat.session_id,
             generation_conversation_id=chat.generation_conversation_id,
@@ -414,10 +611,10 @@ class SqlAlchemyChatRepository:
             relative_path=artifact.storage_path,
         )
 
-    def mark_chat_deleting(self, chat_id: UUID) -> DeleteChatResult:
+    def mark_chat_deleting(self, chat_id: UUID, user_id: str = "") -> DeleteChatResult:
         """対象チャットを削除中へ更新する。"""
         session = self._session()
-        chat = self._get_chat(session, chat_id)
+        chat = self._get_chat(session, chat_id, user_id=user_id)
         chat.chat_state = ChatState.DELETING.value
         chat.updated_at = self._clock.now()
         return DeleteChatResult(chat_id=chat_id, chat_state=ChatState.DELETING)
@@ -465,6 +662,7 @@ class SqlAlchemyChatRepository:
         )
         return ChatDeletionTarget(
             chat_id=chat.id,
+            user_id=_chat_user_id(chat),
             local_user_id=chat.local_user_id,
             session_id=chat.session_id,
             unfinished_runs=unfinished_runs,
@@ -627,14 +825,24 @@ class SqlAlchemyChatRepository:
                 )
             )
 
-    def _get_chat(self, session: Session, chat_id: UUID) -> ChatModel:
+    def _get_user(self, user_id: str) -> UserModel:
+        user = self._session().get(UserModel, user_id)
+        if user is None:
+            raise ChatNotFoundError()
+        return user
+
+    def _get_chat(
+        self, session: Session, chat_id: UUID, user_id: str = ""
+    ) -> ChatModel:
         chat = session.get(ChatModel, chat_id)
-        if chat is None:
+        if chat is None or (user_id and chat.user_id != user_id):
             raise ChatNotFoundError()
         return chat
 
-    def _get_active_chat(self, session: Session, chat_id: UUID) -> ChatModel:
-        chat = self._get_chat(session, chat_id)
+    def _get_active_chat(
+        self, session: Session, chat_id: UUID, user_id: str = ""
+    ) -> ChatModel:
+        chat = self._get_chat(session, chat_id, user_id=user_id)
         if chat.chat_state == ChatState.DELETING.value:
             raise ChatDeletingError()
         return chat
@@ -708,6 +916,39 @@ def _source_type(value: str) -> SourceType:
         return SourceType(value)
     except ValueError as exc:
         raise _system_error("参照元データが不整合です。", exc) from exc
+
+
+def _chat_user_id(chat: ChatModel) -> str:
+    return chat.user_id if chat.user_id is not None else str(chat.local_user_id)
+
+
+def _account_user_data(user: UserModel) -> AccountUserData:
+    return AccountUserData(
+        user_id=user.id,
+        user_name=user.user_name,
+        password_hash=user.password_hash,
+        user_state=_user_state(user.user_state),
+    )
+
+
+def _login_session_data(
+    login_session: LoginSessionModel, user: UserModel
+) -> LoginSessionData:
+    return LoginSessionData(
+        session_id=login_session.id,
+        token_hash=login_session.token_hash,
+        user_id=user.id,
+        user_name=user.user_name,
+        user_state=_user_state(user.user_state),
+        expires_at=login_session.expires_at,
+    )
+
+
+def _user_state(value: str) -> UserState:
+    try:
+        return UserState(value)
+    except ValueError as exc:
+        raise _system_error("ユーザデータが不整合です。", exc) from exc
 
 
 def _system_error(diagnostic_message: str, cause: Exception | None = None) -> AppError:

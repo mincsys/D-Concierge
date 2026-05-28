@@ -28,10 +28,18 @@ class StartChatUseCase:
             else NoopTransactionManager()
         )
 
-    def execute(self, user_instruction: str, trace_id: str) -> AcceptedChatRunResult:
+    def execute(
+        self,
+        user_instruction: str,
+        trace_id: str,
+        user_id: str = "",
+    ) -> AcceptedChatRunResult:
         """初回指示を受付状態で保存し、実行dispatcherへ登録する。"""
         with self._transaction_manager.transaction():
-            accepted = self._repository.create_chat_with_first_run(user_instruction)
+            accepted = self._repository.create_chat_with_first_run(
+                user_instruction,
+                user_id=user_id,
+            )
         register_accepted_run(
             self._repository,
             self._transaction_manager,

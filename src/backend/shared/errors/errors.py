@@ -30,6 +30,21 @@ class AppError(Exception):
         self.cause = cause
 
 
+class FieldValidationError(AppError):
+    """入力欄単位の検証エラー。"""
+
+    def __init__(self, field_errors: dict[str, str]) -> None:
+        super().__init__(ErrorType.INPUT)
+        self.field_errors = field_errors
+
+
+class AuthenticationRequiredError(AppError):
+    """ログインが必要であることを示す。"""
+
+    def __init__(self) -> None:
+        super().__init__(ErrorType.UNAUTHORIZED)
+
+
 class UserInstructionRequiredError(AppError):
     """ユーザ指示が空であることを示す入力エラー。"""
 

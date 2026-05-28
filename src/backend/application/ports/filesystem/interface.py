@@ -39,6 +39,13 @@ class SavedArtifactDeletionPort(Protocol):
         """保存済み成果物実体と空の親runディレクトリを削除する。"""
 
 
+class UserSavedArtifactDeletionPort(Protocol):
+    """ユーザ単位の保存済み成果物削除境界。"""
+
+    def delete_user_artifacts(self, user_id: str) -> None:
+        """ユーザ単位の保存済み成果物領域を削除する。"""
+
+
 class ReferenceStorePort(Protocol):
     """参照元PDFファイル読込境界。"""
 
@@ -49,5 +56,12 @@ class ReferenceStorePort(Protocol):
 class SessionWorkdirCleanupPort(Protocol):
     """チャット単位のCodex作業領域削除境界。"""
 
-    def delete_session_workdirs(self, local_user_id: UUID, session_id: UUID) -> None:
+    def delete_session_workdirs(self, user_id: str, session_id: UUID) -> None:
         """生成用・検証用セッション作業領域を削除する。"""
+
+
+class UserWorkdirCleanupPort(Protocol):
+    """ユーザ単位のCodex作業領域削除境界。"""
+
+    def delete_user_workdirs(self, user_id: str) -> None:
+        """生成用・検証用のユーザ単位作業領域を削除する。"""

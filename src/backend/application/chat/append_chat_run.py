@@ -35,10 +35,15 @@ class AppendChatRunUseCase:
         chat_id: UUID,
         user_instruction: str,
         trace_id: str,
+        user_id: str = "",
     ) -> AcceptedChatRunResult:
         """継続指示を受付状態で保存し、実行dispatcherへ登録する。"""
         with self._transaction_manager.transaction():
-            accepted = self._repository.append_run(chat_id, user_instruction)
+            accepted = self._repository.append_run(
+                chat_id,
+                user_instruction,
+                user_id=user_id,
+            )
         register_accepted_run(
             self._repository,
             self._transaction_manager,

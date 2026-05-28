@@ -62,9 +62,7 @@ class CodexGenerationRunnerAdapter:
         with self._transaction_manager.transaction():
             context = self._repository.get_chat_runtime_context(chat_id)
         workdir = (
-            self._generator_config.workdir
-            / str(context.local_user_id)
-            / str(context.session_id)
+            self._generator_config.workdir / context.user_id / str(context.session_id)
         )
         prepare_generation_session_readonly(
             workdir=workdir,

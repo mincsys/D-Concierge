@@ -21,9 +21,47 @@ RUN_STATE_CHECK = (
     "'キャンセル済み','完了','エラー','タイムアウト')"
 )
 CHAT_STATE_CHECK = "chat_state IN ('有効','削除中')"
+USER_STATE_CHECK = "user_state IN ('通常','削除中')"
 
 
 def upgrade() -> None:
+    op.create_table(
+        "users",
+        sa.Column("id", sa.String(length=30), primary_key=True),
+        sa.Column("user_name", sa.String(length=30), nullable=False),
+        sa.Column("password_hash", sa.Text(), nullable=False),
+        sa.Column(
+            "user_state",
+            sa.String(length=20),
+            nullable=False,
+            server_default="通常",
+        ),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+        sa.CheckConstraint(USER_STATE_CHECK, name="ck_users_user_state"),
+    )
+    op.create_table(
+        "login_sessions",
+        sa.Column("id", sa.BigInteger(), primary_key=True, autoincrement=True),
+        sa.Column("token_hash", sa.Text(), nullable=False),
+        sa.Column("user_id", sa.String(length=30), nullable=False),
+        sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
+        sa.UniqueConstraint("token_hash", name="uq_login_sessions_token_hash"),
+    )
+    op.create_index(
+        "ix_login_sessions_user_id_expires_at",
+        "login_sessions",
+        ["user_id", "expires_at"],
+    )
+    op.create_index(
+        "ix_login_sessions_expires_at",
+        "login_sessions",
+        ["expires_at"],
+    )
+
     op.create_table(
         "local_users",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
@@ -35,6 +73,7 @@ def upgrade() -> None:
     op.create_table(
         "chats",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
+        sa.Column("user_id", sa.String(length=30), nullable=True),
         sa.Column("local_user_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("session_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("title", sa.String(length=50), nullable=False),
@@ -50,8 +89,14 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(
             ["local_user_id"], ["local_users.id"], ondelete="RESTRICT"
         ),
+        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
         sa.CheckConstraint(CHAT_STATE_CHECK, name="ck_chats_chat_state"),
         sa.UniqueConstraint("session_id", name="uq_chats_session_id"),
+    )
+    op.create_index(
+        "ix_chats_user_id_updated_at",
+        "chats",
+        ["user_id", sa.text("updated_at DESC")],
     )
     op.create_index(
         "ix_chats_local_user_id_updated_at",
@@ -187,5 +232,10 @@ def downgrade() -> None:
     op.drop_index("ix_chat_runs_chat_id_started_at_id", table_name="chat_runs")
     op.drop_table("chat_runs")
     op.drop_index("ix_chats_local_user_id_updated_at", table_name="chats")
+    op.drop_index("ix_chats_user_id_updated_at", table_name="chats")
     op.drop_table("chats")
     op.drop_table("local_users")
+    op.drop_index("ix_login_sessions_expires_at", table_name="login_sessions")
+    op.drop_index("ix_login_sessions_user_id_expires_at", table_name="login_sessions")
+    op.drop_table("login_sessions")
+    op.drop_table("users")

@@ -15,15 +15,15 @@ def test_session_workdir_cleanup_removes_generation_and_validation_session_dirs(
     確認：生成用・検証用セッション作業領域を削除し、readonlyリンク先実体は保持する。
     """
     require_symlink_support(tmp_path, target_is_directory=True)
-    local_user_id = UUID("00000000-0000-0000-0000-000000000901")
+    user_id = "demo-user"
     session_id = UUID("00000000-0000-0000-0000-000000000902")
     generation_root = tmp_path / "generator"
     validation_root = tmp_path / "validator"
     datasource = tmp_path / "readonly"
     datasource.mkdir()
     (datasource / "manual.pdf").write_text("pdf", encoding="utf-8")
-    generation_session = generation_root / str(local_user_id) / str(session_id)
-    validation_session = validation_root / str(local_user_id) / str(session_id)
+    generation_session = generation_root / user_id / str(session_id)
+    validation_session = validation_root / user_id / str(session_id)
     generation_session.mkdir(parents=True)
     validation_session.mkdir(parents=True)
     (generation_session / "readonly").symlink_to(datasource, target_is_directory=True)
@@ -33,7 +33,7 @@ def test_session_workdir_cleanup_removes_generation_and_validation_session_dirs(
         validation_workdir=validation_root,
     )
 
-    cleanup.delete_session_workdirs(local_user_id, session_id)
+    cleanup.delete_session_workdirs(user_id, session_id)
 
     assert generation_session.exists() is False
     assert validation_session.exists() is False

@@ -16,4 +16,4 @@ class CodexSessionWorkdirResolver:
     def resolve_generation_workdir(self, chat_id: UUID) -> Path:
         """生成用Codexのセッション作業領域を返す。"""
         context = self._repository.get_chat_runtime_context(chat_id)
-        return self._base_workdir / str(context.local_user_id) / str(context.session_id)
+        return self._base_workdir / context.user_id / str(context.session_id)

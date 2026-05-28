@@ -119,6 +119,7 @@ def test_start_chat_registers_accepted_run_to_dispatcher(tmp_path: Path) -> None
         run_dispatcher=dispatcher,
     )
     client = TestClient(app)
+    _register_test_user(client)
 
     response = client.post(
         "/api/chats/start",
@@ -266,7 +267,7 @@ def test_sse_streams_published_message_and_answer_events(tmp_path: Path) -> None
     確認：接続直後の現在状態に続けて、購読した中間メッセージと最終回答をSSE配信する。
     """
     repository = InMemoryChatRepository()
-    accepted = repository.create_chat_with_first_run("初回")
+    accepted = repository.create_chat_with_first_run("初回", user_id="demo-user")
     reference_id = UUID("00000000-0000-0000-0000-000000000601")
     event_source = PreloadedRunEventSource(
         events=(
@@ -308,6 +309,7 @@ def test_sse_streams_published_message_and_answer_events(tmp_path: Path) -> None
         run_event_source=event_source,
     )
     client = TestClient(app)
+    _register_test_user(client)
 
     with client.stream(
         "GET",
@@ -329,7 +331,7 @@ def test_sse_replays_saved_intermediate_messages_on_connect(tmp_path: Path) -> N
     確認：SSE接続前に保存済みの中間メッセージも、接続直後に発生順で配信する。
     """
     repository = InMemoryChatRepository()
-    accepted = repository.create_chat_with_first_run("初回")
+    accepted = repository.create_chat_with_first_run("初回", user_id="demo-user")
     repository.add_intermediate_message(
         accepted.chat_id, accepted.run_id, "作業を開始します。"
     )
@@ -340,6 +342,7 @@ def test_sse_replays_saved_intermediate_messages_on_connect(tmp_path: Path) -> N
         run_event_source=ClosedRunEventSource(),
     )
     client = TestClient(app)
+    _register_test_user(client)
 
     with client.stream(
         "GET",
@@ -359,7 +362,7 @@ def test_sse_streams_state_and_error_events(tmp_path: Path) -> None:
     確認：購読した状態変化とエラー終端をSSE配信し、接続を終了する。
     """
     repository = InMemoryChatRepository()
-    accepted = repository.create_chat_with_first_run("初回")
+    accepted = repository.create_chat_with_first_run("初回", user_id="demo-user")
     event_source = PreloadedRunEventSource(
         events=(
             RunEvent(
@@ -384,6 +387,7 @@ def test_sse_streams_state_and_error_events(tmp_path: Path) -> None:
         run_event_source=event_source,
     )
     client = TestClient(app)
+    _register_test_user(client)
 
     with client.stream(
         "GET",
@@ -403,7 +407,7 @@ def test_sse_closes_when_subscription_returns_no_event(tmp_path: Path) -> None:
     確認：購読キューが終端した場合は、初期状態だけを送信して終了する。
     """
     repository = InMemoryChatRepository()
-    accepted = repository.create_chat_with_first_run("初回")
+    accepted = repository.create_chat_with_first_run("初回", user_id="demo-user")
     app = create_app(
         config=_make_config(tmp_path),
         repository=repository,
@@ -411,6 +415,7 @@ def test_sse_closes_when_subscription_returns_no_event(tmp_path: Path) -> None:
         run_event_source=ClosedRunEventSource(),
     )
     client = TestClient(app)
+    _register_test_user(client)
 
     with client.stream(
         "GET",
@@ -431,7 +436,7 @@ async def test_sse_disconnect_unsubscribes_without_waiting_for_event(
     確認：イベント未到着の接続切断でも待機を継続せず、購読を解除する。
     """
     repository = InMemoryChatRepository()
-    accepted = repository.create_chat_with_first_run("初回")
+    accepted = repository.create_chat_with_first_run("初回", user_id="demo-user")
     event_source = OpenRunEventSource()
     request = DisconnectingAfterInitialStateRequest()
     stream = _run_sse_events(
@@ -462,7 +467,7 @@ def test_chat_detail_returns_completed_answer_and_references(tmp_path: Path) -> 
     reference_id = repository.save_completed_answer_for_test(
         markdown="検証済み回答",
         reference_relative_path="manual.pdf",
-        artifact_relative_path="run-id/chart.svg",
+        artifact_relative_path="demo-user/run-id/chart.svg",
         artifact_mime_type="image/svg+xml",
     )
     histories_response = client.get("/api/chat-histories")
@@ -559,7 +564,7 @@ def test_deleting_chat_rejects_followup_sse_reference_and_artifact(
     reference_id = repository.save_completed_answer_for_test(
         markdown="回答",
         reference_relative_path="manual.pdf",
-        artifact_relative_path="run-id/chart.svg",
+        artifact_relative_path="demo-user/run-id/chart.svg",
         artifact_mime_type="image/svg+xml",
     )
     artifact_id = repository.latest_artifact_id_for_test()
@@ -603,7 +608,7 @@ def test_reference_endpoint_serves_saved_pdf_inside_datasource(tmp_path: Path) -
     reference_id = repository.save_completed_answer_for_test(
         markdown="回答",
         reference_relative_path="manual.pdf",
-        artifact_relative_path="run-id/chart.svg",
+        artifact_relative_path="demo-user/run-id/chart.svg",
         artifact_mime_type="image/svg+xml",
     )
 
@@ -623,7 +628,7 @@ def test_reference_endpoint_rejects_path_traversal(tmp_path: Path) -> None:
     reference_id = repository.save_completed_answer_for_test(
         markdown="回答",
         reference_relative_path="../secret.pdf",
-        artifact_relative_path="run-id/chart.svg",
+        artifact_relative_path="demo-user/run-id/chart.svg",
         artifact_mime_type="image/svg+xml",
     )
 
@@ -636,13 +641,15 @@ def test_reference_endpoint_rejects_path_traversal(tmp_path: Path) -> None:
 def test_artifact_endpoint_serves_allowed_saved_artifact(tmp_path: Path) -> None:
     """観点：IF-SB-08。確認：採用済み成果物を保存済みMIMEタイプで配信する。"""
     client, repository = _make_client_with_repository(tmp_path)
-    artifact_path = tmp_path / "codex" / "saved_artifacts" / "run-id" / "chart.svg"
+    artifact_path = (
+        tmp_path / "codex" / "saved_artifacts" / "demo-user" / "run-id" / "chart.svg"
+    )
     artifact_path.parent.mkdir(parents=True)
     artifact_path.write_text("<svg />", encoding="utf-8")
     repository.save_completed_answer_for_test(
         markdown="回答",
         reference_relative_path="manual.pdf",
-        artifact_relative_path="run-id/chart.svg",
+        artifact_relative_path="demo-user/run-id/chart.svg",
         artifact_mime_type="image/svg+xml",
     )
     artifact_id = repository.latest_artifact_id_for_test()
@@ -657,13 +664,15 @@ def test_artifact_endpoint_serves_allowed_saved_artifact(tmp_path: Path) -> None
 def test_artifact_delivery_allows_jpeg(tmp_path: Path) -> None:
     """観点：IF-SB-08。確認：jpg/jpeg成果物をimage/jpegで配信する。"""
     client, repository = _make_client_with_repository(tmp_path)
-    artifact_path = tmp_path / "codex" / "saved_artifacts" / "run-id" / "photo.jpg"
+    artifact_path = (
+        tmp_path / "codex" / "saved_artifacts" / "demo-user" / "run-id" / "photo.jpg"
+    )
     artifact_path.parent.mkdir(parents=True)
     artifact_path.write_bytes(b"jpeg")
     repository.save_completed_answer_for_test(
         markdown="回答",
         reference_relative_path="manual.pdf",
-        artifact_relative_path="run-id/photo.jpg",
+        artifact_relative_path="demo-user/run-id/photo.jpg",
         artifact_mime_type="image/jpeg",
     )
     artifact_id = repository.latest_artifact_id_for_test()
@@ -686,13 +695,15 @@ def test_api_sse_reference_and_artifact_boundaries_do_not_write_success_trace_lo
     pdf_path = tmp_path / "readonly" / "manual.pdf"
     pdf_path.parent.mkdir()
     pdf_path.write_bytes(b"%PDF-1.4\n")
-    artifact_path = tmp_path / "codex" / "saved_artifacts" / "run-id" / "chart.svg"
+    artifact_path = (
+        tmp_path / "codex" / "saved_artifacts" / "demo-user" / "run-id" / "chart.svg"
+    )
     artifact_path.parent.mkdir(parents=True)
     artifact_path.write_text("<svg />", encoding="utf-8")
     reference_id = repository.save_completed_answer_for_test(
         markdown="回答",
         reference_relative_path="manual.pdf",
-        artifact_relative_path="run-id/chart.svg",
+        artifact_relative_path="demo-user/run-id/chart.svg",
         artifact_mime_type="image/svg+xml",
     )
     artifact_id = repository.latest_artifact_id_for_test()
@@ -744,7 +755,7 @@ def test_artifact_endpoint_rejects_disallowed_mime_type(tmp_path: Path) -> None:
     repository.save_completed_answer_for_test(
         markdown="回答",
         reference_relative_path="manual.pdf",
-        artifact_relative_path="run-id/script.js",
+        artifact_relative_path="demo-user/run-id/script.js",
         artifact_mime_type="application/javascript",
     )
     artifact_id = repository.latest_artifact_id_for_test()
@@ -762,7 +773,7 @@ def test_reference_endpoint_returns_404_when_pdf_file_is_missing(
     reference_id = repository.save_completed_answer_for_test(
         markdown="回答",
         reference_relative_path="missing.pdf",
-        artifact_relative_path="run-id/chart.svg",
+        artifact_relative_path="demo-user/run-id/chart.svg",
         artifact_mime_type="image/svg+xml",
     )
 
@@ -777,7 +788,7 @@ def test_artifact_endpoint_returns_404_when_file_is_missing(tmp_path: Path) -> N
     確認：保存メタ情報の成果物実体がない場合はHTTP 404にする。
     """
     client, repository = _make_client_with_repository(tmp_path)
-    accepted = repository.create_chat_with_first_run("成果物確認")
+    accepted = repository.create_chat_with_first_run("成果物確認", user_id="demo-user")
     artifact_id = UUID("00000000-0000-0000-0000-000000000302")
     repository.save_completed_answer(
         accepted.chat_id,
@@ -790,7 +801,7 @@ def test_artifact_endpoint_returns_404_when_file_is_missing(tmp_path: Path) -> N
                         ArtifactData(
                             artifact_id=artifact_id,
                             mime_type="image/png",
-                            relative_path="run-id/missing.png",
+                            relative_path="demo-user/run-id/missing.png",
                         ),
                     ),
                 ),
@@ -839,6 +850,7 @@ def test_repository_system_error_returns_500(tmp_path: Path) -> None:
         run_dispatcher=None,
     )
     client = TestClient(app)
+    _register_test_user(client)
 
     response = client.get("/api/chat-histories")
 
@@ -856,6 +868,7 @@ def test_unexpected_api_error_writes_system_trace_log(tmp_path: Path) -> None:
         run_dispatcher=None,
     )
     client = TestClient(app, raise_server_exceptions=False)
+    _register_test_user(client)
 
     response = client.get("/api/chat-histories")
 
@@ -880,6 +893,7 @@ def test_create_app_writes_trace_log_with_app_timezone_path(tmp_path: Path) -> N
         clock=FixedClock(datetime(2026, 5, 10, 15, 0, tzinfo=UTC)),
     )
     client = TestClient(app, raise_server_exceptions=False)
+    _register_test_user(client)
 
     response = client.get("/api/chat-histories")
 
@@ -1029,6 +1043,7 @@ def test_default_runtime_executes_start_chat_through_codex_adapters(
         background_executor=ImmediateBackgroundExecutor(),
     )
     client = TestClient(app)
+    _register_test_user(client)
 
     response = client.post(
         "/api/chats/start",
@@ -1095,8 +1110,9 @@ class RecordingDispatcher:
 class BrokenHistoryRepository(InMemoryChatRepository):
     """履歴一覧でシステム例外を返すテスト用Repository。"""
 
-    def list_histories(self) -> tuple[HistoryItem, ...]:
+    def list_histories(self, user_id: str = "") -> tuple[HistoryItem, ...]:
         """システム例外を発生させる。"""
+        _ = user_id
         raise AppError(
             ErrorType.SYSTEM,
             trace=True,
@@ -1107,8 +1123,9 @@ class BrokenHistoryRepository(InMemoryChatRepository):
 class UnexpectedHistoryRepository(InMemoryChatRepository):
     """履歴一覧で想定外例外を返すテスト用Repository。"""
 
-    def list_histories(self) -> tuple[HistoryItem, ...]:
+    def list_histories(self, user_id: str = "") -> tuple[HistoryItem, ...]:
         """想定外例外を発生させる。"""
+        _ = user_id
         raise RuntimeError("unexpected failure")
 
 
@@ -1245,7 +1262,22 @@ def _make_client_with_repository(
         repository=repository,
         run_dispatcher=None,
     )
-    return TestClient(app), repository
+    client = TestClient(app)
+    _register_test_user(client)
+    return client, repository
+
+
+def _register_test_user(client: TestClient) -> None:
+    response = client.post(
+        "/api/auth/register",
+        json={
+            "user_id": "demo-user",
+            "user_name": "デモユーザ",
+            "password": "abc12",
+            "password_confirmation": "abc12",
+        },
+    )
+    assert response.status_code == 200
 
 
 def _make_config(tmp_path: Path) -> AppConfig:

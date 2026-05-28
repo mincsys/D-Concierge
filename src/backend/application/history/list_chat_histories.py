@@ -21,7 +21,7 @@ class ListChatHistoriesUseCase:
             else NoopTransactionManager()
         )
 
-    def execute(self) -> tuple[HistoryItem, ...]:
+    def execute(self, user_id: str = "") -> tuple[HistoryItem, ...]:
         """履歴一覧を返す。"""
         with self._transaction_manager.transaction():
-            return self._repository.list_histories()
+            return self._repository.list_histories(user_id=user_id)

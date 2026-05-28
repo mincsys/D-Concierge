@@ -33,10 +33,12 @@ class DeleteChatUseCase:
             else NoopTransactionManager()
         )
 
-    def execute(self, chat_id: UUID, trace_id: str) -> DeleteChatResult:
+    def execute(
+        self, chat_id: UUID, trace_id: str, user_id: str = ""
+    ) -> DeleteChatResult:
         """対象チャットを削除中にし、物理削除ジョブを登録する。"""
         with self._transaction_manager.transaction():
-            result = self._repository.mark_chat_deleting(chat_id)
+            result = self._repository.mark_chat_deleting(chat_id, user_id=user_id)
 
         if self._deletion_dispatcher is None:
             return result

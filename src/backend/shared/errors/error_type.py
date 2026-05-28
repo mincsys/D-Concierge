@@ -8,5 +8,6 @@ class ErrorType(Enum):
     NOT_FOUND = "not_found"
     CONFLICT = "conflict"
     CONFIGURATION = "configuration"
+    UNAUTHORIZED = "unauthorized"
     FORBIDDEN = "forbidden"
     SYSTEM = "system"

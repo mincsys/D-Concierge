@@ -3,9 +3,16 @@ from collections.abc import AsyncIterator, Callable
 from typing import Protocol
 from uuid import UUID
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Response
 from fastapi.responses import FileResponse, StreamingResponse
 
+from backend.application.account.authenticate_session import AuthenticateSessionUseCase
+from backend.application.account.change_password import ChangePasswordUseCase
+from backend.application.account.change_user_name import ChangeUserNameUseCase
+from backend.application.account.delete_account import DeleteAccountUseCase
+from backend.application.account.login import LoginUseCase
+from backend.application.account.logout import LogoutUseCase
+from backend.application.account.register_account import RegisterAccountUseCase
 from backend.application.artifacts.get_artifact import GetArtifactUseCase
 from backend.application.chat.acceptance import AcceptedChatRunResult
 from backend.application.chat.append_chat_run import AppendChatRunUseCase
@@ -19,6 +26,7 @@ from backend.application.history.list_chat_histories import ListChatHistoriesUse
 from backend.application.ports.database.dto import (
     AnswerBlockData,
     AnswerData,
+    AuthenticatedUser,
     ChatDetail,
     DisplayReferenceData,
     RunDetail,
@@ -36,16 +44,23 @@ from backend.presentation.schemas.api import (
     AnswerBlockResponseSchema,
     AnswerResponseSchema,
     AppConfigResponseSchema,
+    AuthUserResponseSchema,
     CancelChatRunResponseSchema,
+    ChangePasswordRequestSchema,
+    ChangeUserNameRequestSchema,
     ChatDetailResponseSchema,
     ChatHistoryItemResponseSchema,
     ChatRunResponseSchema,
     ChatStartRequestSchema,
     ChatStartResponseSchema,
+    CurrentUserResponseSchema,
+    DeleteAccountResponseSchema,
     DeleteChatResponseSchema,
     DisplayReferenceSchema,
     IntermediateMessageResponseSchema,
+    LoginRequestSchema,
     PdfLocatorSchema,
+    RegisterAccountRequestSchema,
 )
 from backend.presentation.sse.payload import (
     end_payload,
@@ -79,6 +94,8 @@ class DisconnectableRequest(Protocol):
 
 
 _SSE_IDLE_POLL_INTERVAL_SECONDS = 0.1
+_SESSION_COOKIE_NAME = "d_concierge_session"
+_SESSION_COOKIE_MAX_AGE_SECONDS = 400 * 24 * 60 * 60
 
 
 def create_api_router(
@@ -96,6 +113,13 @@ def create_api_router(
     run_event_source: RunEventSource | None,
     trace_logger: TraceLoggerPort,
     trace_id_factory: Callable[[], str],
+    authenticate_session_usecase: AuthenticateSessionUseCase,
+    register_account_usecase: RegisterAccountUseCase,
+    login_usecase: LoginUseCase,
+    logout_usecase: LogoutUseCase,
+    change_user_name_usecase: ChangeUserNameUseCase,
+    change_password_usecase: ChangePasswordUseCase,
+    delete_account_usecase: DeleteAccountUseCase,
 ) -> APIRouter:
     """チャットAPIルートを生成する。"""
     router = APIRouter()
@@ -103,19 +127,110 @@ def create_api_router(
     @router.get("/api/app-config", response_model=AppConfigResponseSchema)
     def get_app_config(request: Request) -> AppConfigResponseSchema:
         _set_request_trace(request, trace_id_factory, stage="app_config")
+        _authenticated_user(request, authenticate_session_usecase)
         return AppConfigResponseSchema(
             welcome_message=welcome_message,
             input_suggestions=list(input_suggestions),
         )
+
+    @router.get("/api/auth/me", response_model=CurrentUserResponseSchema)
+    def get_current_user(request: Request) -> CurrentUserResponseSchema:
+        _set_request_trace(request, trace_id_factory, stage="auth_me")
+        user = _authenticated_user(request, authenticate_session_usecase)
+        return _current_user_response(user)
+
+    @router.post("/api/auth/register", response_model=CurrentUserResponseSchema)
+    def register_account(
+        body: RegisterAccountRequestSchema, request: Request, response: Response
+    ) -> CurrentUserResponseSchema:
+        trace_id = _set_request_trace(
+            request, trace_id_factory, stage="account_register"
+        )
+        result = register_account_usecase.execute(
+            user_id=body.user_id,
+            user_name=body.user_name,
+            password=body.password,
+            password_confirmation=body.password_confirmation,
+            existing_session_token=_session_token(request),
+            trace_id=trace_id,
+        )
+        _set_session_cookie(response, result.session_token)
+        return _current_user_response(result.user)
+
+    @router.post("/api/auth/login", response_model=CurrentUserResponseSchema)
+    def login(
+        body: LoginRequestSchema, request: Request, response: Response
+    ) -> CurrentUserResponseSchema:
+        trace_id = _set_request_trace(request, trace_id_factory, stage="login")
+        result = login_usecase.execute(
+            body.user_id,
+            body.password,
+            _session_token(request),
+            trace_id,
+        )
+        _set_session_cookie(response, result.session_token)
+        return _current_user_response(result.user)
+
+    @router.post("/api/auth/logout", status_code=204)
+    def logout(request: Request, response: Response) -> None:
+        trace_id = _set_request_trace(request, trace_id_factory, stage="logout")
+        logout_usecase.execute(_session_token(request), trace_id=trace_id)
+        _delete_session_cookie(response)
+
+    @router.patch("/api/account/name", response_model=CurrentUserResponseSchema)
+    def change_user_name(
+        body: ChangeUserNameRequestSchema, request: Request
+    ) -> CurrentUserResponseSchema:
+        trace_id = _set_request_trace(
+            request, trace_id_factory, stage="change_user_name"
+        )
+        user = _authenticated_user(request, authenticate_session_usecase)
+        changed = change_user_name_usecase.execute(
+            user.user_id, body.user_name, trace_id=trace_id
+        )
+        return _current_user_response(changed)
+
+    @router.patch("/api/account/password", status_code=204)
+    def change_password(
+        body: ChangePasswordRequestSchema, request: Request, response: Response
+    ) -> None:
+        _ = response
+        trace_id = _set_request_trace(
+            request, trace_id_factory, stage="change_password"
+        )
+        user = _authenticated_user(request, authenticate_session_usecase)
+        change_password_usecase.execute(
+            user.user_id,
+            body.current_password,
+            body.new_password,
+            body.new_password_confirmation,
+            trace_id=trace_id,
+        )
+
+    @router.delete(
+        "/api/account",
+        response_model=DeleteAccountResponseSchema,
+        status_code=202,
+    )
+    def delete_account(
+        request: Request, response: Response
+    ) -> DeleteAccountResponseSchema:
+        trace_id = _set_request_trace(request, trace_id_factory, stage="delete_account")
+        user = _authenticated_user(request, authenticate_session_usecase)
+        accepted = delete_account_usecase.execute(user.user_id, trace_id=trace_id)
+        _delete_session_cookie(response)
+        return DeleteAccountResponseSchema(account_state=accepted.account_state.value)
 
     @router.post("/api/chats/start", response_model=ChatStartResponseSchema)
     def start_chat(
         body: ChatStartRequestSchema, request: Request
     ) -> ChatStartResponseSchema:
         trace_id = _set_request_trace(request, trace_id_factory, stage="start_chat")
+        user = _authenticated_user(request, authenticate_session_usecase)
         accepted = start_chat_usecase.execute(
-            body.user_instruction,
+            user_instruction=body.user_instruction,
             trace_id=trace_id,
+            user_id=user.user_id,
         )
         context = ensure_request_trace_context(request)
         context.chat_id = accepted.chat_id
@@ -129,7 +244,9 @@ def create_api_router(
         trace_id = _set_request_trace(
             request, trace_id_factory, stage="append_chat_run", chat_id=chat_id
         )
+        user = _authenticated_user(request, authenticate_session_usecase)
         accepted = append_chat_run_usecase.execute(
+            user_id=user.user_id,
             chat_id=chat_id,
             user_instruction=body.user_instruction,
             trace_id=trace_id,
@@ -143,6 +260,7 @@ def create_api_router(
     )
     def list_chat_histories(request: Request) -> list[ChatHistoryItemResponseSchema]:
         _set_request_trace(request, trace_id_factory, stage="chat_histories")
+        user = _authenticated_user(request, authenticate_session_usecase)
         return [
             ChatHistoryItemResponseSchema(
                 chat_id=str(item.chat_id),
@@ -151,7 +269,7 @@ def create_api_router(
                 latest_state=item.latest_state.value,
                 updated_at=item.updated_at.isoformat(),
             )
-            for item in list_histories_usecase.execute()
+            for item in list_histories_usecase.execute(user.user_id)
         ]
 
     @router.get("/api/chats/{chat_id}", response_model=ChatDetailResponseSchema)
@@ -159,7 +277,10 @@ def create_api_router(
         _set_request_trace(
             request, trace_id_factory, stage="chat_detail", chat_id=chat_id
         )
-        return _chat_detail_response(get_chat_detail_usecase.execute(chat_id))
+        user = _authenticated_user(request, authenticate_session_usecase)
+        return _chat_detail_response(
+            get_chat_detail_usecase.execute(chat_id, user_id=user.user_id)
+        )
 
     @router.delete(
         "/api/chats/{chat_id}",
@@ -170,7 +291,10 @@ def create_api_router(
         trace_id = _set_request_trace(
             request, trace_id_factory, stage="delete_chat", chat_id=chat_id
         )
-        deleted = delete_chat_usecase.execute(chat_id=chat_id, trace_id=trace_id)
+        user = _authenticated_user(request, authenticate_session_usecase)
+        deleted = delete_chat_usecase.execute(
+            chat_id=chat_id, trace_id=trace_id, user_id=user.user_id
+        )
         return DeleteChatResponseSchema(
             chat_id=str(deleted.chat_id),
             chat_state=deleted.chat_state.value,
@@ -190,6 +314,8 @@ def create_api_router(
             chat_id=chat_id,
             run_id=run_id,
         )
+        user = _authenticated_user(request, authenticate_session_usecase)
+        get_chat_detail_usecase.execute(chat_id, user_id=user.user_id)
         canceled = cancel_chat_run_usecase.request_cancel(
             chat_id=chat_id,
             run_id=run_id,
@@ -208,7 +334,8 @@ def create_api_router(
         trace_id = _set_request_trace(
             request, trace_id_factory, stage="sse", chat_id=chat_id, run_id=run_id
         )
-        get_chat_detail_usecase.execute(chat_id)
+        user = _authenticated_user(request, authenticate_session_usecase)
+        get_chat_detail_usecase.execute(chat_id, user_id=user.user_id)
         return StreamingResponse(
             _run_sse_events(
                 get_chat_detail_usecase,
@@ -230,6 +357,7 @@ def create_api_router(
             stage="reference_delivery",
             reference_id=reference_id,
         )
+        _authenticated_user(request, authenticate_session_usecase)
         opened = get_reference_data_usecase.execute(reference_id)
         return FileResponse(opened.path, media_type=opened.mime_type)
 
@@ -241,6 +369,7 @@ def create_api_router(
             stage="artifact_delivery",
             artifact_id=artifact_id,
         )
+        _authenticated_user(request, authenticate_session_usecase)
         opened = get_artifact_usecase.execute(artifact_id)
         return FileResponse(opened.path, media_type=opened.mime_type)
 
@@ -358,6 +487,44 @@ def _run_sse_snapshot(
                 tuple(message.text for message in run.intermediate_messages),
             )
     raise ChatRunNotFoundError()
+
+
+def _session_token(request: Request) -> str | None:
+    return request.cookies.get(_SESSION_COOKIE_NAME)
+
+
+def _authenticated_user(
+    request: Request,
+    authenticate_session_usecase: AuthenticateSessionUseCase,
+) -> AuthenticatedUser:
+    return authenticate_session_usecase.execute(
+        _session_token(request),
+        trace_id=request_trace_id(request, "unavailable"),
+    )
+
+
+def _set_session_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        key=_SESSION_COOKIE_NAME,
+        value=token,
+        max_age=_SESSION_COOKIE_MAX_AGE_SECONDS,
+        httponly=True,
+        samesite="lax",
+        path="/",
+    )
+
+
+def _delete_session_cookie(response: Response) -> None:
+    response.delete_cookie(key=_SESSION_COOKIE_NAME, path="/")
+
+
+def _current_user_response(user: AuthenticatedUser) -> CurrentUserResponseSchema:
+    return CurrentUserResponseSchema(
+        user=AuthUserResponseSchema(
+            user_id=user.user_id,
+            user_name=user.user_name,
+        )
+    )
 
 
 def _is_replayed_message_event(event: RunEvent, replayed_messages: list[str]) -> bool:

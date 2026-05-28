@@ -38,7 +38,7 @@ def test_file_artifact_store_copies_candidate_into_saved_area(
     assert saved == SavedArtifactFile(
         artifact_id=artifact_id,
         mime_type="image/svg+xml",
-        relative_path=f"{run_id}/{artifact_id}.svg",
+        relative_path=f"user/{run_id}/{artifact_id}.svg",
     )
     assert (saved_root / saved.relative_path).read_text(encoding="utf-8") == (
         "<svg></svg>"
@@ -78,13 +78,13 @@ def test_file_artifact_store_allows_jpeg_images(
 def test_file_artifact_store_opens_saved_file(tmp_path: Path) -> None:
     """観点：成果物配信。確認：保存済み領域内のメタ情報だけを配信用に開く。"""
     saved_root = tmp_path / "saved_artifacts"
-    saved_file = saved_root / "run-id" / "artifact-id.html"
+    saved_file = saved_root / "demo-user" / "run-id" / "artifact-id.html"
     saved_file.parent.mkdir(parents=True)
     saved_file.write_text("<main>ok</main>", encoding="utf-8")
     store = FileArtifactStore(saved_artifacts_dir=saved_root)
 
     opened = store.open_saved_file(
-        relative_path="run-id/artifact-id.html",
+        relative_path="demo-user/run-id/artifact-id.html",
         mime_type="text/html",
     )
 
@@ -146,7 +146,7 @@ def test_file_artifact_store_rejects_existing_saved_artifact(tmp_path: Path) -> 
     saved_root = tmp_path / "saved_artifacts"
     run_id = UUID("00000000-0000-0000-0000-000000000605")
     artifact_id = UUID("00000000-0000-0000-0000-000000000615")
-    existing = saved_root / str(run_id) / f"{artifact_id}.png"
+    existing = saved_root / "user" / str(run_id) / f"{artifact_id}.png"
     existing.parent.mkdir(parents=True)
     existing.write_bytes(b"existing")
     store = FileArtifactStore(saved_artifacts_dir=saved_root)
@@ -191,9 +191,10 @@ def test_file_artifact_store_rejects_symlink_to_outside_candidate(
     [
         ("../run/artifact.html", "text/html", ErrorType.FORBIDDEN),
         ("run/artifact.exe", "application/octet-stream", ErrorType.FORBIDDEN),
-        ("run/deep/artifact.html", "text/html", ErrorType.FORBIDDEN),
+        ("run/artifact.html", "text/html", ErrorType.FORBIDDEN),
+        ("run/deep/too-deep/artifact.html", "text/html", ErrorType.FORBIDDEN),
         ("run/artifact.html", "image/png", ErrorType.FORBIDDEN),
-        ("run/missing.png", "image/png", ErrorType.NOT_FOUND),
+        ("user/run/missing.png", "image/png", ErrorType.NOT_FOUND),
         ("run/\x00artifact.png", "image/png", ErrorType.FORBIDDEN),
         ("C:/run/artifact.png", "image/png", ErrorType.FORBIDDEN),
     ],
@@ -206,7 +207,7 @@ def test_file_artifact_store_rejects_invalid_saved_metadata(
 ) -> None:
     """観点：成果物配信。確認：不正な保存済みメタ情報を拒否する。"""
     store = FileArtifactStore(saved_artifacts_dir=tmp_path / "saved_artifacts")
-    saved_html = tmp_path / "saved_artifacts" / "run" / "artifact.html"
+    saved_html = tmp_path / "saved_artifacts" / "user" / "run" / "artifact.html"
     saved_html.parent.mkdir(parents=True)
     saved_html.write_text("<main>ok</main>", encoding="utf-8")
 
@@ -227,13 +228,13 @@ def test_file_artifact_store_rejects_saved_symlink_to_outside(
     saved_root = tmp_path / "saved_artifacts"
     outside = tmp_path / "outside"
     outside.mkdir()
-    saved_root.mkdir()
-    (saved_root / "run").symlink_to(outside)
+    (saved_root / "user").mkdir(parents=True)
+    (saved_root / "user" / "run").symlink_to(outside)
     store = FileArtifactStore(saved_artifacts_dir=saved_root)
 
     with pytest.raises(AppError) as error_info:
         store.open_saved_file(
-            relative_path="run/artifact.png",
+            relative_path="user/run/artifact.png",
             mime_type="image/png",
         )
 
@@ -248,15 +249,15 @@ def test_file_artifact_store_deletes_saved_artifacts_and_empty_run_dir(
     確認：保存済み成果物実体と空の親runディレクトリだけを削除する。
     """
     saved_root = tmp_path / "saved_artifacts"
-    target = saved_root / "run-target" / "chart.svg"
-    other = saved_root / "run-other" / "other.svg"
+    target = saved_root / "demo-user" / "run-target" / "chart.svg"
+    other = saved_root / "other-user" / "run-other" / "other.svg"
     target.parent.mkdir(parents=True)
     other.parent.mkdir(parents=True)
     target.write_text("<svg />", encoding="utf-8")
     other.write_text("<svg />", encoding="utf-8")
     store = FileArtifactStore(saved_artifacts_dir=saved_root)
 
-    store.delete_saved_artifacts(("run-target/chart.svg",))
+    store.delete_saved_artifacts(("demo-user/run-target/chart.svg",))
 
     assert target.exists() is False
     assert target.parent.exists() is False

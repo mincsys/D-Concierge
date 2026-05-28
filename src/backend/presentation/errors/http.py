@@ -6,10 +6,12 @@ from backend.shared.errors.errors import (
     ArtifactAlreadySavedError,
     ArtifactNotDisplayableError,
     ArtifactNotFoundError,
+    AuthenticationRequiredError,
     CancelNotAllowedError,
     ChatDeletingError,
     ChatNotFoundError,
     ChatRunNotFoundError,
+    FieldValidationError,
     FileNotDisplayableError,
     ProcessCanceledConflictError,
     ReferenceNotDisplayableError,
@@ -28,9 +30,11 @@ from backend.shared.user_messages import (
     CHAT_RUN_NOT_FOUND_MESSAGE,
     CONFIGURATION_FAILURE_MESSAGE,
     FILE_NOT_DISPLAYABLE_MESSAGE,
+    LOGIN_REQUIRED_MESSAGE,
     PROCESS_CANCELED_CONFLICT_MESSAGE,
     REFERENCE_NOT_DISPLAYABLE_MESSAGE,
     REFERENCE_NOT_FOUND_MESSAGE,
+    REQUEST_VALIDATION_FAILURE_MESSAGE,
     RUN_NOT_FOUND_MESSAGE,
     UNEXPECTED_FAILURE_MESSAGE,
     USER_INSTRUCTION_REQUIRED_MESSAGE,
@@ -38,12 +42,15 @@ from backend.shared.user_messages import (
 
 
 def error_response_payload(
-    error_type: ErrorType, user_message: str
+    error_type: ErrorType,
+    user_message: str,
+    field_errors: dict[str, str] | None = None,
 ) -> ErrorResponseSchema:
     """公開APIエラーpayloadを生成する。"""
     return ErrorResponseSchema(
         error=error_type.value,
         message=user_message,
+        field_errors=field_errors,
     )
 
 
@@ -78,6 +85,10 @@ def user_message_for_error(error: AppError) -> str:
             return PROCESS_CANCELED_CONFLICT_MESSAGE
         case ArtifactAlreadySavedError():
             return ARTIFACT_ALREADY_SAVED_MESSAGE
+        case AuthenticationRequiredError():
+            return LOGIN_REQUIRED_MESSAGE
+        case FieldValidationError():
+            return REQUEST_VALIDATION_FAILURE_MESSAGE
         case _:
             if error.error_type is ErrorType.CONFIGURATION:
                 return CONFIGURATION_FAILURE_MESSAGE
@@ -93,6 +104,8 @@ def status_code(error_type: ErrorType) -> int:
             return 404
         case ErrorType.CONFLICT:
             return 409
+        case ErrorType.UNAUTHORIZED:
+            return 401
         case ErrorType.FORBIDDEN:
             return 403
         case ErrorType.SYSTEM:

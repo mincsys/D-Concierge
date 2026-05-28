@@ -17,12 +17,61 @@ class LocalUserModel(Base):
     is_active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
 
 
+class UserModel(Base):
+    """`users` テーブルのORMモデル。"""
+
+    __tablename__ = "users"
+
+    id: Mapped[str] = mapped_column(sa.String(30), primary_key=True)
+    user_name: Mapped[str] = mapped_column(sa.String(30), nullable=False)
+    password_hash: Mapped[str] = mapped_column(sa.Text, nullable=False)
+    user_state: Mapped[str] = mapped_column(
+        sa.String(20), nullable=False, default="通常"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime(timezone=True), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime(timezone=True), nullable=False
+    )
+
+
+class LoginSessionModel(Base):
+    """`login_sessions` テーブルのORMモデル。"""
+
+    __tablename__ = "login_sessions"
+
+    id: Mapped[int] = mapped_column(sa.Integer, primary_key=True, autoincrement=True)
+    token_hash: Mapped[str] = mapped_column(sa.Text, nullable=False, unique=True)
+    user_id: Mapped[str] = mapped_column(
+        sa.String(30),
+        sa.ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    expires_at: Mapped[datetime] = mapped_column(
+        sa.DateTime(timezone=True), nullable=False, index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime(timezone=True), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime(timezone=True), nullable=False
+    )
+
+
 class ChatModel(Base):
     """`chats` テーブルのORMモデル。"""
 
     __tablename__ = "chats"
 
     id: Mapped[UUID] = mapped_column(sa.Uuid(as_uuid=True), primary_key=True)
+    user_id: Mapped[str | None] = mapped_column(
+        sa.String(30),
+        sa.ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
     local_user_id: Mapped[UUID] = mapped_column(
         sa.Uuid(as_uuid=True),
         sa.ForeignKey("local_users.id", ondelete="RESTRICT"),

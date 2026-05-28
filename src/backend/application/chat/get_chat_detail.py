@@ -23,7 +23,7 @@ class GetChatDetailUseCase:
             else NoopTransactionManager()
         )
 
-    def execute(self, chat_id: UUID) -> ChatDetail:
+    def execute(self, chat_id: UUID, user_id: str = "") -> ChatDetail:
         """指定チャットの詳細を返す。"""
         with self._transaction_manager.transaction():
-            return self._repository.get_chat_detail(chat_id)
+            return self._repository.get_chat_detail(chat_id, user_id=user_id)

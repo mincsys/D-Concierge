@@ -57,7 +57,7 @@ class ExecuteChatDeletionUseCase:
 
         try:
             self._session_workdir_cleanup.delete_session_workdirs(
-                target.local_user_id,
+                target.user_id,
                 target.session_id,
             )
             self._artifact_deletion.delete_saved_artifacts(

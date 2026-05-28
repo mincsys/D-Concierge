@@ -7,6 +7,8 @@ from uuid import UUID, uuid4
 from backend.application.ports.database.dto import (
     SHARED_LOCAL_USER_ID,
     AcceptedRun,
+    AccountDeletionTarget,
+    AccountUserData,
     AnswerBlockData,
     AnswerData,
     ArtifactData,
@@ -18,9 +20,11 @@ from backend.application.ports.database.dto import (
     DisplayReferenceData,
     HistoryItem,
     IntermediateMessageData,
+    LoginSessionData,
     RunDetail,
     UnfinishedRun,
 )
+from backend.domain.account.user_state import UserState
 from backend.domain.chat.chat_state import ChatState
 from backend.domain.chat.chat_title_policy import ChatTitlePolicy
 from backend.domain.chat.user_instruction import (
@@ -62,6 +66,7 @@ class _RunRecord:
 @dataclass(slots=True)
 class _ChatRecord:
     id: UUID
+    user_id: str
     local_user_id: UUID
     session_id: UUID
     title: str
@@ -84,9 +89,185 @@ class InMemoryChatRepository:
         self._reference_chat_ids: dict[UUID, UUID] = {}
         self._artifact_chat_ids: dict[UUID, UUID] = {}
         self._latest_artifact_id: UUID | None = None
+        self._users: dict[str, AccountUserData] = {}
+        self._sessions: dict[str, LoginSessionData] = {}
+        self._next_session_id = 0
         self._lock = RLock()
 
-    def create_chat_with_first_run(self, user_instruction: str) -> AcceptedRun:
+    def create_user(
+        self, user_id: str, user_name: str, password_hash: str, now: datetime
+    ) -> None:
+        """アカウントユーザを保存する。"""
+        _ = now
+        with self._lock:
+            self._users[user_id] = AccountUserData(
+                user_id=user_id,
+                user_name=user_name,
+                password_hash=password_hash,
+                user_state=UserState.ACTIVE,
+            )
+
+    def get_user_for_login(self, user_id: str) -> AccountUserData | None:
+        """ログイン検証用ユーザを返す。"""
+        with self._lock:
+            return self._users.get(user_id)
+
+    def update_user_name(
+        self, user_id: str, user_name: str, now: datetime
+    ) -> AccountUserData:
+        """ユーザ名を更新する。"""
+        _ = now
+        with self._lock:
+            user = self._get_user_locked(user_id)
+            updated = AccountUserData(
+                user_id=user.user_id,
+                user_name=user_name,
+                password_hash=user.password_hash,
+                user_state=user.user_state,
+            )
+            self._users[user_id] = updated
+            return updated
+
+    def update_password_hash(
+        self, user_id: str, password_hash: str, now: datetime
+    ) -> None:
+        """パスワードハッシュを更新する。"""
+        _ = now
+        with self._lock:
+            user = self._get_user_locked(user_id)
+            self._users[user_id] = AccountUserData(
+                user_id=user.user_id,
+                user_name=user.user_name,
+                password_hash=password_hash,
+                user_state=user.user_state,
+            )
+
+    def create_login_session(
+        self, token_hash: str, user_id: str, expires_at: datetime, now: datetime
+    ) -> LoginSessionData:
+        """ログインセッションを保存する。"""
+        _ = now
+        with self._lock:
+            user = self._get_user_locked(user_id)
+            self._next_session_id += 1
+            session = LoginSessionData(
+                session_id=self._next_session_id,
+                token_hash=token_hash,
+                user_id=user.user_id,
+                user_name=user.user_name,
+                user_state=user.user_state,
+                expires_at=expires_at,
+            )
+            self._sessions[token_hash] = session
+            return session
+
+    def find_session_by_token_hash(self, token_hash: str) -> LoginSessionData | None:
+        """トークンハッシュに対応するログインセッションを返す。"""
+        with self._lock:
+            session = self._sessions.get(token_hash)
+            if session is None:
+                return None
+            user = self._users.get(session.user_id)
+            if user is None:
+                return None
+            return LoginSessionData(
+                session_id=session.session_id,
+                token_hash=session.token_hash,
+                user_id=user.user_id,
+                user_name=user.user_name,
+                user_state=user.user_state,
+                expires_at=session.expires_at,
+            )
+
+    def delete_session_by_token_hash(self, token_hash: str) -> int:
+        """トークンハッシュに対応するセッションを削除する。"""
+        with self._lock:
+            existed = token_hash in self._sessions
+            self._sessions.pop(token_hash, None)
+            return 1 if existed else 0
+
+    def delete_sessions_by_user_id(self, user_id: str) -> int:
+        """ユーザの全ログインセッションを削除する。"""
+        with self._lock:
+            target_hashes = [
+                token_hash
+                for token_hash, session in self._sessions.items()
+                if session.user_id == user_id
+            ]
+            for token_hash in target_hashes:
+                self._sessions.pop(token_hash, None)
+            return len(target_hashes)
+
+    def delete_expired_sessions(self, now: datetime) -> int:
+        """期限切れログインセッションを削除する。"""
+        with self._lock:
+            target_hashes = [
+                token_hash
+                for token_hash, session in self._sessions.items()
+                if session.expires_at <= now
+            ]
+            for token_hash in target_hashes:
+                self._sessions.pop(token_hash, None)
+            return len(target_hashes)
+
+    def mark_user_deleting(self, user_id: str, now: datetime) -> None:
+        """ユーザを削除中へ更新する。"""
+        _ = now
+        with self._lock:
+            user = self._get_user_locked(user_id)
+            self._users[user_id] = AccountUserData(
+                user_id=user.user_id,
+                user_name=user.user_name,
+                password_hash=user.password_hash,
+                user_state=UserState.DELETING,
+            )
+
+    def mark_user_chats_deleting(self, user_id: str, now: datetime) -> None:
+        """ユーザの全チャットを削除中へ更新する。"""
+        _ = now
+        with self._lock:
+            for chat in self._chats.values():
+                if chat.user_id == user_id:
+                    chat.chat_state = ChatState.DELETING
+
+    def list_deleting_user_ids(self) -> tuple[str, ...]:
+        """削除中ユーザIDを返す。"""
+        with self._lock:
+            return tuple(
+                user.user_id
+                for user in self._users.values()
+                if user.user_state is UserState.DELETING
+            )
+
+    def get_account_deletion_target(self, user_id: str) -> AccountDeletionTarget | None:
+        """アカウント物理削除対象を返す。"""
+        with self._lock:
+            if user_id not in self._users:
+                return None
+            unfinished_runs = tuple(
+                ChatDeletionRun(run_id=run.id, state=run.state)
+                for run in self._runs.values()
+                if self._chats[run.chat_id].user_id == user_id
+                and RunStatePolicy.is_unfinished(run.state)
+            )
+            return AccountDeletionTarget(
+                user_id=user_id, unfinished_runs=unfinished_runs
+            )
+
+    def delete_account_data(self, user_id: str) -> None:
+        """ユーザとログインセッションを削除する。"""
+        with self._lock:
+            self.delete_sessions_by_user_id(user_id)
+            chat_ids = tuple(
+                chat.id for chat in self._chats.values() if chat.user_id == user_id
+            )
+            for chat_id in chat_ids:
+                self.delete_chat_cascade(chat_id)
+            self._users.pop(user_id, None)
+
+    def create_chat_with_first_run(
+        self, user_instruction: str, user_id: str = ""
+    ) -> AcceptedRun:
         """新規チャット、初回run、初回指示を同時に保存する。"""
         instruction = _user_instruction(user_instruction)
         now = self._now()
@@ -94,6 +275,7 @@ class InMemoryChatRepository:
         run_id = uuid4()
         chat = _ChatRecord(
             id=chat_id,
+            user_id=user_id,
             local_user_id=SHARED_LOCAL_USER_ID,
             session_id=uuid4(),
             title=ChatTitlePolicy.make_title(instruction),
@@ -112,13 +294,15 @@ class InMemoryChatRepository:
             self._runs[run_id] = run
         return AcceptedRun(chat_id=chat_id, run_id=run_id, state=RunState.ACCEPTED)
 
-    def append_run(self, chat_id: UUID, user_instruction: str) -> AcceptedRun:
+    def append_run(
+        self, chat_id: UUID, user_instruction: str, user_id: str = ""
+    ) -> AcceptedRun:
         """既存チャットへ受付runと指示を追加する。"""
         instruction = _user_instruction(user_instruction)
         now = self._now()
         run_id = uuid4()
         with self._lock:
-            chat = self._get_active_chat_locked(chat_id)
+            chat = self._get_active_chat_locked(chat_id, user_id=user_id)
             for existing_run_id in chat.run_ids:
                 if RunStatePolicy.is_unfinished(self._runs[existing_run_id].state):
                     raise ActiveRunConflictError()
@@ -134,13 +318,15 @@ class InMemoryChatRepository:
             self._runs[run_id] = run
         return AcceptedRun(chat_id=chat_id, run_id=run_id, state=RunState.ACCEPTED)
 
-    def list_histories(self) -> tuple[HistoryItem, ...]:
+    def list_histories(self, user_id: str = "") -> tuple[HistoryItem, ...]:
         """チャット履歴を更新日時降順で返す。"""
         with self._lock:
             histories = [
                 self._to_history_item(chat)
                 for chat in self._chats.values()
-                if len(chat.run_ids) > 0 and chat.chat_state is ChatState.ACTIVE
+                if len(chat.run_ids) > 0
+                and chat.chat_state is ChatState.ACTIVE
+                and (not user_id or chat.user_id == user_id)
             ]
         return tuple(sorted(histories, key=lambda item: item.updated_at, reverse=True))
 
@@ -158,10 +344,10 @@ class InMemoryChatRepository:
             for run in sorted(runs, key=lambda item: (item.started_at, str(item.id)))
         )
 
-    def get_chat_detail(self, chat_id: UUID) -> ChatDetail:
+    def get_chat_detail(self, chat_id: UUID, user_id: str = "") -> ChatDetail:
         """指定チャットの詳細を返す。"""
         with self._lock:
-            chat = self._get_active_chat_locked(chat_id)
+            chat = self._get_active_chat_locked(chat_id, user_id=user_id)
             runs = tuple(
                 self._to_run_detail(self._runs[run_id]) for run_id in chat.run_ids
             )
@@ -173,6 +359,7 @@ class InMemoryChatRepository:
             chat = self._get_active_chat_locked(chat_id)
             return ChatRuntimeContext(
                 chat_id=chat.id,
+                user_id=chat.user_id or str(chat.local_user_id),
                 local_user_id=chat.local_user_id,
                 session_id=chat.session_id,
                 generation_conversation_id=chat.generation_conversation_id,
@@ -302,10 +489,10 @@ class InMemoryChatRepository:
         self._raise_if_deleting(self._artifact_chat_ids[artifact_id])
         return artifact
 
-    def mark_chat_deleting(self, chat_id: UUID) -> DeleteChatResult:
+    def mark_chat_deleting(self, chat_id: UUID, user_id: str = "") -> DeleteChatResult:
         """対象チャットを削除中にする。"""
         with self._lock:
-            chat = self._get_chat_locked(chat_id)
+            chat = self._get_chat_locked(chat_id, user_id=user_id)
             chat.chat_state = ChatState.DELETING
             return DeleteChatResult(chat_id=chat_id, chat_state=ChatState.DELETING)
 
@@ -334,6 +521,7 @@ class InMemoryChatRepository:
             )
             return ChatDeletionTarget(
                 chat_id=chat.id,
+                user_id=chat.user_id or str(chat.local_user_id),
                 local_user_id=chat.local_user_id,
                 session_id=chat.session_id,
                 unfinished_runs=unfinished_runs,
@@ -369,10 +557,11 @@ class InMemoryChatRepository:
         reference_relative_path: str,
         artifact_relative_path: str,
         artifact_mime_type: str,
+        user_id: str = "demo-user",
     ) -> UUID:
         """テスト用に採用済み回答、参照元、成果物メタ情報を登録する。"""
         with self._lock:
-            accepted = self.create_chat_with_first_run("回答済み確認")
+            accepted = self.create_chat_with_first_run("回答済み確認", user_id=user_id)
             run = self._runs[accepted.run_id]
             reference_id = uuid4()
             artifact_id = uuid4()
@@ -443,14 +632,20 @@ class InMemoryChatRepository:
             user_message=run.user_message,
         )
 
-    def _get_chat_locked(self, chat_id: UUID) -> _ChatRecord:
+    def _get_chat_locked(self, chat_id: UUID, user_id: str = "") -> _ChatRecord:
         chat = self._chats.get(chat_id)
-        if chat is None:
+        if chat is None or (user_id and chat.user_id != user_id):
             raise ChatNotFoundError()
         return chat
 
-    def _get_active_chat_locked(self, chat_id: UUID) -> _ChatRecord:
-        chat = self._get_chat_locked(chat_id)
+    def _get_user_locked(self, user_id: str) -> AccountUserData:
+        user = self._users.get(user_id)
+        if user is None:
+            raise ChatNotFoundError()
+        return user
+
+    def _get_active_chat_locked(self, chat_id: UUID, user_id: str = "") -> _ChatRecord:
+        chat = self._get_chat_locked(chat_id, user_id=user_id)
         if chat.chat_state is ChatState.DELETING:
             raise ChatDeletingError()
         return chat

@@ -5,6 +5,8 @@ from uuid import UUID
 
 from backend.application.ports.database.dto import (
     AcceptedRun,
+    AccountDeletionTarget,
+    AccountUserData,
     AnswerData,
     ArtifactData,
     ChatDeletionTarget,
@@ -13,6 +15,7 @@ from backend.application.ports.database.dto import (
     DeleteChatResult,
     DisplayReferenceData,
     HistoryItem,
+    LoginSessionData,
     UnfinishedRun,
 )
 from backend.domain.execution.run_state import RunState
@@ -23,6 +26,82 @@ class TransactionManagerPort(Protocol):
 
     def transaction(self) -> AbstractContextManager[None]:
         """1つのDB作業単位を開始する。"""
+
+
+class AccountReadRepositoryPort(Protocol):
+    """ユーザとログインセッション参照境界。"""
+
+    def get_user_for_login(self, user_id: str) -> AccountUserData | None:
+        """ログイン検証用ユーザ情報を返す。"""
+
+    def find_session_by_token_hash(self, token_hash: str) -> LoginSessionData | None:
+        """トークンハッシュに対応するログインセッションを返す。"""
+
+
+class AccountWriteRepositoryPort(Protocol):
+    """ユーザ更新境界。"""
+
+    def create_user(
+        self, user_id: str, user_name: str, password_hash: str, now: datetime
+    ) -> None:
+        """ユーザを作成する。"""
+
+    def update_user_name(
+        self, user_id: str, user_name: str, now: datetime
+    ) -> AccountUserData:
+        """ユーザ名を更新し、更新後ユーザを返す。"""
+
+    def update_password_hash(
+        self, user_id: str, password_hash: str, now: datetime
+    ) -> None:
+        """パスワードハッシュを更新する。"""
+
+    def mark_user_deleting(self, user_id: str, now: datetime) -> None:
+        """ユーザを削除中に更新する。"""
+
+    def mark_user_chats_deleting(self, user_id: str, now: datetime) -> None:
+        """ユーザの全チャットを削除中に更新する。"""
+
+
+class LoginSessionRepositoryPort(Protocol):
+    """ログインセッション更新境界。"""
+
+    def create_login_session(
+        self, token_hash: str, user_id: str, expires_at: datetime, now: datetime
+    ) -> LoginSessionData:
+        """ログインセッションを作成する。"""
+
+    def delete_session_by_token_hash(self, token_hash: str) -> int:
+        """トークンハッシュに対応するログインセッションを削除する。"""
+
+    def delete_sessions_by_user_id(self, user_id: str) -> int:
+        """ユーザの全ログインセッションを削除する。"""
+
+    def delete_expired_sessions(self, now: datetime) -> int:
+        """期限切れログインセッションを削除する。"""
+
+
+class AccountDeletionRepositoryPort(Protocol):
+    """アカウント物理削除境界。"""
+
+    def list_deleting_user_ids(self) -> tuple[str, ...]:
+        """削除中ユーザIDを返す。"""
+
+    def get_account_deletion_target(self, user_id: str) -> AccountDeletionTarget | None:
+        """アカウント物理削除対象を返す。"""
+
+    def delete_account_data(self, user_id: str) -> None:
+        """ユーザに紐づくDBデータを削除する。"""
+
+
+class AccountRepositoryPort(
+    AccountReadRepositoryPort,
+    AccountWriteRepositoryPort,
+    LoginSessionRepositoryPort,
+    AccountDeletionRepositoryPort,
+    Protocol,
+):
+    """アカウント永続化を行うRepository境界。"""
 
 
 class AcceptedRunStateRepositoryPort(Protocol):
@@ -41,14 +120,18 @@ class AcceptedRunStateRepositoryPort(Protocol):
 class StartChatRepositoryPort(AcceptedRunStateRepositoryPort, Protocol):
     """新規チャット受付に必要なRepository境界。"""
 
-    def create_chat_with_first_run(self, user_instruction: str) -> AcceptedRun:
+    def create_chat_with_first_run(
+        self, user_instruction: str, user_id: str = ""
+    ) -> AcceptedRun:
         """新規チャット、初回run、初回指示を保存する。"""
 
 
 class AppendChatRunRepositoryPort(AcceptedRunStateRepositoryPort, Protocol):
     """継続指示受付に必要なRepository境界。"""
 
-    def append_run(self, chat_id: UUID, user_instruction: str) -> AcceptedRun:
+    def append_run(
+        self, chat_id: UUID, user_instruction: str, user_id: str = ""
+    ) -> AcceptedRun:
         """既存チャットへ受付runと指示を追加する。"""
 
 
@@ -152,10 +235,10 @@ class ChatRuntimeRepositoryPort(Protocol):
 class ChatReadRepositoryPort(Protocol):
     """チャット表示情報と配信メタ情報の取得境界。"""
 
-    def list_histories(self) -> tuple[HistoryItem, ...]:
+    def list_histories(self, user_id: str = "") -> tuple[HistoryItem, ...]:
         """履歴一覧を返す。"""
 
-    def get_chat_detail(self, chat_id: UUID) -> ChatDetail:
+    def get_chat_detail(self, chat_id: UUID, user_id: str = "") -> ChatDetail:
         """チャット詳細を返す。"""
 
     def get_reference(self, reference_id: UUID) -> DisplayReferenceData:
@@ -168,7 +251,7 @@ class ChatReadRepositoryPort(Protocol):
 class ChatDeletionRepositoryPort(Protocol):
     """チャット削除に必要なRepository境界。"""
 
-    def mark_chat_deleting(self, chat_id: UUID) -> DeleteChatResult:
+    def mark_chat_deleting(self, chat_id: UUID, user_id: str = "") -> DeleteChatResult:
         """対象チャットを削除中へ更新する。"""
 
     def get_chat_deletion_target(self, chat_id: UUID) -> ChatDeletionTarget:
