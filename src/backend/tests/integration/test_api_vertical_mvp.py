@@ -1,4 +1,5 @@
 import asyncio
+import os
 from collections.abc import Callable
 from concurrent.futures import Future
 from dataclasses import dataclass, field
@@ -19,15 +20,16 @@ from backend.application.execution.execute_chat_run import RunEvent
 from backend.application.execution.run_event_type import RunEventType
 from backend.application.ports.codex.cancel_request_result import CancelRequestResult
 from backend.application.ports.database.dto import (
+    AcceptedRun,
     AnswerBlockData,
     AnswerData,
     ArtifactData,
+    ChatDetail,
+    ChatRuntimeContext,
     DisplayReferenceData,
-    HistoryItem,
 )
 from backend.application.ports.runtime.dispatch_status import DispatchStatus
 from backend.application.ports.runtime.dto import DispatchResult
-from backend.application.transactions import NoopTransactionManager
 from backend.domain.execution.run_state import RunState
 from backend.domain.references.source_type import SourceType
 from backend.infrastructure.codex.codex_event_kind import CodexEventKind
@@ -51,6 +53,13 @@ from backend.infrastructure.config.models import (
     UiConfig,
     ValidatorConfig,
 )
+from backend.infrastructure.database.repositories.sqlalchemy_chat_repository import (
+    SqlAlchemyChatRepository,
+)
+from backend.infrastructure.database.session.factory import create_transaction_manager
+from backend.infrastructure.database.session.transaction_manager import (
+    SqlAlchemyTransactionManager,
+)
 from backend.infrastructure.trace_log.trace_log_writer import TraceLogWriter
 from backend.presentation.rest.router import _run_sse_events
 from backend.presentation.schemas.api import (
@@ -62,9 +71,6 @@ from backend.presentation.schemas.api import (
     DeleteChatResponseSchema,
 )
 from backend.presentation.sse.run_event_broker import RunEventSubscription
-from backend.shared.errors.error_type import ErrorType
-from backend.shared.errors.errors import AppError
-from backend.tests.support.memory_repository import InMemoryChatRepository
 
 
 def test_app_config_exposes_only_public_ui_settings(tmp_path: Path) -> None:
@@ -111,12 +117,11 @@ def test_start_chat_registers_accepted_run_to_dispatcher(tmp_path: Path) -> None
 
     確認：新規チャット受付後にrun dispatcherへチャットIDとrun IDを渡す。
     """
-    repository = InMemoryChatRepository()
     dispatcher = RecordingDispatcher()
     app = create_app(
         config=_make_config(tmp_path),
-        repository=repository,
         run_dispatcher=dispatcher,
+        background_executor=ImmediateBackgroundExecutor(),
     )
     client = TestClient(app)
     _register_test_user(client)
@@ -266,50 +271,49 @@ def test_sse_streams_published_message_and_answer_events(tmp_path: Path) -> None
 
     確認：接続直後の現在状態に続けて、購読した中間メッセージと最終回答をSSE配信する。
     """
-    repository = InMemoryChatRepository()
+    event_source = PreloadedRunEventSource(events=())
+    app = create_app(
+        config=_make_config(tmp_path),
+        run_dispatcher=None,
+        run_event_source=event_source,
+        background_executor=ImmediateBackgroundExecutor(),
+    )
+    client = TestClient(app)
+    _register_test_user(client)
+    repository = _make_test_repository()
     accepted = repository.create_chat_with_first_run("初回", user_id="demo-user")
     reference_id = UUID("00000000-0000-0000-0000-000000000601")
-    event_source = PreloadedRunEventSource(
-        events=(
-            RunEvent(
-                event=RunEventType.MESSAGE,
-                chat_id=accepted.chat_id,
-                run_id=accepted.run_id,
-                text="資料を検索しています。",
-            ),
-            RunEvent(
-                event=RunEventType.ANSWER,
-                chat_id=accepted.chat_id,
-                run_id=accepted.run_id,
-                state=RunState.COMPLETED,
-                answer=AnswerData(
-                    blocks=(
-                        AnswerBlockData(
-                            markdown="検証済み回答",
-                            references=(
-                                DisplayReferenceData(
-                                    reference_id=reference_id,
-                                    source_type=SourceType.PDF,
-                                    label="資料",
-                                    relative_path="manual.pdf",
-                                    page_start=2,
-                                    page_end=3,
-                                ),
+    event_source.events = (
+        RunEvent(
+            event=RunEventType.MESSAGE,
+            chat_id=accepted.chat_id,
+            run_id=accepted.run_id,
+            text="資料を検索しています。",
+        ),
+        RunEvent(
+            event=RunEventType.ANSWER,
+            chat_id=accepted.chat_id,
+            run_id=accepted.run_id,
+            state=RunState.COMPLETED,
+            answer=AnswerData(
+                blocks=(
+                    AnswerBlockData(
+                        markdown="検証済み回答",
+                        references=(
+                            DisplayReferenceData(
+                                reference_id=reference_id,
+                                source_type=SourceType.PDF,
+                                label="資料",
+                                relative_path="manual.pdf",
+                                page_start=2,
+                                page_end=3,
                             ),
                         ),
                     ),
                 ),
             ),
-        )
+        ),
     )
-    app = create_app(
-        config=_make_config(tmp_path),
-        repository=repository,
-        run_dispatcher=None,
-        run_event_source=event_source,
-    )
-    client = TestClient(app)
-    _register_test_user(client)
 
     with client.stream(
         "GET",
@@ -330,19 +334,19 @@ def test_sse_replays_saved_intermediate_messages_on_connect(tmp_path: Path) -> N
 
     確認：SSE接続前に保存済みの中間メッセージも、接続直後に発生順で配信する。
     """
-    repository = InMemoryChatRepository()
+    app = create_app(
+        config=_make_config(tmp_path),
+        run_dispatcher=None,
+        run_event_source=ClosedRunEventSource(),
+        background_executor=ImmediateBackgroundExecutor(),
+    )
+    client = TestClient(app)
+    _register_test_user(client)
+    repository = _make_test_repository()
     accepted = repository.create_chat_with_first_run("初回", user_id="demo-user")
     repository.add_intermediate_message(
         accepted.chat_id, accepted.run_id, "作業を開始します。"
     )
-    app = create_app(
-        config=_make_config(tmp_path),
-        repository=repository,
-        run_dispatcher=None,
-        run_event_source=ClosedRunEventSource(),
-    )
-    client = TestClient(app)
-    _register_test_user(client)
 
     with client.stream(
         "GET",
@@ -361,33 +365,32 @@ def test_sse_streams_state_and_error_events(tmp_path: Path) -> None:
 
     確認：購読した状態変化とエラー終端をSSE配信し、接続を終了する。
     """
-    repository = InMemoryChatRepository()
-    accepted = repository.create_chat_with_first_run("初回", user_id="demo-user")
-    event_source = PreloadedRunEventSource(
-        events=(
-            RunEvent(
-                event=RunEventType.STATE,
-                chat_id=accepted.chat_id,
-                run_id=accepted.run_id,
-                state=RunState.RUNNING,
-            ),
-            RunEvent(
-                event=RunEventType.ERROR,
-                chat_id=accepted.chat_id,
-                run_id=accepted.run_id,
-                state=RunState.ERROR,
-                user_message="回答の生成に失敗しました。再度お試しください。",
-            ),
-        )
-    )
+    event_source = PreloadedRunEventSource(events=())
     app = create_app(
         config=_make_config(tmp_path),
-        repository=repository,
         run_dispatcher=None,
         run_event_source=event_source,
+        background_executor=ImmediateBackgroundExecutor(),
     )
     client = TestClient(app)
     _register_test_user(client)
+    repository = _make_test_repository()
+    accepted = repository.create_chat_with_first_run("初回", user_id="demo-user")
+    event_source.events = (
+        RunEvent(
+            event=RunEventType.STATE,
+            chat_id=accepted.chat_id,
+            run_id=accepted.run_id,
+            state=RunState.RUNNING,
+        ),
+        RunEvent(
+            event=RunEventType.ERROR,
+            chat_id=accepted.chat_id,
+            run_id=accepted.run_id,
+            state=RunState.ERROR,
+            user_message="回答の生成に失敗しました。再度お試しください。",
+        ),
+    )
 
     with client.stream(
         "GET",
@@ -406,16 +409,16 @@ def test_sse_closes_when_subscription_returns_no_event(tmp_path: Path) -> None:
 
     確認：購読キューが終端した場合は、初期状態だけを送信して終了する。
     """
-    repository = InMemoryChatRepository()
-    accepted = repository.create_chat_with_first_run("初回", user_id="demo-user")
     app = create_app(
         config=_make_config(tmp_path),
-        repository=repository,
         run_dispatcher=None,
         run_event_source=ClosedRunEventSource(),
+        background_executor=ImmediateBackgroundExecutor(),
     )
     client = TestClient(app)
     _register_test_user(client)
+    repository = _make_test_repository()
+    accepted = repository.create_chat_with_first_run("初回", user_id="demo-user")
 
     with client.stream(
         "GET",
@@ -435,14 +438,15 @@ async def test_sse_disconnect_unsubscribes_without_waiting_for_event(
 
     確認：イベント未到着の接続切断でも待機を継続せず、購読を解除する。
     """
-    repository = InMemoryChatRepository()
+    repository = _make_test_repository()
     accepted = repository.create_chat_with_first_run("初回", user_id="demo-user")
     event_source = OpenRunEventSource()
+    transaction_manager = create_transaction_manager(_integration_database_url())
     request = DisconnectingAfterInitialStateRequest()
     stream = _run_sse_events(
         GetChatDetailUseCase(
-            repository=repository,
-            transaction_manager=NoopTransactionManager(),
+            SqlAlchemyChatRepository(session_provider=transaction_manager),
+            transaction_manager,
         ),
         event_source,
         accepted.chat_id,
@@ -842,73 +846,11 @@ def test_spa_static_fallback_serves_index_without_catching_api(tmp_path: Path) -
     assert api_response.status_code == 404
 
 
-def test_repository_system_error_returns_500(tmp_path: Path) -> None:
-    """観点：エラー変換。確認：RepositoryのSYSTEM例外をHTTP 500にする。"""
-    app = create_app(
-        config=_make_config(tmp_path),
-        repository=BrokenHistoryRepository(),
-        run_dispatcher=None,
-    )
-    client = TestClient(app)
-    _register_test_user(client)
-
-    response = client.get("/api/chat-histories")
-
-    assert response.status_code == 500
-
-
-def test_unexpected_api_error_writes_system_trace_log(tmp_path: Path) -> None:
-    """観点：トレースログ。
-
-    確認：想定外例外でもSYSTEM分類のAPI失敗ログを保存する。
-    """
-    app = create_app(
-        config=_make_config(tmp_path),
-        repository=UnexpectedHistoryRepository(),
-        run_dispatcher=None,
-    )
-    client = TestClient(app, raise_server_exceptions=False)
-    _register_test_user(client)
-
-    response = client.get("/api/chat-histories")
-
-    assert response.status_code == 500
-    records = _trace_records(tmp_path)
-    assert any(
-        record["event_name"] == "api_failed"
-        and record["stage"] == "chat_histories"
-        and record["error_type"] == "system"
-        and record["exception_type"] == "RuntimeError"
-        and "stacktrace" in record
-        for record in records
-    )
-
-
-def test_create_app_writes_trace_log_with_app_timezone_path(tmp_path: Path) -> None:
-    """観点：トレースログ。確認：アプリ共通タイムゾーンの日時でログパスを作る。"""
-    app = create_app(
-        config=_make_config(tmp_path),
-        repository=UnexpectedHistoryRepository(),
-        run_dispatcher=None,
-        clock=FixedClock(datetime(2026, 5, 10, 15, 0, tzinfo=UTC)),
-    )
-    client = TestClient(app, raise_server_exceptions=False)
-    _register_test_user(client)
-
-    response = client.get("/api/chat-histories")
-
-    assert response.status_code == 500
-    log_path = tmp_path / "logs/trace/2026-05-11/00-00-00_000000_api_failed.yaml"
-    payload = yaml.safe_load(log_path.read_text(encoding="utf-8"))
-    assert payload["occurred_at"] == "2026-05-11T00:00:00+09:00"
-    assert payload["event_name"] == "api_failed"
-
-
 def test_startup_recovery_reregisters_and_terminalizes_unfinished_runs(
     tmp_path: Path,
 ) -> None:
     """観点：起動時実行回復。確認：未完了runを再登録または終端状態へ整合する。"""
-    repository = InMemoryChatRepository()
+    repository = _make_test_repository()
     accepted = repository.create_chat_with_first_run("accepted run")
     running = repository.create_chat_with_first_run("running run")
     validating = repository.create_chat_with_first_run("validating run")
@@ -924,8 +866,8 @@ def test_startup_recovery_reregisters_and_terminalizes_unfinished_runs(
 
     create_app(
         config=_make_config(tmp_path),
-        repository=repository,
         run_dispatcher=dispatcher,
+        background_executor=ImmediateBackgroundExecutor(),
     )
 
     assert dispatcher.registered == [(accepted.chat_id, accepted.run_id)]
@@ -956,8 +898,8 @@ def test_create_app_cleans_expired_trace_logs(tmp_path: Path) -> None:
 
     create_app(
         config=_make_config(tmp_path),
-        repository=InMemoryChatRepository(),
         run_dispatcher=None,
+        background_executor=ImmediateBackgroundExecutor(),
     )
 
     assert expired_dir.exists() is False
@@ -971,7 +913,6 @@ def test_default_runtime_executes_start_chat_through_codex_adapters(
 
     確認：create_app既定のdispatcher/adapterで生成、検証、回答保存まで到達する。
     """
-    repository = InMemoryChatRepository()
     datasource_dir = tmp_path / "readonly"
     datasource_dir.mkdir()
     _write_pdf(datasource_dir / "manual.pdf", page_count=2)
@@ -1038,7 +979,6 @@ def test_default_runtime_executes_start_chat_through_codex_adapters(
     )
     app = create_app(
         config=_make_config(tmp_path),
-        repository=repository,
         codex_runner=codex_runner,
         background_executor=ImmediateBackgroundExecutor(),
     )
@@ -1054,6 +994,7 @@ def test_default_runtime_executes_start_chat_through_codex_adapters(
     accepted = TypeAdapter(ChatStartResponseSchema).validate_json(response.text)
     detail_response = client.get(f"/api/chats/{accepted.chat_id}")
     detail = TypeAdapter(ChatDetailResponseSchema).validate_json(detail_response.text)
+    repository = _make_test_repository()
     saved_context = repository.get_chat_runtime_context(UUID(accepted.chat_id))
     assert detail.runs[0].state == "completed"
     assert [message.text for message in detail.runs[0].intermediate_messages] == [
@@ -1105,28 +1046,6 @@ class RecordingDispatcher:
         _ = trace_id
         self.registered.append((chat_id, run_id))
         return DispatchResult(status=DispatchStatus.REGISTERED)
-
-
-class BrokenHistoryRepository(InMemoryChatRepository):
-    """履歴一覧でシステム例外を返すテスト用Repository。"""
-
-    def list_histories(self, user_id: str = "") -> tuple[HistoryItem, ...]:
-        """システム例外を発生させる。"""
-        _ = user_id
-        raise AppError(
-            ErrorType.SYSTEM,
-            trace=True,
-            diagnostic_message="DB接続に失敗しました。",
-        )
-
-
-class UnexpectedHistoryRepository(InMemoryChatRepository):
-    """履歴一覧で想定外例外を返すテスト用Repository。"""
-
-    def list_histories(self, user_id: str = "") -> tuple[HistoryItem, ...]:
-        """想定外例外を発生させる。"""
-        _ = user_id
-        raise RuntimeError("unexpected failure")
 
 
 @dataclass(slots=True)
@@ -1249,21 +1168,15 @@ def _make_client(tmp_path: Path) -> TestClient:
 
 def _make_client_with_repository(
     tmp_path: Path,
-) -> tuple[TestClient, InMemoryChatRepository]:
-    repository = InMemoryChatRepository(
-        now_values=(
-            datetime(2026, 5, 9, 10, 0, tzinfo=UTC),
-            datetime(2026, 5, 9, 10, 1, tzinfo=UTC),
-            datetime(2026, 5, 9, 10, 2, tzinfo=UTC),
-        )
-    )
+) -> tuple[TestClient, "PostgresTestRepository"]:
     app = create_app(
         config=_make_config(tmp_path),
-        repository=repository,
         run_dispatcher=None,
+        background_executor=ImmediateBackgroundExecutor(),
     )
     client = TestClient(app)
     _register_test_user(client)
+    repository = _make_test_repository()
     return client, repository
 
 
@@ -1302,9 +1215,7 @@ def _make_config(tmp_path: Path) -> AppConfig:
             workdir=tmp_path / "codex/sessions_validator",
             output_schema=tmp_path / "codex/output_json_schema/validator_schema.json",
         ),
-        database=DatabaseConfig(
-            url="postgresql+psycopg://user:password@127.0.0.1:5432/db"
-        ),
+        database=DatabaseConfig(url=_integration_database_url()),
         server=ServerConfig(timeout_seconds=300),
         trace_log=TraceLogConfig(
             dir=tmp_path / "logs/trace",
@@ -1312,6 +1223,140 @@ def _make_config(tmp_path: Path) -> AppConfig:
             max_files_per_day=1000,
         ),
     )
+
+
+def _integration_database_url() -> str:
+    return os.environ.get(
+        "D_CONCIERGE_TEST_DATABASE_URL",
+        "postgresql+psycopg://"
+        "d_concierge_test:d_concierge_test@127.0.0.1:55432/d_concierge_test",
+    )
+
+
+def _make_test_repository() -> "PostgresTestRepository":
+    transaction_manager = create_transaction_manager(_integration_database_url())
+    return PostgresTestRepository(transaction_manager)
+
+
+class PostgresTestRepository:
+    """結合テスト用にPostgreSQLへ直接テストデータを作成する補助クラス。"""
+
+    def __init__(self, transaction_manager: SqlAlchemyTransactionManager) -> None:
+        self._transaction_manager = transaction_manager
+        self._repository = SqlAlchemyChatRepository(
+            session_provider=transaction_manager,
+            clock=FixedClock(datetime(2026, 5, 9, 10, 0, tzinfo=UTC)),
+        )
+        self._latest_artifact_id: UUID | None = None
+
+    def ensure_user(self, user_id: str = "demo-user") -> None:
+        """チャットに紐づくテストユーザが存在する状態にする。"""
+        with self._transaction_manager.transaction():
+            if self._repository.get_user_for_login(user_id) is None:
+                self._repository.create_user(
+                    user_id=user_id,
+                    user_name="デモユーザ",
+                    password_hash="test-password-hash",
+                    now=datetime(2026, 5, 9, 10, 0, tzinfo=UTC),
+                )
+
+    def create_chat_with_first_run(
+        self, user_instruction: str, user_id: str = "demo-user"
+    ) -> AcceptedRun:
+        """新規チャットと初回runをPostgreSQLへ作成する。"""
+        self.ensure_user(user_id)
+        with self._transaction_manager.transaction():
+            return self._repository.create_chat_with_first_run(
+                user_instruction, user_id=user_id
+            )
+
+    def set_run_state(
+        self,
+        chat_id: UUID,
+        run_id: UUID,
+        state: RunState,
+        user_message: str | None = None,
+    ) -> None:
+        """run状態をPostgreSQL上で更新する。"""
+        with self._transaction_manager.transaction():
+            self._repository.set_run_state(chat_id, run_id, state, user_message)
+
+    def add_intermediate_message(self, chat_id: UUID, run_id: UUID, text: str) -> None:
+        """中間メッセージをPostgreSQLへ追加する。"""
+        with self._transaction_manager.transaction():
+            self._repository.add_intermediate_message(chat_id, run_id, text)
+
+    def save_completed_answer(
+        self, chat_id: UUID, run_id: UUID, answer: AnswerData
+    ) -> None:
+        """検証済み回答をPostgreSQLへ保存する。"""
+        with self._transaction_manager.transaction():
+            self._repository.save_completed_answer(chat_id, run_id, answer)
+        first_artifact = next(
+            (artifact for block in answer.blocks for artifact in block.artifacts),
+            None,
+        )
+        if first_artifact is not None:
+            self._latest_artifact_id = first_artifact.artifact_id
+
+    def save_completed_answer_for_test(
+        self,
+        *,
+        markdown: str,
+        reference_relative_path: str,
+        artifact_relative_path: str,
+        artifact_mime_type: str,
+    ) -> UUID:
+        """回答、参照元、成果物メタ情報をPostgreSQLへ作成する。"""
+        accepted = self.create_chat_with_first_run("回答確認")
+        self.set_run_state(accepted.chat_id, accepted.run_id, RunState.COMPLETED)
+        reference_id = UUID("00000000-0000-0000-0000-000000000301")
+        artifact_id = UUID("00000000-0000-0000-0000-000000000302")
+        self.save_completed_answer(
+            accepted.chat_id,
+            accepted.run_id,
+            AnswerData(
+                blocks=(
+                    AnswerBlockData(
+                        markdown=markdown,
+                        references=(
+                            DisplayReferenceData(
+                                reference_id=reference_id,
+                                source_type=SourceType.PDF,
+                                label=Path(reference_relative_path).name,
+                                relative_path=reference_relative_path,
+                                page_start=1,
+                                page_end=1,
+                            ),
+                        ),
+                        artifacts=(
+                            ArtifactData(
+                                artifact_id=artifact_id,
+                                mime_type=artifact_mime_type,
+                                relative_path=artifact_relative_path,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        )
+        return reference_id
+
+    def latest_artifact_id_for_test(self) -> UUID:
+        """直近に保存した成果物IDを返す。"""
+        if self._latest_artifact_id is None:
+            raise AssertionError("成果物IDが保存されていません。")
+        return self._latest_artifact_id
+
+    def get_chat_detail(self, chat_id: UUID) -> ChatDetail:
+        """PostgreSQLからチャット詳細を取得する。"""
+        with self._transaction_manager.transaction():
+            return self._repository.get_chat_detail(chat_id)
+
+    def get_chat_runtime_context(self, chat_id: UUID) -> ChatRuntimeContext:
+        """PostgreSQLからCodex実行コンテキストを取得する。"""
+        with self._transaction_manager.transaction():
+            return self._repository.get_chat_runtime_context(chat_id)
 
 
 @dataclass(frozen=True, slots=True)

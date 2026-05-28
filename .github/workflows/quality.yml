@@ -71,6 +71,8 @@ jobs:
           fi
 
       - name: Backend integration tests
+        env:
+          D_CONCIERGE_TEST_DATABASE_URL: postgresql+psycopg://d_concierge_test:d_concierge_test@127.0.0.1:55432/d_concierge_test
         run: |
           if find src/backend/tests/integration -name 'test_*.py' -print -quit | grep -q .; then
             UV_CACHE_DIR=/tmp/uv-cache uv run pytest src/backend/tests/integration

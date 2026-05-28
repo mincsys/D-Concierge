@@ -4,8 +4,10 @@ from fastapi.testclient import TestClient
 
 from backend.app.factory import create_app
 from backend.shared.user_messages import PASSWORD_FORMAT_MESSAGE
-from backend.tests.integration.test_api_vertical_mvp import _make_config
-from backend.tests.support.memory_repository import InMemoryChatRepository
+from backend.tests.integration.test_api_vertical_mvp import (
+    ImmediateBackgroundExecutor,
+    _make_config,
+)
 
 
 def test_register_sets_cookie_and_me_returns_current_user(tmp_path: Path) -> None:
@@ -166,7 +168,7 @@ def test_account_name_password_and_delete_flow(tmp_path: Path) -> None:
 def _make_client(tmp_path: Path) -> TestClient:
     app = create_app(
         config=_make_config(tmp_path),
-        repository=InMemoryChatRepository(),
         run_dispatcher=None,
+        background_executor=ImmediateBackgroundExecutor(),
     )
     return TestClient(app)
