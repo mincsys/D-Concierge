@@ -98,6 +98,8 @@ describe("frontend components", () => {
     );
 
     expect(screen.getByLabelText("送信")).toBeDisabled();
+    expect(screen.getByLabelText("送信")).toHaveClass("disabled:bg-[var(--dc-muted)]");
+    expect(screen.getByLabelText("送信")).not.toHaveClass("bg-linear-to-b");
     await user.type(screen.getByPlaceholderText("指示を入力してください"), "   ");
     await user.click(screen.getByLabelText("送信"));
     expect(screen.getByText("ユーザ指示を入力してください。")).toBeInTheDocument();

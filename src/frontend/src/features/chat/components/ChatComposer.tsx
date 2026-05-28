@@ -172,6 +172,7 @@ export function ChatComposer({
               className={cn(
                 "grid size-11 rounded-xl bg-[var(--dc-primary)] p-0 text-white shadow-[0_10px_20px_var(--dc-shadow-primary)] hover:bg-[var(--dc-primary)] disabled:bg-[var(--dc-muted)] disabled:text-white disabled:opacity-100 disabled:shadow-none disabled:hover:bg-[var(--dc-muted)]",
               )}
+              variant="ghost"
               type={actionMode === "send" ? "submit" : "button"}
               aria-label={actionLabel}
               disabled={actionDisabled}
