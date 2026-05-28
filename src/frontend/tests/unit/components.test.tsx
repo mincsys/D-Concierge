@@ -100,6 +100,7 @@ describe("frontend components", () => {
     expect(screen.getByLabelText("送信")).toBeDisabled();
     expect(screen.getByLabelText("送信")).toHaveClass("disabled:bg-[var(--dc-muted)]");
     expect(screen.getByLabelText("送信")).not.toHaveClass("bg-linear-to-b");
+    expect(screen.getByLabelText("送信")).not.toHaveClass("hover:text-accent-foreground");
     await user.type(screen.getByPlaceholderText("指示を入力してください"), "   ");
     await user.click(screen.getByLabelText("送信"));
     expect(screen.getByText("ユーザ指示を入力してください。")).toBeInTheDocument();
@@ -123,6 +124,7 @@ describe("frontend components", () => {
         <ChatComposer actionMode="cancel" onCancel={canceled} onSubmit={vi.fn()} />
       </Providers>,
     );
+    expect(screen.getByLabelText("キャンセル")).not.toHaveClass("hover:text-accent-foreground");
     await user.click(screen.getByLabelText("キャンセル"));
     expect(canceled).toHaveBeenCalledTimes(1);
 
