@@ -1,5 +1,5 @@
 from datetime import UTC, datetime
-from uuid import UUID, uuid4
+from uuid import UUID, uuid7
 
 from backend.application.ports.database.dto import (
     SHARED_LOCAL_USER_ID,
@@ -81,14 +81,14 @@ def test_memory_repository_rejects_missing_reference_artifact_and_latest() -> No
     repository = InMemoryChatRepository()
 
     try:
-        repository.get_reference(uuid4())
+        repository.get_reference(uuid7())
     except AppError as exc:
         assert exc.error_type is ErrorType.NOT_FOUND
     else:
         raise AssertionError("対象なし参照元の例外が発生しませんでした。")
 
     try:
-        repository.get_artifact(uuid4())
+        repository.get_artifact(uuid7())
     except AppError as exc:
         assert exc.error_type is ErrorType.NOT_FOUND
     else:
@@ -105,7 +105,7 @@ def test_memory_repository_rejects_missing_reference_artifact_and_latest() -> No
 def test_memory_repository_rejects_missing_chat_and_run() -> None:
     """観点：メモリRepository IF。確認：対象なしチャットとrunをNOT_FOUNDにする。"""
     repository = InMemoryChatRepository()
-    missing_chat_id = uuid4()
+    missing_chat_id = uuid7()
 
     try:
         repository.get_chat_detail(missing_chat_id)
@@ -116,7 +116,7 @@ def test_memory_repository_rejects_missing_chat_and_run() -> None:
 
     accepted = repository.create_chat_with_first_run("資料を要約")
     try:
-        repository.get_run_state(accepted.chat_id, uuid4())
+        repository.get_run_state(accepted.chat_id, uuid7())
     except AppError as exc:
         assert exc.error_type is ErrorType.NOT_FOUND
     else:

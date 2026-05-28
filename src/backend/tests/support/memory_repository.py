@@ -2,7 +2,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from threading import RLock
-from uuid import UUID, uuid4
+from uuid import UUID, uuid7
 
 from backend.application.ports.database.dto import (
     SHARED_LOCAL_USER_ID,
@@ -271,13 +271,13 @@ class InMemoryChatRepository:
         """新規チャット、初回run、初回指示を同時に保存する。"""
         instruction = _user_instruction(user_instruction)
         now = self._now()
-        chat_id = uuid4()
-        run_id = uuid4()
+        chat_id = uuid7()
+        run_id = uuid7()
         chat = _ChatRecord(
             id=chat_id,
             user_id=user_id,
             local_user_id=SHARED_LOCAL_USER_ID,
-            session_id=uuid4(),
+            session_id=uuid7(),
             title=ChatTitlePolicy.make_title(instruction),
             updated_at=now,
             run_ids=[run_id],
@@ -300,7 +300,7 @@ class InMemoryChatRepository:
         """既存チャットへ受付runと指示を追加する。"""
         instruction = _user_instruction(user_instruction)
         now = self._now()
-        run_id = uuid4()
+        run_id = uuid7()
         with self._lock:
             chat = self._get_active_chat_locked(chat_id, user_id=user_id)
             for existing_run_id in chat.run_ids:
@@ -563,8 +563,8 @@ class InMemoryChatRepository:
         with self._lock:
             accepted = self.create_chat_with_first_run("回答済み確認", user_id=user_id)
             run = self._runs[accepted.run_id]
-            reference_id = uuid4()
-            artifact_id = uuid4()
+            reference_id = uuid7()
+            artifact_id = uuid7()
             reference = DisplayReferenceData(
                 reference_id=reference_id,
                 source_type=SourceType.PDF,

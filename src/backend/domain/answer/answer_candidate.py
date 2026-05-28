@@ -68,7 +68,7 @@ class AnswerParseError(Exception):
 class ParsedAnswerCandidate:
     """固定検証済み回答候補。"""
 
-    blocks: tuple["ParsedAnswerBlock", ...]
+    blocks: tuple[ParsedAnswerBlock, ...]
 
 
 @dataclass(frozen=True, slots=True)

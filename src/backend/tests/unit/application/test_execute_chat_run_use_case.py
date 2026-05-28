@@ -638,7 +638,6 @@ def test_execute_chat_run_saves_adopted_artifacts() -> None:
     assert artifact_saver.calls == [
         (
             ("![図](artifacts/chart.png)",),
-            accepted.run_id,
             Path("/codex/sessions/user/session"),
             "trace-501",
         )
@@ -1330,7 +1329,7 @@ class FakeCodexRunner:
 class TransactionObservingCodexRunner:
     """生成実行中のトランザクション状態を記録するテスト用CodexRunner。"""
 
-    transaction_manager: "RecordingTransactionManager"
+    transaction_manager: RecordingTransactionManager
     transaction_was_active_during_generation: bool | None = None
 
     def run_generation(
@@ -1364,7 +1363,7 @@ class StreamingFakeCodexRunner:
     """生成中の中間メッセージ通知を検証するテスト用CodexRunner。"""
 
     repository: InMemoryChatRepository
-    publisher: "RecordingPublisher"
+    publisher: RecordingPublisher
     start_message_was_persisted_before_generation: bool = False
     message_was_persisted_before_return: bool = False
     message_was_published_before_return: bool = False
@@ -1837,16 +1836,15 @@ class RecordingArtifactSaver:
     """成果物保存呼び出しを記録するテスト用Saver。"""
 
     saved: SavedAnswerBlocksArtifacts
-    calls: list[tuple[tuple[str, ...], UUID, Path, str]] = field(default_factory=list)
+    calls: list[tuple[tuple[str, ...], Path, str]] = field(default_factory=list)
 
     def save_for_answer_blocks(
         self,
         markdowns: tuple[str, ...],
-        run_id: UUID,
         session_workdir: Path,
         trace_id: str,
     ) -> SavedAnswerBlocksArtifacts:
-        self.calls.append((markdowns, run_id, session_workdir, trace_id))
+        self.calls.append((markdowns, session_workdir, trace_id))
         return self.saved
 
 
@@ -1859,11 +1857,10 @@ class FailingArtifactSaver:
     def save_for_answer_blocks(
         self,
         markdowns: tuple[str, ...],
-        run_id: UUID,
         session_workdir: Path,
         trace_id: str,
     ) -> SavedAnswerBlocksArtifacts:
-        _ = (markdowns, run_id, session_workdir, trace_id)
+        _ = (markdowns, session_workdir, trace_id)
         raise self.error
 
 

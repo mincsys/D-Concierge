@@ -1,7 +1,7 @@
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from uuid import UUID, uuid4
+from uuid import UUID, uuid7
 
 import pytest
 
@@ -30,8 +30,8 @@ def test_validate_answer_accepts_fixed_and_reference_valid_candidate() -> None:
         _valid_answer_json(),
         retry_count=0,
         user_instruction="資料を要約",
-        chat_id=uuid4(),
-        run_id=uuid4(),
+        chat_id=uuid7(),
+        run_id=uuid7(),
     )
 
     assert result.status is ValidationStatus.ACCEPTED
@@ -58,8 +58,8 @@ def test_validate_answer_forwards_reference_intermediate_callback() -> None:
         _valid_answer_json(),
         retry_count=0,
         user_instruction="資料を要約",
-        chat_id=uuid4(),
-        run_id=uuid4(),
+        chat_id=uuid7(),
+        run_id=uuid7(),
         on_intermediate_message=messages.append,
     )
 
@@ -138,8 +138,8 @@ def test_validate_answer_returns_regeneration_for_reference_failure() -> None:
         _valid_answer_json(),
         retry_count=1,
         user_instruction="資料を要約",
-        chat_id=uuid4(),
-        run_id=uuid4(),
+        chat_id=uuid7(),
+        run_id=uuid7(),
     )
 
     assert result.status is ValidationStatus.REGENERATE
@@ -191,8 +191,8 @@ def test_validate_answer_fails_when_retry_limit_reached() -> None:
         _valid_answer_json(),
         retry_count=2,
         user_instruction="資料を要約",
-        chat_id=uuid4(),
-        run_id=uuid4(),
+        chat_id=uuid7(),
+        run_id=uuid7(),
     )
 
     assert result.status is ValidationStatus.FAILED
@@ -219,8 +219,8 @@ def test_validate_answer_retries_validator_output_format_error() -> None:
         _valid_answer_json(),
         retry_count=0,
         user_instruction="資料を要約",
-        chat_id=uuid4(),
-        run_id=uuid4(),
+        chat_id=uuid7(),
+        run_id=uuid7(),
         get_timeout_seconds=lambda: next(timeouts),
     )
 
@@ -252,8 +252,8 @@ def test_validate_answer_raises_when_validator_output_retry_limit_reached() -> N
             _valid_answer_json(),
             retry_count=0,
             user_instruction="資料を要約",
-            chat_id=uuid4(),
-            run_id=uuid4(),
+            chat_id=uuid7(),
+            run_id=uuid7(),
             get_timeout_seconds=lambda: 30,
         )
 
@@ -280,8 +280,8 @@ def test_validate_answer_validator_max_retries_does_not_affect_generation_retry(
         _valid_answer_json(),
         retry_count=1,
         user_instruction="資料を要約",
-        chat_id=uuid4(),
-        run_id=uuid4(),
+        chat_id=uuid7(),
+        run_id=uuid7(),
     )
 
     assert result.status is ValidationStatus.FAILED

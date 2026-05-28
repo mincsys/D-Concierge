@@ -38,14 +38,14 @@ def test_get_reference_data_use_case_opens_pdf(tmp_path: Path) -> None:
 def test_get_artifact_use_case_allows_jpeg(tmp_path: Path) -> None:
     """観点：Codex成果物配信UseCase。確認：jpg/jpeg成果物をimage/jpegとして開く。"""
     saved_root = tmp_path / "saved_artifacts"
-    saved_file = saved_root / "demo-user" / "run-id" / "artifact-id.jpg"
+    saved_file = saved_root / "demo-user" / "session-id" / "artifact-id.jpg"
     saved_file.parent.mkdir(parents=True)
     saved_file.write_bytes(b"jpeg")
     repository = InMemoryChatRepository()
     repository.save_completed_answer_for_test(
         markdown="回答",
         reference_relative_path="manual.pdf",
-        artifact_relative_path="demo-user/run-id/artifact-id.jpg",
+        artifact_relative_path="demo-user/session-id/artifact-id.jpg",
         artifact_mime_type="image/jpeg",
     )
     artifact_id = repository.latest_artifact_id_for_test()
@@ -67,10 +67,10 @@ def test_get_artifact_use_case_opens_saved_artifact(tmp_path: Path) -> None:
     repository.save_completed_answer_for_test(
         markdown="回答",
         reference_relative_path="manual.pdf",
-        artifact_relative_path="demo-user/run-id/artifact.html",
+        artifact_relative_path="demo-user/session-id/artifact.html",
         artifact_mime_type="text/html",
     )
-    saved_file = saved_root / "demo-user" / "run-id" / "artifact.html"
+    saved_file = saved_root / "demo-user" / "session-id" / "artifact.html"
     saved_file.parent.mkdir(parents=True)
     saved_file.write_text("<main>ok</main>", encoding="utf-8")
     usecase = GetArtifactUseCase(

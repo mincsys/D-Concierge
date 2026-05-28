@@ -24,25 +24,56 @@ def test_file_artifact_store_copies_candidate_into_saved_area(
     candidate = session_workdir / "artifacts" / "chart.svg"
     candidate.write_text("<svg></svg>", encoding="utf-8")
     saved_root = tmp_path / "saved_artifacts"
-    run_id = UUID("00000000-0000-0000-0000-000000000601")
     artifact_id = UUID("00000000-0000-0000-0000-000000000611")
     store = FileArtifactStore(saved_artifacts_dir=saved_root)
 
     saved = store.save_adopted_file(
         session_workdir=session_workdir,
         candidate_relative_path="artifacts/chart.svg",
-        run_id=run_id,
         artifact_id=artifact_id,
     )
 
     assert saved == SavedArtifactFile(
         artifact_id=artifact_id,
         mime_type="image/svg+xml",
-        relative_path=f"user/{run_id}/{artifact_id}.svg",
+        relative_path=f"user/session/{artifact_id}.svg",
     )
     assert (saved_root / saved.relative_path).read_text(encoding="utf-8") == (
         "<svg></svg>"
     )
+
+
+def test_file_artifact_store_saves_multiple_files_under_same_session_dir(
+    tmp_path: Path,
+) -> None:
+    """観点：成果物ファイルIF。確認：同一セッションの成果物を同じセッションディレクトリへ保存する。"""
+    session_workdir = tmp_path / "sessions" / "user" / "session"
+    (session_workdir / "artifacts").mkdir(parents=True)
+    (session_workdir / "artifacts" / "first.svg").write_text(
+        "<svg>first</svg>", encoding="utf-8"
+    )
+    (session_workdir / "artifacts" / "second.svg").write_text(
+        "<svg>second</svg>", encoding="utf-8"
+    )
+    saved_root = tmp_path / "saved_artifacts"
+    first_artifact_id = UUID("00000000-0000-0000-0000-000000000621")
+    second_artifact_id = UUID("00000000-0000-0000-0000-000000000622")
+    store = FileArtifactStore(saved_artifacts_dir=saved_root)
+
+    first = store.save_adopted_file(
+        session_workdir=session_workdir,
+        candidate_relative_path="artifacts/first.svg",
+        artifact_id=first_artifact_id,
+    )
+    second = store.save_adopted_file(
+        session_workdir=session_workdir,
+        candidate_relative_path="artifacts/second.svg",
+        artifact_id=second_artifact_id,
+    )
+
+    assert first.relative_path == f"user/session/{first_artifact_id}.svg"
+    assert second.relative_path == f"user/session/{second_artifact_id}.svg"
+    assert (saved_root / "user" / "session").is_dir()
 
 
 @pytest.mark.parametrize(
@@ -61,14 +92,12 @@ def test_file_artifact_store_allows_jpeg_images(
     session_workdir = tmp_path / "sessions" / "user" / "session"
     (session_workdir / "artifacts").mkdir(parents=True)
     (session_workdir / "artifacts" / candidate_name).write_bytes(b"jpeg")
-    run_id = UUID("00000000-0000-0000-0000-000000000606")
     artifact_id = UUID("00000000-0000-0000-0000-000000000616")
     store = FileArtifactStore(saved_artifacts_dir=tmp_path / "saved_artifacts")
 
     saved = store.save_adopted_file(
         session_workdir=session_workdir,
         candidate_relative_path=f"artifacts/{candidate_name}",
-        run_id=run_id,
         artifact_id=artifact_id,
     )
 
@@ -78,13 +107,13 @@ def test_file_artifact_store_allows_jpeg_images(
 def test_file_artifact_store_opens_saved_file(tmp_path: Path) -> None:
     """観点：成果物配信。確認：保存済み領域内のメタ情報だけを配信用に開く。"""
     saved_root = tmp_path / "saved_artifacts"
-    saved_file = saved_root / "demo-user" / "run-id" / "artifact-id.html"
+    saved_file = saved_root / "demo-user" / "session-id" / "artifact-id.html"
     saved_file.parent.mkdir(parents=True)
     saved_file.write_text("<main>ok</main>", encoding="utf-8")
     store = FileArtifactStore(saved_artifacts_dir=saved_root)
 
     opened = store.open_saved_file(
-        relative_path="demo-user/run-id/artifact-id.html",
+        relative_path="demo-user/session-id/artifact-id.html",
         mime_type="text/html",
     )
 
@@ -114,7 +143,6 @@ def test_file_artifact_store_rejects_invalid_candidate_path(
         store.save_adopted_file(
             session_workdir=session_workdir,
             candidate_relative_path=candidate_relative_path,
-            run_id=UUID("00000000-0000-0000-0000-000000000602"),
             artifact_id=UUID("00000000-0000-0000-0000-000000000612"),
         )
 
@@ -131,7 +159,6 @@ def test_file_artifact_store_rejects_missing_candidate(tmp_path: Path) -> None:
         store.save_adopted_file(
             session_workdir=session_workdir,
             candidate_relative_path="artifacts/missing.png",
-            run_id=UUID("00000000-0000-0000-0000-000000000603"),
             artifact_id=UUID("00000000-0000-0000-0000-000000000613"),
         )
 
@@ -144,9 +171,8 @@ def test_file_artifact_store_rejects_existing_saved_artifact(tmp_path: Path) -> 
     (session_workdir / "artifacts").mkdir(parents=True)
     (session_workdir / "artifacts" / "chart.png").write_bytes(b"png")
     saved_root = tmp_path / "saved_artifacts"
-    run_id = UUID("00000000-0000-0000-0000-000000000605")
     artifact_id = UUID("00000000-0000-0000-0000-000000000615")
-    existing = saved_root / "user" / str(run_id) / f"{artifact_id}.png"
+    existing = saved_root / "user" / "session" / f"{artifact_id}.png"
     existing.parent.mkdir(parents=True)
     existing.write_bytes(b"existing")
     store = FileArtifactStore(saved_artifacts_dir=saved_root)
@@ -155,7 +181,6 @@ def test_file_artifact_store_rejects_existing_saved_artifact(tmp_path: Path) -> 
         store.save_adopted_file(
             session_workdir=session_workdir,
             candidate_relative_path="artifacts/chart.png",
-            run_id=run_id,
             artifact_id=artifact_id,
         )
 
@@ -179,7 +204,6 @@ def test_file_artifact_store_rejects_symlink_to_outside_candidate(
         store.save_adopted_file(
             session_workdir=session_workdir,
             candidate_relative_path="artifacts/outside.png",
-            run_id=UUID("00000000-0000-0000-0000-000000000604"),
             artifact_id=UUID("00000000-0000-0000-0000-000000000614"),
         )
 
@@ -189,14 +213,14 @@ def test_file_artifact_store_rejects_symlink_to_outside_candidate(
 @pytest.mark.parametrize(
     ("relative_path", "mime_type", "expected_error_type"),
     [
-        ("../run/artifact.html", "text/html", ErrorType.FORBIDDEN),
-        ("run/artifact.exe", "application/octet-stream", ErrorType.FORBIDDEN),
-        ("run/artifact.html", "text/html", ErrorType.FORBIDDEN),
-        ("run/deep/too-deep/artifact.html", "text/html", ErrorType.FORBIDDEN),
-        ("run/artifact.html", "image/png", ErrorType.FORBIDDEN),
-        ("user/run/missing.png", "image/png", ErrorType.NOT_FOUND),
-        ("run/\x00artifact.png", "image/png", ErrorType.FORBIDDEN),
-        ("C:/run/artifact.png", "image/png", ErrorType.FORBIDDEN),
+        ("../session/artifact.html", "text/html", ErrorType.FORBIDDEN),
+        ("session/artifact.exe", "application/octet-stream", ErrorType.FORBIDDEN),
+        ("session/artifact.html", "text/html", ErrorType.FORBIDDEN),
+        ("session/deep/too-deep/artifact.html", "text/html", ErrorType.FORBIDDEN),
+        ("session/artifact.html", "image/png", ErrorType.FORBIDDEN),
+        ("user/session/missing.png", "image/png", ErrorType.NOT_FOUND),
+        ("session/\x00artifact.png", "image/png", ErrorType.FORBIDDEN),
+        ("C:/session/artifact.png", "image/png", ErrorType.FORBIDDEN),
     ],
 )
 def test_file_artifact_store_rejects_invalid_saved_metadata(
@@ -207,7 +231,7 @@ def test_file_artifact_store_rejects_invalid_saved_metadata(
 ) -> None:
     """観点：成果物配信。確認：不正な保存済みメタ情報を拒否する。"""
     store = FileArtifactStore(saved_artifacts_dir=tmp_path / "saved_artifacts")
-    saved_html = tmp_path / "saved_artifacts" / "user" / "run" / "artifact.html"
+    saved_html = tmp_path / "saved_artifacts" / "user" / "session" / "artifact.html"
     saved_html.parent.mkdir(parents=True)
     saved_html.write_text("<main>ok</main>", encoding="utf-8")
 
@@ -229,35 +253,35 @@ def test_file_artifact_store_rejects_saved_symlink_to_outside(
     outside = tmp_path / "outside"
     outside.mkdir()
     (saved_root / "user").mkdir(parents=True)
-    (saved_root / "user" / "run").symlink_to(outside)
+    (saved_root / "user" / "session").symlink_to(outside)
     store = FileArtifactStore(saved_artifacts_dir=saved_root)
 
     with pytest.raises(AppError) as error_info:
         store.open_saved_file(
-            relative_path="user/run/artifact.png",
+            relative_path="user/session/artifact.png",
             mime_type="image/png",
         )
 
     assert error_info.value.error_type is ErrorType.FORBIDDEN
 
 
-def test_file_artifact_store_deletes_saved_artifacts_and_empty_run_dir(
+def test_file_artifact_store_deletes_saved_artifacts_and_empty_session_dir(
     tmp_path: Path,
 ) -> None:
     """観点：成果物ファイルIF。
 
-    確認：保存済み成果物実体と空の親runディレクトリだけを削除する。
+    確認：保存済み成果物実体と空の親セッションディレクトリだけを削除する。
     """
     saved_root = tmp_path / "saved_artifacts"
-    target = saved_root / "demo-user" / "run-target" / "chart.svg"
-    other = saved_root / "other-user" / "run-other" / "other.svg"
+    target = saved_root / "demo-user" / "session-target" / "chart.svg"
+    other = saved_root / "other-user" / "session-other" / "other.svg"
     target.parent.mkdir(parents=True)
     other.parent.mkdir(parents=True)
     target.write_text("<svg />", encoding="utf-8")
     other.write_text("<svg />", encoding="utf-8")
     store = FileArtifactStore(saved_artifacts_dir=saved_root)
 
-    store.delete_saved_artifacts(("demo-user/run-target/chart.svg",))
+    store.delete_saved_artifacts(("demo-user/session-target/chart.svg",))
 
     assert target.exists() is False
     assert target.parent.exists() is False

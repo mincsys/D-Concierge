@@ -12,6 +12,9 @@ describe("backend mock auth runtime", () => {
       user_id: "demo-user",
       user_name: "デモユーザ",
     });
+    expect(firstSession?.sessionId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
     expect(secondSession?.sessionId).toBe(firstSession?.sessionId);
 
     runtime.logoutStubSession(firstSession?.sessionId);

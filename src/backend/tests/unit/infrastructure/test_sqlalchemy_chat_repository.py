@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 from sqlite3 import Connection as SQLiteConnection
-from uuid import UUID, uuid4
+from uuid import UUID, uuid7
 
 import pytest
 import sqlalchemy as sa
@@ -348,8 +348,8 @@ def test_sqlalchemy_repository_updates_state_conditionally_and_saves_deadline() 
 def test_sqlalchemy_repository_rejects_missing_records() -> None:
     """観点：Repository IF異常系。確認：対象なしをNOT_FOUNDへ変換する。"""
     repository = _make_repository()
-    missing_chat_id = uuid4()
-    missing_run_id = uuid4()
+    missing_chat_id = uuid7()
+    missing_run_id = uuid7()
 
     try:
         repository.get_chat_detail(missing_chat_id)
@@ -431,14 +431,14 @@ def test_sqlalchemy_repository_rejects_missing_reference_and_artifact() -> None:
     repository = _make_repository()
 
     try:
-        repository.get_reference(uuid4())
+        repository.get_reference(uuid7())
     except AppError as exc:
         assert exc.error_type is ErrorType.NOT_FOUND
     else:
         raise AssertionError("対象なし参照元の例外が発生しませんでした。")
 
     try:
-        repository.get_artifact(uuid4())
+        repository.get_artifact(uuid7())
     except AppError as exc:
         assert exc.error_type is ErrorType.NOT_FOUND
     else:
@@ -466,7 +466,7 @@ def test_sqlalchemy_repository_excludes_deleting_chat_and_returns_deletion_targe
                         ArtifactData(
                             artifact_id=artifact_id,
                             mime_type="image/svg+xml",
-                            relative_path="run-id/chart.svg",
+                            relative_path="session-id/chart.svg",
                         ),
                     ),
                 ),
@@ -479,7 +479,7 @@ def test_sqlalchemy_repository_excludes_deleting_chat_and_returns_deletion_targe
 
     assert deleted.chat_state is ChatState.DELETING
     assert repository.list_histories() == ()
-    assert target.artifact_storage_paths == ("run-id/chart.svg",)
+    assert target.artifact_storage_paths == ("session-id/chart.svg",)
     assert target.unfinished_runs[0].run_id == accepted.run_id
     try:
         repository.get_chat_detail(accepted.chat_id)
@@ -528,10 +528,10 @@ def test_sqlalchemy_repository_rejects_corrupted_reference_locator() -> None:
     """
     repository, session_factory = _make_repository_with_session_factory()
     accepted = repository.create_chat_with_first_run("初回")
-    reference_id = uuid4()
+    reference_id = uuid7()
     with session_factory() as session:
         with session.begin():
-            block_id = uuid4()
+            block_id = uuid7()
             session.add(
                 AnswerBlockModel(
                     id=block_id,
@@ -603,9 +603,9 @@ def test_sqlalchemy_repository_ignores_history_without_run() -> None:
             )
             session.add(
                 ChatModel(
-                    id=uuid4(),
+                    id=uuid7(),
                     local_user_id=SHARED_LOCAL_USER_ID,
-                    session_id=uuid4(),
+                    session_id=uuid7(),
                     title="runなし",
                     updated_at=datetime(2026, 5, 9, 10, 0, tzinfo=UTC),
                 )
@@ -616,14 +616,14 @@ def test_sqlalchemy_repository_ignores_history_without_run() -> None:
 
 def _make_repository(
     clock: ClockPort | None = None,
-) -> "TransactionalSqlAlchemyChatRepository":
+) -> TransactionalSqlAlchemyChatRepository:
     repository, _session_factory = _make_repository_with_session_factory(clock=clock)
     return repository
 
 
 def _make_repository_with_session_factory(
     clock: ClockPort | None = None,
-) -> tuple["TransactionalSqlAlchemyChatRepository", sessionmaker[Session]]:
+) -> tuple[TransactionalSqlAlchemyChatRepository, sessionmaker[Session]]:
     engine = create_engine("sqlite+pysqlite:///:memory:")
     Base.metadata.create_all(engine)
     session_factory = sessionmaker(bind=engine, class_=Session, expire_on_commit=False)
@@ -634,9 +634,7 @@ def _make_repository_with_session_factory(
     )
 
 
-def _make_repository_with_foreign_key_checks() -> (
-    "TransactionalSqlAlchemyChatRepository"
-):
+def _make_repository_with_foreign_key_checks() -> TransactionalSqlAlchemyChatRepository:
     engine = create_engine(
         "sqlite+pysqlite://",
         connect_args={"check_same_thread": False},

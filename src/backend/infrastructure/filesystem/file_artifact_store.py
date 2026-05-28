@@ -40,7 +40,6 @@ class FileArtifactStore:
         self,
         session_workdir: Path,
         candidate_relative_path: str,
-        run_id: UUID,
         artifact_id: UUID,
     ) -> SavedArtifactFile:
         """セッション内 `artifacts/` 配下の成果物を保存済み領域へコピーする。"""
@@ -54,7 +53,10 @@ class FileArtifactStore:
             raise ArtifactNotFoundError()
 
         saved_relative_path = _saved_relative_path(
-            _session_user_id(session_workdir), run_id, artifact_id, candidate_path
+            _session_user_id(session_workdir),
+            _session_id(session_workdir),
+            artifact_id,
+            candidate_path,
         )
         saved_path = self._resolve_saved_output_path(saved_relative_path)
         if saved_path.exists():
@@ -92,7 +94,7 @@ class FileArtifactStore:
         return OpenedArtifactFile(path=saved_path, mime_type=mime_type)
 
     def delete_saved_artifacts(self, storage_paths: tuple[str, ...]) -> None:
-        """保存済み成果物実体と空の親runディレクトリを削除する。"""
+        """保存済み成果物実体と空の親セッションディレクトリを削除する。"""
         for storage_path in storage_paths:
             saved_relative_path = _safe_relative_path(storage_path)
             if len(saved_relative_path.parts) != 3:
@@ -190,12 +192,19 @@ def _session_user_id(session_workdir: Path) -> str:
     return user_id
 
 
+def _session_id(session_workdir: Path) -> str:
+    session_id = session_workdir.name
+    if session_id in {"", ".", ".."} or "/" in session_id or "\\" in session_id:
+        raise ArtifactNotDisplayableError()
+    return session_id
+
+
 def _saved_relative_path(
     user_id: str,
-    run_id: UUID,
+    session_id: str,
     artifact_id: UUID,
     candidate_path: PurePosixPath,
 ) -> PurePosixPath:
     return PurePosixPath(
-        user_id, str(run_id), f"{artifact_id}{candidate_path.suffix.lower()}"
+        user_id, session_id, f"{artifact_id}{candidate_path.suffix.lower()}"
     )

@@ -28,7 +28,7 @@ class DisplayReferencePayload(TypedDict):
 class AnswerPayload(TypedDict):
     """SSE回答表示payload。"""
 
-    blocks: list["AnswerBlockPayload"]
+    blocks: list[AnswerBlockPayload]
 
 
 class AnswerBlockPayload(TypedDict):

@@ -16,7 +16,6 @@ class AdoptedArtifactStorePort(Protocol):
         self,
         session_workdir: Path,
         candidate_relative_path: str,
-        run_id: UUID,
         artifact_id: UUID,
     ) -> SavedArtifactFile:
         """成果物候補を保存済み領域へコピーする。"""
@@ -29,14 +28,14 @@ class ArtifactStorePort(AdoptedArtifactStorePort, Protocol):
         """保存済み成果物領域内のファイルを配信用に開く。"""
 
     def delete_saved_artifacts(self, storage_paths: tuple[str, ...]) -> None:
-        """保存済み成果物実体と空の親runディレクトリを削除する。"""
+        """保存済み成果物実体と空の親セッションディレクトリを削除する。"""
 
 
 class SavedArtifactDeletionPort(Protocol):
     """保存済み成果物実体の削除境界。"""
 
     def delete_saved_artifacts(self, storage_paths: tuple[str, ...]) -> None:
-        """保存済み成果物実体と空の親runディレクトリを削除する。"""
+        """保存済み成果物実体と空の親セッションディレクトリを削除する。"""
 
 
 class UserSavedArtifactDeletionPort(Protocol):

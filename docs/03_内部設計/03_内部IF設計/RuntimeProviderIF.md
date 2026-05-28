@@ -25,7 +25,7 @@
 | Port | 役割 |
 | --- | --- |
 | `ClockPort` | UTC現在日時とアプリ共通タイムゾーン現在日時を提供する。 |
-| `IdGeneratorPort` | UUIDを新規発番する。 |
+| `IdGeneratorPort` | UUIDv7を新規発番する。 |
 | `UuidGeneratorPort` | UUID発番IFの用途を明示する派生Protocol。 |
 
 ## 4. 呼出シーケンス
@@ -53,7 +53,7 @@ sequenceDiagram
 
 ### 5.2. 事後条件
 
-- ID発番はUUIDとして返る。
+- ID発番はUUIDv7として返る。
 - `login_sessions.id` のようなDB内部連番IDはDB側のIDENTITYで発番し、本IFでは発番しない。
 - 内部処理向け現在時刻はUTCのタイムゾーン付き日時として返る。
 - 運用者向け日時が必要な場合はアプリ共通タイムゾーンのタイムゾーン付き日時として返る。
@@ -77,7 +77,7 @@ sequenceDiagram
 
 | 項目 | 内容 |
 | --- | --- |
-| `UUID` | 呼出元がチャット、run、参照元、成果物、traceなどのIDへ割り当てるUUID |
+| `UUID` | 呼出元がチャット、run、参照元、成果物、traceなどのIDへ割り当てるUUIDv7 |
 | `now`、`now_utc` | UTCのタイムゾーン付き現在日時 |
 | `now_app_timezone` | アプリ共通タイムゾーンのタイムゾーン付き現在日時 |
 

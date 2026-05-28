@@ -51,7 +51,6 @@ class SaveAdoptedArtifactsUseCase:
     def save_for_answer_blocks(
         self,
         markdowns: tuple[str, ...],
-        run_id: UUID,
         session_workdir: Path,
         trace_id: str,
     ) -> SavedAnswerBlocksArtifacts:
@@ -69,7 +68,6 @@ class SaveAdoptedArtifactsUseCase:
                 saved = self._artifact_store.save_adopted_file(
                     session_workdir=session_workdir,
                     candidate_relative_path=link.normalized_target,
-                    run_id=run_id,
                     artifact_id=artifact_id,
                 )
                 saved_artifacts.append(

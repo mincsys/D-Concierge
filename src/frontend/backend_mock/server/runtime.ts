@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { v7 as uuidv7 } from "uuid";
 
 import type {
   AccountUserResponse,
@@ -617,7 +617,7 @@ function isCancelableState(state: ChatRun["state"]) {
 }
 
 function createUuid() {
-  return randomUUID();
+  return uuidv7();
 }
 
 function currentIsoString() {

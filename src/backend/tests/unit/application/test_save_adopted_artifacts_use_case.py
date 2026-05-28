@@ -20,7 +20,6 @@ from backend.shared.errors.errors import AppError, ArtifactNotFoundError
 
 def test_save_adopted_artifacts_replaces_markdown_and_html_paths() -> None:
     """観点：採用済み成果物保存。確認：回答内成果物参照をAPI URLへ置換する。"""
-    run_id = UUID("00000000-0000-0000-0000-000000000501")
     first_artifact_id = UUID("00000000-0000-0000-0000-000000000511")
     second_artifact_id = UUID("00000000-0000-0000-0000-000000000512")
     store = RecordingArtifactStore()
@@ -35,7 +34,6 @@ def test_save_adopted_artifacts_replaces_markdown_and_html_paths() -> None:
             '<a href="artifacts/report.html">レポート</a>\n'
             "[保存済み](/api/artifacts/00000000-0000-0000-0000-000000000599)",
         ),
-        run_id=run_id,
         session_workdir=Path("/sessions/user/session"),
         trace_id="trace-001",
     )
@@ -52,20 +50,20 @@ def test_save_adopted_artifacts_replaces_markdown_and_html_paths() -> None:
                     ArtifactReference(
                         artifact_id=first_artifact_id,
                         mime_type="image/png",
-                        relative_path=f"{run_id}/{first_artifact_id}.png",
+                        relative_path=f"user/session/{first_artifact_id}.png",
                     ),
                     ArtifactReference(
                         artifact_id=second_artifact_id,
                         mime_type="text/html",
-                        relative_path=f"{run_id}/{second_artifact_id}.html",
+                        relative_path=f"user/session/{second_artifact_id}.html",
                     ),
                 ),
             ),
         )
     )
     assert store.calls == (
-        SaveCall("artifacts/chart.png", run_id, first_artifact_id),
-        SaveCall("artifacts/report.html", run_id, second_artifact_id),
+        SaveCall("artifacts/chart.png", first_artifact_id),
+        SaveCall("artifacts/report.html", second_artifact_id),
     )
 
 
@@ -74,7 +72,6 @@ def test_save_adopted_artifacts_replaces_normalized_backslash_paths() -> None:
 
     確認：区切り文字差分を正規化した成果物参照を保存し、回答URLを置換する。
     """
-    run_id = UUID("00000000-0000-0000-0000-000000000506")
     first_artifact_id = UUID("00000000-0000-0000-0000-000000000551")
     second_artifact_id = UUID("00000000-0000-0000-0000-000000000552")
     store = RecordingArtifactStore()
@@ -88,7 +85,6 @@ def test_save_adopted_artifacts_replaces_normalized_backslash_paths() -> None:
             "![図](artifacts\\chart.png)\n"
             '<a href=".\\artifacts\\report.html">レポート</a>',
         ),
-        run_id=run_id,
         session_workdir=Path("/sessions/user/session"),
         trace_id="trace-006",
     )
@@ -98,14 +94,13 @@ def test_save_adopted_artifacts_replaces_normalized_backslash_paths() -> None:
         f'<a href="/api/artifacts/{second_artifact_id}">レポート</a>',
     )
     assert store.calls == (
-        SaveCall("artifacts/chart.png", run_id, first_artifact_id),
-        SaveCall("artifacts/report.html", run_id, second_artifact_id),
+        SaveCall("artifacts/chart.png", first_artifact_id),
+        SaveCall("artifacts/report.html", second_artifact_id),
     )
 
 
 def test_save_adopted_artifacts_saves_duplicate_candidate_each_time() -> None:
     """観点：採用済み成果物保存。確認：同じ候補参照も登場ごとに別成果物として保存する。"""
-    run_id = UUID("00000000-0000-0000-0000-000000000502")
     first_artifact_id = UUID("00000000-0000-0000-0000-000000000521")
     second_artifact_id = UUID("00000000-0000-0000-0000-000000000522")
     store = RecordingArtifactStore()
@@ -118,7 +113,6 @@ def test_save_adopted_artifacts_saves_duplicate_candidate_each_time() -> None:
         markdowns=(
             '![図](artifacts/chart.svg)\n<img src="artifacts/chart.svg" alt="図">',
         ),
-        run_id=run_id,
         session_workdir=Path("/sessions/user/session"),
         trace_id="trace-002",
     )
@@ -129,8 +123,8 @@ def test_save_adopted_artifacts_saves_duplicate_candidate_each_time() -> None:
     )
     assert len(result.blocks[0].artifacts) == 2
     assert store.calls == (
-        SaveCall("artifacts/chart.svg", run_id, first_artifact_id),
-        SaveCall("artifacts/chart.svg", run_id, second_artifact_id),
+        SaveCall("artifacts/chart.svg", first_artifact_id),
+        SaveCall("artifacts/chart.svg", second_artifact_id),
     )
 
 
@@ -138,7 +132,6 @@ def test_save_adopted_artifacts_saves_duplicate_candidate_each_time_across_block
     None
 ):
     """観点：採用済み成果物保存。確認：複数回答ブロック間の同じ候補参照も別成果物にする。"""
-    run_id = UUID("00000000-0000-0000-0000-000000000505")
     first_artifact_id = UUID("00000000-0000-0000-0000-000000000541")
     second_artifact_id = UUID("00000000-0000-0000-0000-000000000542")
     store = RecordingArtifactStore()
@@ -152,7 +145,6 @@ def test_save_adopted_artifacts_saves_duplicate_candidate_each_time_across_block
             "第一回答 ![図](artifacts/chart.svg)",
             '<img src="artifacts/chart.svg" alt="図">',
         ),
-        run_id=run_id,
         session_workdir=Path("/sessions/user/session"),
         trace_id="trace-005",
     )
@@ -165,7 +157,7 @@ def test_save_adopted_artifacts_saves_duplicate_candidate_each_time_across_block
                     ArtifactReference(
                         artifact_id=first_artifact_id,
                         mime_type="image/svg+xml",
-                        relative_path=f"{run_id}/{first_artifact_id}.svg",
+                        relative_path=f"user/session/{first_artifact_id}.svg",
                     ),
                 ),
             ),
@@ -175,15 +167,15 @@ def test_save_adopted_artifacts_saves_duplicate_candidate_each_time_across_block
                     ArtifactReference(
                         artifact_id=second_artifact_id,
                         mime_type="image/svg+xml",
-                        relative_path=f"{run_id}/{second_artifact_id}.svg",
+                        relative_path=f"user/session/{second_artifact_id}.svg",
                     ),
                 ),
             ),
         )
     )
     assert store.calls == (
-        SaveCall("artifacts/chart.svg", run_id, first_artifact_id),
-        SaveCall("artifacts/chart.svg", run_id, second_artifact_id),
+        SaveCall("artifacts/chart.svg", first_artifact_id),
+        SaveCall("artifacts/chart.svg", second_artifact_id),
     )
 
 
@@ -198,7 +190,6 @@ def test_save_adopted_artifacts_ignores_non_artifact_links() -> None:
 
     result = usecase.save_for_answer_blocks(
         markdowns=(markdown,),
-        run_id=UUID("00000000-0000-0000-0000-000000000503"),
         session_workdir=Path("/sessions/user/session"),
         trace_id="trace-003",
     )
@@ -219,7 +210,6 @@ def test_save_adopted_artifacts_propagates_store_rejection() -> None:
     with pytest.raises(AppError) as error_info:
         usecase.save_for_answer_blocks(
             markdowns=("![図](artifacts/missing.png)",),
-            run_id=UUID("00000000-0000-0000-0000-000000000504"),
             session_workdir=Path("/sessions/user/session"),
             trace_id="trace-004",
         )
@@ -230,7 +220,6 @@ def test_save_adopted_artifacts_propagates_store_rejection() -> None:
 @dataclass(frozen=True, slots=True)
 class SaveCall:
     candidate_relative_path: str
-    run_id: UUID
     artifact_id: UUID
 
 
@@ -246,11 +235,11 @@ class RecordingArtifactStore:
         self,
         session_workdir: Path,
         candidate_relative_path: str,
-        run_id: UUID,
         artifact_id: UUID,
     ) -> SavedArtifactFile:
-        _ = session_workdir
-        self._calls.append(SaveCall(candidate_relative_path, run_id, artifact_id))
+        user_id = session_workdir.parent.name
+        session_id = session_workdir.name
+        self._calls.append(SaveCall(candidate_relative_path, artifact_id))
         suffix = Path(candidate_relative_path).suffix
         mime_type = {
             ".html": "text/html",
@@ -260,7 +249,7 @@ class RecordingArtifactStore:
         return SavedArtifactFile(
             artifact_id=artifact_id,
             mime_type=mime_type,
-            relative_path=f"{run_id}/{artifact_id}{suffix}",
+            relative_path=f"{user_id}/{session_id}/{artifact_id}{suffix}",
         )
 
 
@@ -269,10 +258,9 @@ class RejectingArtifactStore:
         self,
         session_workdir: Path,
         candidate_relative_path: str,
-        run_id: UUID,
         artifact_id: UUID,
     ) -> SavedArtifactFile:
-        _ = (session_workdir, candidate_relative_path, run_id, artifact_id)
+        _ = (session_workdir, candidate_relative_path, artifact_id)
         raise ArtifactNotFoundError()
 
 

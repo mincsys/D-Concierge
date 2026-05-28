@@ -52,7 +52,7 @@ sequenceDiagram
 - 回答ブロック本文で参照された成果物候補パスがCodex作業領域からの相対パスである。
 - 成果物候補パスは対象セッションの `artifacts/` 配下を指している。
 - 成果物候補の拡張子は `.svg`、`.png`、`.jpg`、`.jpeg`、`.html`、`.csv` のいずれかである。
-- 保存先run IDとartifact IDが採番済みである。
+- 保存先session_idとartifact IDが確定済みである。
 - 許可するMIMEタイプと拡張子が設定済みである。
 
 ### 5.2. 事後条件
@@ -61,7 +61,7 @@ sequenceDiagram
 - 保存済み成果物の配信用URLへ置換できる保存参照が返る。
 - 配信時は保存済み成果物領域内の実体だけを読み込む。
 - 回答ブロック本文へ保存する成果物URLは `/api/artifacts/{artifact_id}` 形式になる。
-- チャット物理削除時は、対象チャットに紐づく保存済み成果物実体が削除され、空になった親runディレクトリも削除される。
+- チャット物理削除時は、対象チャットに紐づく保存済み成果物実体が削除され、空になった親セッションディレクトリも削除される。
 - アカウント物理削除時は、対象ユーザの保存済み成果物ディレクトリが削除される。
 
 ### 5.3. 不変条件
@@ -73,7 +73,7 @@ sequenceDiagram
 - 共有データソース配下のファイルはCodex成果物として扱わない。
 - チャット物理削除時の保存済み成果物削除は `generator.saved_artifacts_dir` 配下へ正規化できる `storage_path` だけを対象にする。
 - アカウント物理削除時の保存済み成果物削除は `generator.saved_artifacts_dir/<user-id>` ディレクトリだけを対象にする。
-- 保存済み成果物削除は `generator.saved_artifacts_dir` 自体、他ユーザのディレクトリ、他runのディレクトリを削除しない。
+- 保存済み成果物削除は `generator.saved_artifacts_dir` 自体、他ユーザのディレクトリ、他セッションのディレクトリを削除しない。
 
 ## 6. 入出力とデータ項目
 
@@ -83,7 +83,7 @@ sequenceDiagram
 | --- | --- |
 | `session_workdir` | Codexセッション作業領域 |
 | `candidate_relative_path` | Codex作業領域からの成果物候補相対パス |
-| `run_id` | 保存先run ID |
+| `session_id` | 保存先session_id |
 | `artifact_id` | 保存済み成果物ID |
 | `relative_path` | 保存済み成果物領域からの相対パス。読込時に使用する |
 | `storage_paths` | 削除対象の保存済み成果物相対パス一覧 |
@@ -103,7 +103,7 @@ sequenceDiagram
 | 対象 | 検証ルール |
 | --- | --- |
 | 成果物候補 | 対象セッションの `artifacts/` 配下へ正規化できる相対パスだけを許可する。 |
-| 保存済み成果物 | `generator.saved_artifacts_dir/<user-id>/<run_id>/<artifact_id>.<拡張子>` 配下へ正規化できる保存参照だけを許可する。 |
+| 保存済み成果物 | `generator.saved_artifacts_dir/<user-id>/<session_id>/<artifact_id>.<拡張子>` 配下へ正規化できる保存参照だけを許可する。 |
 | ユーザ単位保存済み成果物 | `generator.saved_artifacts_dir/<user-id>` 配下へ正規化できるディレクトリだけをアカウント物理削除対象にする。 |
 | 共有データソース | 参照元として扱い、Codex成果物保存対象にはしない。 |
 

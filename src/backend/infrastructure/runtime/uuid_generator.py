@@ -1,4 +1,4 @@
-from uuid import UUID, uuid4
+from uuid import UUID, uuid7
 
 
 class UuidGenerator:
@@ -6,4 +6,4 @@ class UuidGenerator:
 
     def new_uuid(self) -> UUID:
         """新しいUUIDを返す。"""
-        return uuid4()
+        return uuid7()

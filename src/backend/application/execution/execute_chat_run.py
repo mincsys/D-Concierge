@@ -112,7 +112,6 @@ class AdoptedArtifactSaver(Protocol):
     def save_for_answer_blocks(
         self,
         markdowns: tuple[str, ...],
-        run_id: UUID,
         session_workdir: Path,
         trace_id: str,
     ) -> SavedAnswerBlocksArtifacts:
@@ -519,7 +518,6 @@ class ExecuteChatRunUseCase:
                 return
             saved = self._artifact_saver.save_for_answer_blocks(
                 markdowns=markdowns,
-                run_id=run_id,
                 session_workdir=session_workdir,
                 trace_id=trace_id,
             )

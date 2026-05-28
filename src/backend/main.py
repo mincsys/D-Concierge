@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from pathlib import Path
-from uuid import uuid4
 from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI
@@ -10,6 +9,7 @@ from backend.application.ports.trace_log.dto import TraceLogRecord
 from backend.infrastructure.config.loader import ConfigLoader
 from backend.infrastructure.config.models import TraceLogConfig
 from backend.infrastructure.runtime.system_clock import SystemClock
+from backend.infrastructure.runtime.uuid_generator import UuidGenerator
 from backend.infrastructure.trace_log.trace_log_writer import TraceLogWriter
 from backend.shared.errors.error_type import ErrorType
 from backend.shared.tracing.exception import exception_message, exception_stacktrace
@@ -40,7 +40,7 @@ def _create_app_with_bootstrap_trace() -> FastAPI:
         )
         trace_logger.write(
             TraceLogRecord(
-                trace_id=str(uuid4()),
+                trace_id=str(UuidGenerator().new_uuid()),
                 event_name="app_bootstrap_failed",
                 stage="app_bootstrap",
                 error_type=ErrorType.SYSTEM.value,

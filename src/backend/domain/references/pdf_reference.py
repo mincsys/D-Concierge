@@ -49,7 +49,7 @@ class PdfReference:
             raise InvalidPdfReferenceError("PDF参照元ラベルが不正です。")
 
     @classmethod
-    def from_locator(cls, locator: PdfLocator) -> "PdfReference":
+    def from_locator(cls, locator: PdfLocator) -> PdfReference:
         """locatorのファイル名から表示ラベルを作る。"""
         return cls(label=PurePosixPath(locator.relative_path).name, locator=locator)
 

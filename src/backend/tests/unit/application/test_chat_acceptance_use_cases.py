@@ -1,7 +1,7 @@
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from uuid import UUID, uuid4
+from uuid import UUID, uuid7
 
 import pytest
 
@@ -121,7 +121,7 @@ def test_append_chat_run_use_case_rejects_missing_chat_and_unfinished_run() -> N
 
     with pytest.raises(AppError) as missing_error:
         usecase.execute(
-            chat_id=uuid4(),
+            chat_id=uuid7(),
             user_instruction="追加",
             trace_id="trace-105",
         )

@@ -125,7 +125,7 @@ def test_execute_chat_deletion_removes_files_then_database_for_terminal_chat() -
                         ArtifactData(
                             artifact_id=UUID("00000000-0000-0000-0000-000000000777"),
                             mime_type="image/svg+xml",
-                            relative_path="run-id/chart.svg",
+                            relative_path="session-id/chart.svg",
                         ),
                     ),
                 ),
@@ -146,7 +146,7 @@ def test_execute_chat_deletion_removes_files_then_database_for_terminal_chat() -
     usecase.execute(accepted.chat_id, trace_id="trace-physical-2")
 
     assert workdir_cleanup.deleted == [(target.user_id, target.session_id)]
-    assert artifact_deletion.deleted == [("run-id/chart.svg",)]
+    assert artifact_deletion.deleted == [("session-id/chart.svg",)]
     with pytest.raises(ChatNotFoundError):
         repository.get_chat_detail(accepted.chat_id)
 
