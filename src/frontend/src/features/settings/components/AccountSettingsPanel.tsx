@@ -15,7 +15,7 @@ export function AccountSettingsPanel({
   onLogout: () => void;
   onOpenPassword: () => void;
   onOpenUserName: () => void;
-  }) {
+}) {
   return (
     <div className="border-b border-[var(--dc-border-soft)]" data-testid="account-settings-list">
       <DisplaySettingsRow label="ユーザID" value={user.userId} />
