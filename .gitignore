@@ -1,6 +1,7 @@
 __pycache__/
 *.py[cod]
 /config.yaml
+/.codegraph
 /.mypy_cache/
 /.playwright-cli/
 /.pytest_cache/
