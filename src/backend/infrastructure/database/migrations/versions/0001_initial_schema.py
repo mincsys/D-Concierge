@@ -17,11 +17,11 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 RUN_STATE_CHECK = (
-    "state IN ('受付','実行中','検証中','キャンセル要求中',"
-    "'キャンセル済み','完了','エラー','タイムアウト')"
+    "state IN ('accepted','running','validating','cancel_requested',"
+    "'canceled','completed','error','timed_out')"
 )
-CHAT_STATE_CHECK = "chat_state IN ('有効','削除中')"
-USER_STATE_CHECK = "user_state IN ('通常','削除中')"
+CHAT_STATE_CHECK = "chat_state IN ('active','deleting')"
+USER_STATE_CHECK = "user_state IN ('active','deleting')"
 
 
 def upgrade() -> None:
@@ -34,7 +34,7 @@ def upgrade() -> None:
             "user_state",
             sa.String(length=20),
             nullable=False,
-            server_default="通常",
+            server_default="active",
         ),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
@@ -81,7 +81,7 @@ def upgrade() -> None:
             "chat_state",
             sa.String(length=20),
             nullable=False,
-            server_default="有効",
+            server_default="active",
         ),
         sa.Column("generation_conversation_id", sa.String(length=255), nullable=True),
         sa.Column("validation_conversation_id", sa.String(length=255), nullable=True),
@@ -128,7 +128,7 @@ def upgrade() -> None:
         ["chat_id"],
         unique=True,
         postgresql_where=sa.text(
-            "state IN ('受付','実行中','検証中','キャンセル要求中')"
+            "state IN ('accepted','running','validating','cancel_requested')"
         ),
     )
 

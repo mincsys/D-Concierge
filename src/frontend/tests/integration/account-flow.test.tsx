@@ -68,7 +68,7 @@ const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit): Promise<
         {
           chat_id: "chat-demo",
           latest_run_id: "run-demo",
-          latest_state: "完了",
+          latest_state: "completed",
           title: "デモ履歴",
           updated_at: "2026-05-09T10:00:00+09:00",
         },
@@ -84,7 +84,7 @@ const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit): Promise<
         {
           answer: { blocks: [{ markdown: "デモ回答" }] },
           run_id: "run-demo",
-          state: "完了",
+          state: "completed",
           user_instruction: "デモ依頼",
         },
       ],

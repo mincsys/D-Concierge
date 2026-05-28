@@ -62,7 +62,7 @@ def test_trace_log_writer_writes_optional_diagnostic_fields(
             trace_id="trace-702",
             event_name="validation_failed",
             stage="validation",
-            run_state="エラー",
+            run_state="error",
             timeout_state="none",
             cancel_state="none",
             retry_count=2,
@@ -76,7 +76,7 @@ def test_trace_log_writer_writes_optional_diagnostic_fields(
 
     [log_path] = list((tmp_path / "2026-05-09").glob("*.yaml"))
     payload = yaml.safe_load(log_path.read_text(encoding="utf-8"))
-    assert payload["run_state"] == "エラー"
+    assert payload["run_state"] == "error"
     assert payload["timeout_state"] == "none"
     assert payload["cancel_state"] == "none"
     assert payload["retry_count"] == 2

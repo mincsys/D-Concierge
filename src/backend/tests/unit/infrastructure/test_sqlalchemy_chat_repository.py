@@ -668,7 +668,7 @@ def _insert_user(
                     id=user_id,
                     user_name=user_name,
                     password_hash="hashed-password",
-                    user_state="通常",
+                    user_state="active",
                     created_at=datetime(2026, 5, 9, 10, 0, tzinfo=UTC),
                     updated_at=datetime(2026, 5, 9, 10, 0, tzinfo=UTC),
                 )

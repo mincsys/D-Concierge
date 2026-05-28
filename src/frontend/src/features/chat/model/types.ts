@@ -2,17 +2,17 @@ import type { DisplayReference } from "@/features/reference-viewer/model/types";
 
 export type ViewMode = "start" | "answer";
 
-export type ChatState = "有効" | "削除中";
+export type ChatState = "active" | "deleting";
 
 export type ChatRunState =
-  | "受付"
-  | "実行中"
-  | "検証中"
-  | "キャンセル要求中"
-  | "キャンセル済み"
-  | "完了"
-  | "エラー"
-  | "タイムアウト";
+  | "accepted"
+  | "running"
+  | "validating"
+  | "cancel_requested"
+  | "canceled"
+  | "completed"
+  | "error"
+  | "timed_out";
 
 export type AppConfigResponse = {
   welcome_message?: string;
@@ -36,18 +36,18 @@ export type ChatStartResponse = {
 
 export type CancelChatRunResponse = {
   run_id: string;
-  state: "キャンセル要求中";
+  state: "cancel_requested";
   user_message: string;
 };
 
 export type DeleteChatResponse = {
   chat_id: string;
-  chat_state: "削除中";
+  chat_state: "deleting";
 };
 
 export type DeletedChat = {
   chatId: string;
-  chatState: "削除中";
+  chatState: "deleting";
 };
 
 export type ChatRunResponse = {
@@ -97,7 +97,7 @@ export type SseEvent =
       event: "answer";
       payload: {
         run_id: string;
-        state: "完了";
+        state: "completed";
         answer: AnswerResponse;
       };
     }
@@ -105,7 +105,7 @@ export type SseEvent =
       event: "error";
       payload: {
         run_id: string;
-        state: "エラー" | "タイムアウト";
+        state: "error" | "timed_out";
         user_message: string;
       };
     }
@@ -113,7 +113,7 @@ export type SseEvent =
       event: "canceled";
       payload: {
         run_id: string;
-        state: "キャンセル済み";
+        state: "canceled";
         user_message: string;
       };
     };

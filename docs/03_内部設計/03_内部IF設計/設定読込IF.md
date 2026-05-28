@@ -82,7 +82,7 @@ sequenceDiagram
 
 | 項目 | 内容 |
 | --- | --- |
-| `server.timeout_seconds` | 回答生成から検証完了までの実行全体上限秒数。`ExecuteChatRunUseCase` が `実行中` 遷移時に `execution_deadline_at` を計算する。 |
+| `server.timeout_seconds` | 回答生成から検証完了までの実行全体上限秒数。`ExecuteChatRunUseCase` が `running` 遷移時に `execution_deadline_at` を計算する。 |
 | codex exec単位の `timeout_seconds` | `execution_deadline_at` から現在時刻を引いた残り秒数。生成用/検証用codex exec起動ごとに算出する。 |
 | 終了要求後のgrace timeout | CodexRunner内部の短い固定値として扱い、外部設定項目にはしない。 |
 

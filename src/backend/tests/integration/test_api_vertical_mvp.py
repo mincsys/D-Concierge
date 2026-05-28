@@ -207,12 +207,12 @@ def test_cancel_accepted_run_returns_cancel_request_and_terminal_history(
         cancel_response.text
     )
     assert canceled.run_id == accepted.run_id
-    assert canceled.state == "キャンセル要求中"
+    assert canceled.state == "cancel_requested"
     assert canceled.user_message == "処理をキャンセルしています。"
 
     detail_response = client.get(f"/api/chats/{accepted.chat_id}")
     detail = TypeAdapter(ChatDetailResponseSchema).validate_json(detail_response.text)
-    assert detail.runs[0].state == "キャンセル済み"
+    assert detail.runs[0].state == "canceled"
     assert detail.runs[0].user_message == "処理をキャンセルしました。"
 
 
@@ -238,7 +238,7 @@ def test_histories_are_returned_in_updated_desc_order(tmp_path: Path) -> None:
     )
     assert [history.chat_id for history in histories] == [second.chat_id, first.chat_id]
     assert "user_instruction" not in response.text
-    assert histories[0].latest_state == "受付"
+    assert histories[0].latest_state == "accepted"
 
 
 def test_sse_sends_current_state_first(tmp_path: Path) -> None:
@@ -258,7 +258,7 @@ def test_sse_sends_current_state_first(tmp_path: Path) -> None:
 
     assert "event: state" in body
     assert f'"run_id":"{accepted.run_id}"' in body
-    assert '"state":"受付"' in body
+    assert '"state":"accepted"' in body
 
 
 def test_sse_streams_published_message_and_answer_events(tmp_path: Path) -> None:
@@ -397,7 +397,7 @@ def test_sse_streams_state_and_error_events(tmp_path: Path) -> None:
 
     assert body.count("event: state") == 2
     assert "event: error" in body
-    assert '"state":"エラー"' in body
+    assert '"state":"error"' in body
     assert '"user_message":"回答の生成に失敗しました。再度お試しください。"' in body
 
 
@@ -424,7 +424,7 @@ def test_sse_closes_when_subscription_returns_no_event(tmp_path: Path) -> None:
         body = "".join(response.iter_text())
 
     assert body.count("event: state") == 1
-    assert '"state":"受付"' in body
+    assert '"state":"accepted"' in body
 
 
 @pytest.mark.asyncio
@@ -479,7 +479,7 @@ def test_chat_detail_returns_completed_answer_and_references(tmp_path: Path) -> 
 
     assert response.status_code == 200
     detail = TypeAdapter(ChatDetailResponseSchema).validate_json(response.text)
-    assert detail.runs[0].state == "完了"
+    assert detail.runs[0].state == "completed"
     assert detail.runs[0].answer is not None
     assert detail.runs[0].answer.blocks[0].markdown == "検証済み回答"
     assert (
@@ -508,7 +508,7 @@ def test_delete_chat_marks_deleting_and_excludes_history_and_detail(
     assert delete_response.status_code == 202
     deleted = TypeAdapter(DeleteChatResponseSchema).validate_json(delete_response.text)
     assert deleted.chat_id == accepted.chat_id
-    assert deleted.chat_state == "削除中"
+    assert deleted.chat_state == "deleting"
     histories = TypeAdapter(list[ChatHistoryItemResponseSchema]).validate_json(
         client.get("/api/chat-histories").text
     )
@@ -537,7 +537,7 @@ def test_delete_chat_is_idempotent_while_chat_is_deleting(tmp_path: Path) -> Non
 
     assert first_response.status_code == 202
     assert second_response.status_code == 202
-    assert second_response.json()["chat_state"] == "削除中"
+    assert second_response.json()["chat_state"] == "deleting"
 
 
 def test_delete_chat_returns_not_found_after_physical_deletion(tmp_path: Path) -> None:
@@ -1055,7 +1055,7 @@ def test_default_runtime_executes_start_chat_through_codex_adapters(
     detail_response = client.get(f"/api/chats/{accepted.chat_id}")
     detail = TypeAdapter(ChatDetailResponseSchema).validate_json(detail_response.text)
     saved_context = repository.get_chat_runtime_context(UUID(accepted.chat_id))
-    assert detail.runs[0].state == "完了"
+    assert detail.runs[0].state == "completed"
     assert [message.text for message in detail.runs[0].intermediate_messages] == [
         "作業を開始します。",
         "PDFを確認しています。",

@@ -187,14 +187,14 @@ sequenceDiagram
 | --- | --- |
 | codex exec起動失敗 | `ErrorType.SYSTEM` かつ `trace=True` の `AppError` へ変換し、Application層が生成フェーズまたは検証フェーズの利用者向けメッセージへ変換する |
 | JSONL解析失敗 | 解析失敗行をtraceログ対象にし、実行をエラー終端へ変換する |
-| タイムアウト | プロセスへ終了要求を送り、run状態を `タイムアウト` へ更新できる結果を返す |
-| キャンセル要求 | ユーザキャンセル要求、`sent` / `already_exited` / `not_registered` の終了要求結果、プロセス終了結果を合わせて判定し、run状態を `キャンセル済み` へ更新できる結果を返す |
+| タイムアウト | プロセスへ終了要求を送り、run状態を `timed_out` へ更新できる結果を返す |
+| キャンセル要求 | ユーザキャンセル要求、`sent` / `already_exited` / `not_registered` の終了要求結果、プロセス終了結果を合わせて判定し、run状態を `canceled` へ更新できる結果を返す |
 | 検証用Codex資産不足 | 設定不備分類として起動前に失敗させる |
 | 検証用Codex最終出力形式不正 | application層が `validator.max_retries` の範囲で同じ検証用Codex会話へ最終検証結果JSONだけの再出力を依頼し、上限後も不正な場合は検証フェーズのシステムエラーへ変換する |
 | 作業領域削除対象が存在しない | 冪等な削除済みとして扱う |
 | 作業領域削除時のパストラバーサル検知 | `ErrorType.SYSTEM` かつ `trace=True` の `AppError` とし、DB削除へ進まない |
-| 作業領域削除失敗 | `ErrorType.SYSTEM` かつ `trace=True` の `AppError` として上位へ返し、対象チャットは`削除中`のまま維持する |
-| ユーザ単位作業領域削除失敗 | `ErrorType.SYSTEM` かつ `trace=True` の `AppError` として上位へ返し、対象ユーザは`削除中`のまま維持する |
+| 作業領域削除失敗 | `ErrorType.SYSTEM` かつ `trace=True` の `AppError` として上位へ返し、対象チャットは`deleting`のまま維持する |
+| ユーザ単位作業領域削除失敗 | `ErrorType.SYSTEM` かつ `trace=True` の `AppError` として上位へ返し、対象ユーザは`deleting`のまま維持する |
 
 ## 8. 留意事項
 

@@ -295,7 +295,7 @@ export function ChatPage({
       setCancelingRunId((currentRunId) => (currentRunId === response.run_id ? null : currentRunId));
       updateDisplayedRun(response.run_id, (run) => ({
         ...run,
-        state: "エラー",
+        state: "error",
         statusMessage: SSE_DISCONNECTED_MESSAGE,
       }));
     }
@@ -497,7 +497,7 @@ export function ChatPage({
       setCancelingRunId(null);
       updateDisplayedRun(runId, (run) => ({
         ...run,
-        state: run.state === "キャンセル要求中" ? "実行中" : run.state,
+        state: run.state === "cancel_requested" ? "running" : run.state,
         statusMessage: CANCEL_FAILED_MESSAGE,
       }));
     }
@@ -682,6 +682,9 @@ function messageOf(error: unknown) {
 
 function isInProgressRun(state: ChatRunState) {
   return (
-    state === "受付" || state === "実行中" || state === "検証中" || state === "キャンセル要求中"
+    state === "accepted" ||
+    state === "running" ||
+    state === "validating" ||
+    state === "cancel_requested"
   );
 }

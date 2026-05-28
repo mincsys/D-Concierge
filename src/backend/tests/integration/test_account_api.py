@@ -159,7 +159,7 @@ def test_account_name_password_and_delete_flow(tmp_path: Path) -> None:
     }
     assert password_response.status_code == 204
     assert delete_response.status_code == 202
-    assert delete_response.json() == {"account_state": "削除中"}
+    assert delete_response.json() == {"account_state": "deleting"}
     assert me_response.status_code == 401
 
 

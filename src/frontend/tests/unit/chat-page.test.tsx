@@ -49,7 +49,7 @@ const testState = vi.hoisted(() => ({
           runId: string,
         ) => Promise<{ run_id: string; state: ChatRun["state"]; user_message: string }>
       >(),
-    deleteChat: vi.fn<(chatId: string) => Promise<{ chatId: string; chatState: "削除中" }>>(),
+    deleteChat: vi.fn<(chatId: string) => Promise<{ chatId: string; chatState: "deleting" }>>(),
     getActiveChatSession: vi.fn<() => Promise<ChatSession>>(),
     getAppConfig: vi.fn<() => Promise<AppConfigResponse>>(),
     getChatDetail: vi.fn<(chatId: string) => Promise<ChatSession>>(),
@@ -243,10 +243,10 @@ describe("ChatPage", () => {
     testState.api.appendChatRun.mockResolvedValue(continuedAccepted());
     testState.api.cancelChatRun.mockResolvedValue({
       run_id: "run-history",
-      state: "キャンセル要求中",
+      state: "cancel_requested",
       user_message: "キャンセルしています。",
     });
-    testState.api.deleteChat.mockResolvedValue({ chatId: "chat-history", chatState: "削除中" });
+    testState.api.deleteChat.mockResolvedValue({ chatId: "chat-history", chatState: "deleting" });
     testState.api.streamChatRun.mockImplementation(
       (options) =>
         new Promise<void>((resolve) => {
@@ -381,11 +381,11 @@ describe("ChatPage", () => {
     expect(screen.getByTestId("session-id")).toHaveTextContent("chat-new");
     expect(screen.getByTestId("open-thoughts")).toHaveTextContent("run-new");
 
-    await emit(0, { event: "state", payload: { run_id: "run-new", state: "実行中" } });
+    await emit(0, { event: "state", payload: { run_id: "run-new", state: "running" } });
     await emit(0, { event: "message", payload: { run_id: "run-new", text: "調査中" } });
     testState.api.cancelChatRun.mockResolvedValueOnce({
       run_id: "run-new",
-      state: "キャンセル要求中",
+      state: "cancel_requested",
       user_message: "キャンセル受付",
     });
     await user.click(screen.getByRole("button", { name: "最新runをキャンセル" }));
@@ -397,7 +397,7 @@ describe("ChatPage", () => {
       payload: {
         answer: { blocks: [{ markdown: "別run回答", references: [] }] },
         run_id: "run-other",
-        state: "完了",
+        state: "completed",
       },
     });
     expect(screen.getByTestId("canceling-run-id")).toHaveTextContent("run-new");
@@ -406,7 +406,7 @@ describe("ChatPage", () => {
       payload: {
         answer: { blocks: [{ markdown: "最終回答", references: [reference()] }] },
         run_id: "run-new",
-        state: "完了",
+        state: "completed",
       },
     });
 
@@ -445,7 +445,7 @@ describe("ChatPage", () => {
     expect(
       await screen.findByText("回答生成中の接続が切れました。再度お試しください。"),
     ).toBeInTheDocument();
-    expect(screen.getByText("エラー")).toBeInTheDocument();
+    expect(screen.getByText("error")).toBeInTheDocument();
   });
 
   it("観点：履歴と継続指示。確認：履歴詳細表示、思考開閉、継続run追加、スクロール予約を処理する。", async () => {
@@ -473,7 +473,7 @@ describe("ChatPage", () => {
 
     testState.api.cancelChatRun.mockResolvedValueOnce({
       run_id: "run-next",
-      state: "キャンセル要求中",
+      state: "cancel_requested",
       user_message: "キャンセル受付",
     });
     await user.click(screen.getByRole("button", { name: "最新runをキャンセル" }));
@@ -484,7 +484,7 @@ describe("ChatPage", () => {
       event: "error",
       payload: {
         run_id: "run-next",
-        state: "エラー",
+        state: "error",
         user_message: "失敗しました。",
       },
     });
@@ -494,7 +494,7 @@ describe("ChatPage", () => {
       event: "canceled",
       payload: {
         run_id: "run-next",
-        state: "キャンセル済み",
+        state: "canceled",
         user_message: "キャンセルしました。",
       },
     });
@@ -546,7 +546,7 @@ describe("ChatPage", () => {
       payload: {
         answer: { blocks: [{ markdown: "再接続回答", references: [reference()] }] },
         run_id: "run-running",
-        state: "完了",
+        state: "completed",
       },
     });
     expect(screen.getByText("再接続回答")).toBeInTheDocument();
@@ -612,7 +612,7 @@ describe("ChatPage", () => {
     testState.api.listChatHistories
       .mockResolvedValueOnce([history("chat-history", "表示中"), history("chat-other", "別履歴")])
       .mockResolvedValueOnce([history("chat-history", "表示中")]);
-    testState.api.deleteChat.mockResolvedValueOnce({ chatId: "chat-other", chatState: "削除中" });
+    testState.api.deleteChat.mockResolvedValueOnce({ chatId: "chat-other", chatState: "deleting" });
 
     render(<ChatPage />);
     await user.click(await screen.findByRole("button", { name: "履歴を開く" }));
@@ -694,7 +694,7 @@ describe("ChatPage", () => {
       payload: {
         answer: { blocks: [{ markdown: "参照元なし回答", references: [] }] },
         run_id: "run-new",
-        state: "完了",
+        state: "completed",
       },
     });
 
@@ -745,7 +745,7 @@ function history(chatId: string, title: string): ChatHistoryItem {
   return {
     chatId,
     latestRunId: `${chatId}-run`,
-    latestState: "完了",
+    latestState: "completed",
     title,
     updatedAt: "2026-05-09T10:00:00+09:00",
   };
@@ -756,7 +756,7 @@ function accepted(chatId: string, runId: string, sseUrl: string): AcceptedChatRe
     response: {
       run_id: runId,
       sse_url: sseUrl,
-      state: "受付",
+      state: "accepted",
     },
     session: {
       id: chatId,
@@ -764,7 +764,7 @@ function accepted(chatId: string, runId: string, sseUrl: string): AcceptedChatRe
         {
           intermediateMessages: [],
           runId,
-          state: "受付",
+          state: "accepted",
           userInstruction: "指示",
         },
       ],
@@ -778,7 +778,7 @@ function continuedAccepted(): AcceptedChatResponse {
     response: {
       run_id: "run-next",
       sse_url: "/sse/next",
-      state: "受付",
+      state: "accepted",
     },
     session: {
       id: "chat-history",
@@ -787,13 +787,13 @@ function continuedAccepted(): AcceptedChatResponse {
           answer: { blocks: [{ markdown: "履歴回答", references: [reference()] }] },
           intermediateMessages: [],
           runId: "run-history",
-          state: "完了",
+          state: "completed",
           userInstruction: "履歴指示",
         },
         {
           intermediateMessages: [],
           runId: "run-next",
-          state: "受付",
+          state: "accepted",
           userInstruction: "継続の依頼",
         },
       ],
@@ -810,7 +810,7 @@ function historySession(): ChatSession {
         answer: { blocks: [{ markdown: "履歴回答", references: [reference()] }] },
         intermediateMessages: [],
         runId: "run-history",
-        state: "完了",
+        state: "completed",
         userInstruction: "履歴指示",
       },
     ],
@@ -826,13 +826,13 @@ function runningHistorySession(): ChatSession {
         answer: { blocks: [{ markdown: "履歴回答", references: [reference()] }] },
         intermediateMessages: [],
         runId: "run-history",
-        state: "完了",
+        state: "completed",
         userInstruction: "履歴指示",
       },
       {
         intermediateMessages: [{ id: "intermediate-1", text: "保存済み中間" }],
         runId: "run-running",
-        state: "実行中",
+        state: "running",
         userInstruction: "継続中指示",
       },
     ],

@@ -114,7 +114,7 @@ describe("ChatPage integration", () => {
     await waitFor(() => expect(FakeEventSource.instances).toHaveLength(1));
     const firstStream = FakeEventSource.latest();
     await act(async () => {
-      firstStream.emit({ event: "state", payload: { run_id: "run-new", state: "実行中" } });
+      firstStream.emit({ event: "state", payload: { run_id: "run-new", state: "running" } });
       firstStream.emit({ event: "message", payload: { run_id: "run-new", text: "調査中" } });
       firstStream.emit({
         event: "answer",
@@ -129,7 +129,7 @@ describe("ChatPage integration", () => {
             ],
           },
           run_id: "run-new",
-          state: "完了",
+          state: "completed",
         },
       });
       await Promise.resolve();
@@ -164,7 +164,7 @@ describe("ChatPage integration", () => {
     await waitFor(() => expect(FakeEventSource.instances).toHaveLength(2));
     const continuedStream = FakeEventSource.latest();
     await act(async () => {
-      continuedStream.emit({ event: "state", payload: { run_id: "run-next", state: "実行中" } });
+      continuedStream.emit({ event: "state", payload: { run_id: "run-next", state: "running" } });
       await Promise.resolve();
     });
     expect(await screen.findByLabelText("キャンセル")).toBeInTheDocument();
@@ -176,7 +176,7 @@ describe("ChatPage integration", () => {
         event: "canceled",
         payload: {
           run_id: "run-next",
-          state: "キャンセル済み",
+          state: "canceled",
           user_message: "キャンセルしました。",
         },
       });
@@ -199,7 +199,7 @@ describe("ChatPage integration", () => {
     await waitFor(() => expect(FakeEventSource.instances).toHaveLength(1));
     const stream = FakeEventSource.latest();
     await act(async () => {
-      stream.emit({ event: "state", payload: { run_id: "run-new", state: "実行中" } });
+      stream.emit({ event: "state", payload: { run_id: "run-new", state: "running" } });
       stream.emit({ event: "message", payload: { run_id: "run-new", text: "調査中" } });
       await Promise.resolve();
     });
@@ -218,7 +218,7 @@ describe("ChatPage integration", () => {
         event: "error",
         payload: {
           run_id: "run-new",
-          state: "エラー",
+          state: "error",
           user_message: "失敗しました。",
         },
       });
@@ -348,7 +348,7 @@ describe("ChatPage integration", () => {
         payload: {
           answer: { blocks: [{ markdown: "履歴再接続回答", references: [referenceResponse()] }] },
           run_id: "run-running",
-          state: "完了",
+          state: "completed",
         },
       });
       await Promise.resolve();
@@ -456,7 +456,7 @@ describe("ChatPage integration", () => {
     await waitFor(() => expect(FakeEventSource.instances).toHaveLength(1));
     const stream = FakeEventSource.latest();
     await act(async () => {
-      stream.emit({ event: "state", payload: { run_id: "run-new", state: "実行中" } });
+      stream.emit({ event: "state", payload: { run_id: "run-new", state: "running" } });
       await Promise.resolve();
     });
     await user.click(await screen.findByLabelText("キャンセル"));
@@ -468,7 +468,7 @@ describe("ChatPage integration", () => {
         payload: {
           answer: { blocks: [{ markdown: "参照元なし回答", references: [] }] },
           run_id: "run-new",
-          state: "完了",
+          state: "completed",
         },
       });
       await Promise.resolve();
@@ -494,7 +494,7 @@ function responseByUrl(url: string, init?: RequestInit): JsonResponse | Response
       {
         chat_id: "chat-history",
         latest_run_id: "run-history",
-        latest_state: "完了",
+        latest_state: "completed",
         title: "履歴1",
         updated_at: "2026-05-09T10:00:00+09:00",
       },
@@ -505,7 +505,7 @@ function responseByUrl(url: string, init?: RequestInit): JsonResponse | Response
     if (startShouldFail) {
       return new Response("error", { status: 500 });
     }
-    return { chat_id: "chat-new", run_id: "run-new", sse_url: "/sse/new", state: "受付" };
+    return { chat_id: "chat-new", run_id: "run-new", sse_url: "/sse/new", state: "accepted" };
   }
   if (url === "/api/chats/chat-new/runs/run-new/cancel") {
     if (cancelShouldFail) {
@@ -513,7 +513,7 @@ function responseByUrl(url: string, init?: RequestInit): JsonResponse | Response
     }
     return {
       run_id: "run-new",
-      state: "キャンセル要求中",
+      state: "cancel_requested",
       user_message: "キャンセルしています。",
     };
   }
@@ -527,7 +527,7 @@ function responseByUrl(url: string, init?: RequestInit): JsonResponse | Response
       chat_id: "chat-history",
       run_id: "run-next",
       sse_url: "/sse/next",
-      state: "受付",
+      state: "accepted",
     };
   }
   if (url === "/api/chats/chat-history/runs/run-next/cancel") {
@@ -536,7 +536,7 @@ function responseByUrl(url: string, init?: RequestInit): JsonResponse | Response
     }
     return {
       run_id: "run-next",
-      state: "キャンセル要求中",
+      state: "cancel_requested",
       user_message: "キャンセルしています。",
     };
   }
@@ -588,7 +588,7 @@ function chatDetail(
             : { blocks: [{ markdown, references: [referenceResponse()] }] },
         intermediate_messages: [],
         run_id: runId,
-        state: "完了",
+        state: "completed",
         user_instruction: userInstruction,
       },
     ],
@@ -613,13 +613,13 @@ function continuedChatDetail(): ChatDetailResponse {
         answer: { blocks: [{ markdown: "履歴回答", references: [referenceResponse()] }] },
         intermediate_messages: [],
         run_id: "run-history",
-        state: "完了",
+        state: "completed",
         user_instruction: "履歴指示",
       },
       {
         intermediate_messages: [],
         run_id: "run-next",
-        state: "受付",
+        state: "accepted",
         user_instruction: "継続の依頼",
       },
     ],
@@ -635,13 +635,13 @@ function runningChatDetail(): ChatDetailResponse {
         answer: { blocks: [{ markdown: "履歴回答", references: [referenceResponse()] }] },
         intermediate_messages: [],
         run_id: "run-history",
-        state: "完了",
+        state: "completed",
         user_instruction: "履歴指示",
       },
       {
         intermediate_messages: [{ text: "保存済み中間" }],
         run_id: "run-running",
-        state: "実行中",
+        state: "running",
         user_instruction: "継続中指示",
       },
     ],

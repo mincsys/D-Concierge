@@ -224,7 +224,7 @@ export function deleteStubChat(userId: string, chatId: string): DeleteChatRespon
 
   return {
     chat_id: chatId,
-    chat_state: "削除中",
+    chat_state: "deleting",
   };
 }
 
@@ -332,7 +332,7 @@ export function cancelStubRun(userId: string, runId: string) {
 
   const response: CancelChatRunResponse = {
     run_id: runId,
-    state: "キャンセル要求中",
+    state: "cancel_requested",
     user_message: "処理をキャンセルしています。",
   };
 
@@ -368,7 +368,7 @@ export function isStubRunCancelRequested(userId: string, runId: string) {
   const run = chatId
     ? getChatStore(userId).details[chatId]?.runs.find((item) => item.run_id === runId)
     : undefined;
-  return run?.state === "キャンセル要求中";
+  return run?.state === "cancel_requested";
 }
 
 export function createStubCanceledEvent(runId: string): SseEvent {
@@ -376,7 +376,7 @@ export function createStubCanceledEvent(runId: string): SseEvent {
     event: "canceled",
     payload: {
       run_id: runId,
-      state: "キャンセル済み",
+      state: "canceled",
       user_message: "処理をキャンセルしました。",
     },
   };
@@ -481,14 +481,14 @@ function createAcceptedResponse(chatId: string, runId: string): ChatStartRespons
     chat_id: chatId,
     run_id: runId,
     sse_url: `/api/chats/${chatId}/runs/${runId}/sse`,
-    state: "受付",
+    state: "accepted",
   };
 }
 
 function createAcceptedRun(runId: string, userInstruction: string): ChatRunResponse {
   return {
     run_id: runId,
-    state: "受付",
+    state: "accepted",
     user_instruction: userInstruction,
     intermediate_messages: [],
   };
@@ -518,7 +518,7 @@ function applyEventToRun(run: ChatRunResponse, event: SseEvent): ChatRunResponse
 
   switch (event.event) {
     case "state":
-      if (run.state === "キャンセル要求中" && event.payload.state !== "キャンセル済み") {
+      if (run.state === "cancel_requested" && event.payload.state !== "canceled") {
         return run;
       }
       return {
@@ -526,7 +526,7 @@ function applyEventToRun(run: ChatRunResponse, event: SseEvent): ChatRunResponse
         state: event.payload.state,
       };
     case "message":
-      if (run.state === "キャンセル要求中" || isTerminalState(run.state)) {
+      if (run.state === "cancel_requested" || isTerminalState(run.state)) {
         return run;
       }
       return {
@@ -534,7 +534,7 @@ function applyEventToRun(run: ChatRunResponse, event: SseEvent): ChatRunResponse
         intermediate_messages: [...(run.intermediate_messages ?? []), { text: event.payload.text }],
       };
     case "answer":
-      if (run.state === "キャンセル要求中" || isTerminalState(run.state)) {
+      if (run.state === "cancel_requested" || isTerminalState(run.state)) {
         return run;
       }
       return {
@@ -582,7 +582,7 @@ function createFallbackChatDetail(userId: string, chatId: string): ChatDetailRes
     runs: [
       {
         run_id: runId,
-        state: "完了",
+        state: "completed",
         user_instruction: `${title}について整理して`,
         intermediate_messages: [
           { text: "保存済み履歴を読み込みました。" },
@@ -608,12 +608,12 @@ function createChatTitle(userInstruction: string) {
 
 function isTerminalState(state: ChatRun["state"]) {
   return (
-    state === "完了" || state === "キャンセル済み" || state === "エラー" || state === "タイムアウト"
+    state === "completed" || state === "canceled" || state === "error" || state === "timed_out"
   );
 }
 
 function isCancelableState(state: ChatRun["state"]) {
-  return state === "受付" || state === "実行中" || state === "検証中";
+  return state === "accepted" || state === "running" || state === "validating";
 }
 
 function createUuid() {

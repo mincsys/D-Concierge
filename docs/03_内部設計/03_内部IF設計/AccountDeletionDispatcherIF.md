@@ -56,7 +56,7 @@ sequenceDiagram
 
 ### 6.1. 事前条件
 
-- 呼出元は対象ユーザを`削除中`へ更新済みである。
+- 呼出元は対象ユーザを`deleting`へ更新済みである。
 - 呼出元は対象ユーザの全ログインセッション削除を完了している。
 - 呼出元は `user_id` と `trace_id` を保持している。
 - composition rootで `AccountDeletionExecutorPort` の具象実装が注入済みである。
@@ -72,7 +72,7 @@ sequenceDiagram
 - DispatcherはDB、ファイル、codex execを直接操作しない。
 - Dispatcherは削除対象ユーザIDの重複登録を抑止する。
 - Dispatcherは物理削除完了通知や進捗通知を提供しない。
-- 削除ジョブの失敗時、対象ユーザは`削除中`のまま維持され、起動時再登録の対象になる。
+- 削除ジョブの失敗時、対象ユーザは`deleting`のまま維持され、起動時再登録の対象になる。
 
 ## 7. 入出力とデータ項目
 
@@ -98,7 +98,7 @@ sequenceDiagram
 
 ## 8. 起動時再登録
 
-- 起動時アカウント回復処理は、Repositoryから`削除中`のユーザIDを取得する。
+- 起動時アカウント回復処理は、Repositoryから`deleting`のユーザIDを取得する。
 - 取得したユーザIDを1件ずつ `dispatch_account_deletion` へ渡す。
 - 登録結果が `already_registered` の場合は正常扱いとする。
 - 登録結果が `failed` の場合はトレースログ対象とし、次回起動または次回削除要求で再登録できる状態を維持する。

@@ -20,35 +20,35 @@ export const stubChatHistories: ChatHistoryResponseItem[] = [
     chat_id: "1c1f6f9a-4b1a-4f8e-91a0-62e6d62c0d10",
     title: "要件定義を成功させるポイント",
     latest_run_id: "4e5e7e31-2dd6-47b8-a2e2-3c58a2a2e381",
-    latest_state: "完了",
+    latest_state: "completed",
     updated_at: "2026-05-08T01:00:00.000Z",
   },
   {
     chat_id: "2778fdaf-d3bf-42f9-9869-1939e2cd0a01",
     title: "IPA刊行物QA",
     latest_run_id: "c4b449ea-7e45-4e41-8888-fd2d973190ef",
-    latest_state: "完了",
+    latest_state: "completed",
     updated_at: "2026-05-07T08:35:00.000Z",
   },
   {
     chat_id: "0dfb837f-c3cf-4d3c-9219-bf1c4f7fd2e7",
     title: "要件定義の肝どころ",
     latest_run_id: "3e0377eb-4c3d-4086-9fb0-3e448a84e846",
-    latest_state: "完了",
+    latest_state: "completed",
     updated_at: "2026-05-06T05:18:00.000Z",
   },
   {
     chat_id: "c76ced7f-0192-4fc9-90a4-1091441f5cde",
     title: "公開資料の構成検索",
     latest_run_id: "47b5f723-8919-462b-9f16-7c7934dcaa62",
-    latest_state: "完了",
+    latest_state: "completed",
     updated_at: "2026-05-05T02:20:00.000Z",
   },
   {
     chat_id: "a2064873-8c32-45ab-8853-1b90bd454fb7",
     title: "PDF相関リンク設計",
     latest_run_id: "9e59d303-3ad9-43e6-8de2-8c69424b1630",
-    latest_state: "完了",
+    latest_state: "completed",
     updated_at: "2026-05-04T00:40:00.000Z",
   },
 ];
@@ -60,7 +60,7 @@ export const stubChatDetails: Record<string, ChatDetailResponse> = {
     runs: [
       {
         run_id: "d3a8f7cb-0e7c-4129-8730-52b94dfdbb1f",
-        state: "完了",
+        state: "completed",
         user_instruction: "要件定義を成功させるポイントをIPA資料から整理して",
         intermediate_messages: [
           { text: "検索キーワードを整理します。" },
@@ -133,7 +133,7 @@ sequenceDiagram
       },
       {
         run_id: "4e5e7e31-2dd6-47b8-a2e2-3c58a2a2e381",
-        state: "完了",
+        state: "completed",
         user_instruction: "回答表示で表、コードブロック、HTML表も確認できる形にして",
         intermediate_messages: [
           { text: "前回の文脈を引き継いで表示要素を整理します。" },
@@ -233,7 +233,7 @@ export const stubSseEvents: Record<string, SseEvent[]> = {
       event: "state",
       payload: {
         run_id: "5f5e8cf2-25f6-4962-9d1d-c3c93ab6cbb2",
-        state: "受付",
+        state: "accepted",
       },
     },
     {
@@ -247,7 +247,7 @@ export const stubSseEvents: Record<string, SseEvent[]> = {
       event: "state",
       payload: {
         run_id: "5f5e8cf2-25f6-4962-9d1d-c3c93ab6cbb2",
-        state: "実行中",
+        state: "running",
       },
     },
     {
@@ -268,7 +268,7 @@ export const stubSseEvents: Record<string, SseEvent[]> = {
       event: "answer",
       payload: {
         run_id: "5f5e8cf2-25f6-4962-9d1d-c3c93ab6cbb2",
-        state: "完了",
+        state: "completed",
         answer: {
           blocks: [
             {

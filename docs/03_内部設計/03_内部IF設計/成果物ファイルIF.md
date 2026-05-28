@@ -128,8 +128,8 @@ sequenceDiagram
 | 保存失敗 | `ErrorType.SYSTEM` かつ `trace=True` の `AppError` として上位へ返し、DB保存はcommitしない |
 | 削除対象ファイルが存在しない | 冪等な削除済みとして扱う |
 | 保存済み成果物削除時のパストラバーサル検知 | `ErrorType.SYSTEM` かつ `trace=True` の `AppError` とし、DB削除へ進まない |
-| 保存済み成果物削除失敗 | `ErrorType.SYSTEM` かつ `trace=True` の `AppError` として上位へ返し、対象チャットは`削除中`のまま維持する |
-| ユーザ単位保存済み成果物削除失敗 | `ErrorType.SYSTEM` かつ `trace=True` の `AppError` として上位へ返し、対象ユーザは`削除中`のまま維持する |
+| 保存済み成果物削除失敗 | `ErrorType.SYSTEM` かつ `trace=True` の `AppError` として上位へ返し、対象チャットは`deleting`のまま維持する |
+| ユーザ単位保存済み成果物削除失敗 | `ErrorType.SYSTEM` かつ `trace=True` の `AppError` として上位へ返し、対象ユーザは`deleting`のまま維持する |
 
 ## 8. 留意事項
 

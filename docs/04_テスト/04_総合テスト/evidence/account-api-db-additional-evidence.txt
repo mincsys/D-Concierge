@@ -63,7 +63,7 @@ content-length: 29
 content-type: application/json
 set-cookie: d_concierge_session=""; expires=Wed, 27 May 2026 08:18:34 GMT; Max-Age=0; Path=/; SameSite=lax
 
-{"account_state":"削除中"}## final db state
+{"account_state":"deleting"}## final db state
 user-a|ユーザA|通常
 user-a|1
 # 期限切れセッション削除 再確認証跡

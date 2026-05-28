@@ -38,12 +38,12 @@ export function ChatThread({
   const scrollTargetElementRef = useRef<HTMLDivElement | null>(null);
   const latestRun = session.runs.at(-1);
   const composerActionMode =
-    latestRun && (cancelingRunId === latestRun.runId || latestRun.state === "キャンセル要求中")
+    latestRun && (cancelingRunId === latestRun.runId || latestRun.state === "cancel_requested")
       ? "canceling"
       : latestRun &&
-          (latestRun.state === "受付" ||
-            latestRun.state === "実行中" ||
-            latestRun.state === "検証中")
+          (latestRun.state === "accepted" ||
+            latestRun.state === "running" ||
+            latestRun.state === "validating")
         ? "cancel"
         : "send";
 
@@ -135,6 +135,9 @@ export function ChatThread({
 
 function isInProgressRun(state: ChatSession["runs"][number]["state"]) {
   return (
-    state === "受付" || state === "実行中" || state === "検証中" || state === "キャンセル要求中"
+    state === "accepted" ||
+    state === "running" ||
+    state === "validating" ||
+    state === "cancel_requested"
   );
 }

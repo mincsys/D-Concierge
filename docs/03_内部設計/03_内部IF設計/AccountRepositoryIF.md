@@ -20,7 +20,7 @@
 | 呼出元 | `src/backend/application/account`、`src/backend/app` |
 | 呼出先 | `src/backend/application/ports/database/interface.py`。具象実装は `src/backend/infrastructure/database/repositories/SqlAlchemyAccountRepository` |
 | 目的 | ユーザ、ログインセッション、アカウント削除対象の保存、取得、状態更新、削除をapplication層から抽象化する。 |
-| 冪等性 | セッション削除、期限切れセッション削除、`削除中`更新は対象が存在しない場合も呼出元が結果を判定できる値を返す。ユーザ作成とセッション作成は非冪等。 |
+| 冪等性 | セッション削除、期限切れセッション削除、`deleting`更新は対象が存在しない場合も呼出元が結果を判定できる値を返す。ユーザ作成とセッション作成は非冪等。 |
 
 ### 3.1. Port構成
 
@@ -66,7 +66,7 @@ sequenceDiagram
 ### 5.3. 不変条件
 
 - パスワード生値、ログインセッショントークン生値を受け取らない。
-- `削除中`ユーザを通常の認証成功、ログイン成功、変更成功として返さない。
+- `deleting`ユーザを通常の認証成功、ログイン成功、変更成功として返さない。
 - `login_sessions` は状態列を持たず、有効な行の存在と `expires_at` でログイン状態を判定する。
 - アカウント削除受付で対象ユーザの全ログインセッションを削除する。
 
@@ -85,8 +85,8 @@ sequenceDiagram
 | `delete_session_by_token_hash` | 現在セッションを削除する | token_hash | 削除件数 |
 | `delete_sessions_by_user_id` | ユーザ単位でセッションを削除する | ユーザID | 削除件数 |
 | `delete_expired_sessions` | 期限切れセッションを削除する | 現在時刻 | 削除件数 |
-| `mark_user_deleting` | ユーザを`削除中`へ更新する | ユーザID、更新日時 | 更新後状態 |
-| `mark_user_chats_deleting` | ユーザ配下チャットを`削除中`へ更新する | ユーザID、更新日時 | 更新件数 |
+| `mark_user_deleting` | ユーザを`deleting`へ更新する | ユーザID、更新日時 | 更新後状態 |
+| `mark_user_chats_deleting` | ユーザ配下チャットを`deleting`へ更新する | ユーザID、更新日時 | 更新件数 |
 | `list_deleting_user_ids` | 起動時再登録対象を取得する | なし | 削除中ユーザID一覧 |
 | `get_account_deletion_target` | アカウント物理削除対象を取得する | ユーザID | 削除対象DTOまたはなし |
 | `delete_account_data` | 対象ユーザのDBデータを削除する | ユーザID | なし |
@@ -105,6 +105,6 @@ sequenceDiagram
 | --- | --- |
 | ユーザID重複 | 入力エラーとして呼出元が `user_id` の項目別エラーへ変換できる結果を返す |
 | 対象ユーザなし | 対象なしエラーとして返す |
-| `削除中`ユーザへの通常操作 | 認証、ログイン、変更の対象外として扱う |
+| `deleting`ユーザへの通常操作 | 認証、ログイン、変更の対象外として扱う |
 | DB制約違反 | `ErrorType.SYSTEM` かつトレース対象の `AppError` へ変換する |
 | アカウント物理削除対象なし | 物理削除済み扱いとして正常終了できる結果を返す |

@@ -55,7 +55,7 @@ describe("chatApi", () => {
       {
         chatId: "chat-1",
         latestRunId: "run-1",
-        latestState: "完了",
+        latestState: "completed",
         title: "履歴1",
         updatedAt: "2026-05-09T10:00:00+09:00",
       },
@@ -78,7 +78,7 @@ describe("chatApi", () => {
     });
     await expect(cancelChatRun("chat-1", "run-1")).resolves.toEqual({
       run_id: "run-1",
-      state: "キャンセル要求中",
+      state: "cancel_requested",
       user_message: "処理をキャンセルしています。",
     });
 
@@ -117,7 +117,7 @@ describe("chatApi", () => {
   it("観点：チャット削除API。確認：DELETEを送信し、削除受付応答を画面モデルへ変換する。", async () => {
     await expect(deleteChat("chat-1")).resolves.toEqual({
       chatId: "chat-1",
-      chatState: "削除中",
+      chatState: "deleting",
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -151,13 +151,13 @@ describe("chatApi", () => {
           runs: [
             {
               run_id: "run-empty",
-              state: "完了",
+              state: "completed",
               user_instruction: "指示",
             },
             {
               answer: { blocks: [{ markdown: "回答" }] },
               run_id: "run-answer",
-              state: "完了",
+              state: "completed",
               user_instruction: "指示2",
             },
           ],
@@ -177,7 +177,7 @@ describe("chatApi", () => {
           answer: undefined,
           intermediateMessages: [],
           runId: "run-empty",
-          state: "完了",
+          state: "completed",
           statusMessage: undefined,
           userInstruction: "指示",
         },
@@ -185,7 +185,7 @@ describe("chatApi", () => {
           answer: { blocks: [{ markdown: "回答", references: [] }] },
           intermediateMessages: [],
           runId: "run-answer",
-          state: "完了",
+          state: "completed",
           statusMessage: undefined,
           userInstruction: "指示2",
         },
@@ -212,12 +212,12 @@ describe("chatApi", () => {
     });
     const eventSource = FakeEventSource.latest();
 
-    eventSource.emit("state", { run_id: "run-1", state: "実行中" });
+    eventSource.emit("state", { run_id: "run-1", state: "running" });
     eventSource.emit("message", { run_id: "run-1", text: "調査中" });
     eventSource.emit("answer", {
       answer: { blocks: [{ markdown: "回答", references: [] }] },
       run_id: "run-1",
-      state: "完了",
+      state: "completed",
     });
 
     expect(eventSource.closed).toBe(true);
@@ -247,7 +247,7 @@ describe("chatApi", () => {
       },
       sseUrl: "/api/sse-stale",
     });
-    FakeEventSource.latest().emit("state", { run_id: "run-1", state: "実行中" });
+    FakeEventSource.latest().emit("state", { run_id: "run-1", state: "running" });
     await expect(stale).resolves.toBeUndefined();
   });
 
@@ -265,7 +265,7 @@ describe("chatApi", () => {
 
     errorSource.emit("error", {
       run_id: "run-1",
-      state: "エラー",
+      state: "error",
       user_message: "失敗しました。",
     });
     errorSource.fail();
@@ -281,15 +281,15 @@ describe("chatApi", () => {
     const canceledSource = FakeEventSource.latest();
     canceledSource.emit("canceled", {
       run_id: "run-2",
-      state: "キャンセル済み",
+      state: "canceled",
       user_message: "キャンセルしました。",
     });
     canceledSource.emit("answer", {
       answer: { blocks: [{ markdown: "完了後の回答", references: [] }] },
       run_id: "run-2",
-      state: "完了",
+      state: "completed",
     });
-    canceledSource.emit("state", { run_id: "run-2", state: "実行中" });
+    canceledSource.emit("state", { run_id: "run-2", state: "running" });
     await expect(canceledStream).resolves.toBeUndefined();
 
     expect(events.map((event) => event.event)).toEqual(["error", "canceled"]);
@@ -309,7 +309,7 @@ describe("chatApi", () => {
       new MessageEvent("error", {
         data: JSON.stringify({
           run_id: "run-1",
-          state: "エラー",
+          state: "error",
           user_message: "SSE payload",
         }),
       }),
@@ -328,7 +328,7 @@ describe("chatApi", () => {
       },
       sseUrl: "/api/sse-handler-error",
     });
-    FakeEventSource.latest().emit("state", { run_id: "run-1", state: "実行中" });
+    FakeEventSource.latest().emit("state", { run_id: "run-1", state: "running" });
 
     await expect(streaming).rejects.toThrow("handler failed");
   });
@@ -353,7 +353,7 @@ describe("chatApi", () => {
   it("観点：履歴変換。確認：snake_caseの履歴項目をcamelCaseへ変換する。", () => {
     const item: ChatHistoryResponseItem = {
       chat_id: "chat-1",
-      latest_state: "受付",
+      latest_state: "accepted",
       title: "履歴",
       updated_at: "2026-05-09T10:00:00+09:00",
     };
@@ -361,7 +361,7 @@ describe("chatApi", () => {
     expect(toChatHistoryItem(item)).toEqual({
       chatId: "chat-1",
       latestRunId: undefined,
-      latestState: "受付",
+      latestState: "accepted",
       title: "履歴",
       updatedAt: "2026-05-09T10:00:00+09:00",
     });
@@ -377,7 +377,7 @@ function responseByUrl(url: string, init?: RequestInit): JsonResponse | Response
       {
         chat_id: "chat-1",
         latest_run_id: "run-1",
-        latest_state: "完了",
+        latest_state: "completed",
         title: "履歴1",
         updated_at: "2026-05-09T10:00:00+09:00",
       },
@@ -385,20 +385,20 @@ function responseByUrl(url: string, init?: RequestInit): JsonResponse | Response
   }
   if (url === "/api/chats/start") {
     expect(init?.body).toBe(JSON.stringify({ user_instruction: " 初回 " }));
-    return { chat_id: "chat-2", run_id: "run-2", sse_url: "/sse/run-2", state: "受付" };
+    return { chat_id: "chat-2", run_id: "run-2", sse_url: "/sse/run-2", state: "accepted" };
   }
   if (url === "/api/chats/chat-1/runs") {
-    return { chat_id: "chat-1", run_id: "run-3", sse_url: "/sse/run-3", state: "受付" };
+    return { chat_id: "chat-1", run_id: "run-3", sse_url: "/sse/run-3", state: "accepted" };
   }
   if (url === "/api/chats/chat-1/runs/run-1/cancel") {
     return {
       run_id: "run-1",
-      state: "キャンセル要求中",
+      state: "cancel_requested",
       user_message: "処理をキャンセルしています。",
     };
   }
   if (url === "/api/chats/chat-1" && init?.method === "DELETE") {
-    return { chat_id: "chat-1", chat_state: "削除中" };
+    return { chat_id: "chat-1", chat_state: "deleting" };
   }
   if (url === "/api/chats/chat-2") {
     return chatDetail("chat-2", "run-2");
@@ -428,7 +428,7 @@ function chatDetail(chatId: string, runId: string): ChatDetailResponse {
         },
         intermediate_messages: [{ text: "調査中" }],
         run_id: runId,
-        state: "完了",
+        state: "completed",
         user_instruction: "指示",
       },
     ],

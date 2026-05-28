@@ -1010,7 +1010,7 @@ describe("frontend components", () => {
               {
                 intermediateMessages: [],
                 runId: "run-empty",
-                state: "完了",
+                state: "completed",
                 userInstruction: "中間なし",
               },
             ],
@@ -1094,7 +1094,7 @@ describe("frontend components", () => {
               {
                 intermediateMessages: [],
                 runId: "run-1",
-                state: "実行中",
+                state: "running",
                 statusMessage: "キャンセル待機中",
                 userInstruction: "実行中",
               },
@@ -1123,7 +1123,7 @@ describe("frontend components", () => {
               {
                 intermediateMessages: [],
                 runId: "run-1",
-                state: "キャンセル済み",
+                state: "canceled",
                 statusMessage: "キャンセルしました。",
                 userInstruction: "キャンセル対象",
               },
@@ -1156,7 +1156,7 @@ describe("frontend components", () => {
               {
                 intermediateMessages: [],
                 runId: "run-1",
-                state: "キャンセル要求中",
+                state: "cancel_requested",
                 statusMessage: "キャンセルしています。",
                 userInstruction: "キャンセル対象",
               },
@@ -1190,7 +1190,7 @@ function history(chatId: string, title: string): ChatHistoryItem {
   return {
     chatId,
     latestRunId: `${chatId}-run`,
-    latestState: "完了",
+    latestState: "completed",
     title,
     updatedAt: "2026-05-09T10:00:00+09:00",
   };
@@ -1213,20 +1213,20 @@ function chatSession(): ChatSession {
         answer: { blocks: [{ markdown: "回答本文", references: [reference()] }] },
         intermediateMessages: [{ id: "msg-1", text: "調査中" }],
         runId: "run-1",
-        state: "完了",
+        state: "completed",
         userInstruction: "初回指示",
       },
       {
         intermediateMessages: [],
         runId: "run-2",
-        state: "エラー",
+        state: "error",
         statusMessage: "回答生成に失敗しました。",
         userInstruction: "追加指示",
       },
       {
         intermediateMessages: [],
         runId: "run-3",
-        state: "実行中",
+        state: "running",
         userInstruction: "実行中指示",
       },
     ],
@@ -1238,7 +1238,7 @@ function completedChatSession(): ChatSession {
   const session = chatSession();
   const latestRun = session.runs[2];
   if (latestRun) {
-    session.runs[2] = { ...latestRun, state: "完了" };
+    session.runs[2] = { ...latestRun, state: "completed" };
   }
   return session;
 }

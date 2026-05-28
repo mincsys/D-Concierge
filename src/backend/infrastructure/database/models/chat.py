@@ -26,7 +26,7 @@ class UserModel(Base):
     user_name: Mapped[str] = mapped_column(sa.String(30), nullable=False)
     password_hash: Mapped[str] = mapped_column(sa.Text, nullable=False)
     user_state: Mapped[str] = mapped_column(
-        sa.String(20), nullable=False, default="通常"
+        sa.String(20), nullable=False, default="active"
     )
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime(timezone=True), nullable=False
@@ -84,7 +84,7 @@ class ChatModel(Base):
     )
     title: Mapped[str] = mapped_column(sa.String(50), nullable=False)
     chat_state: Mapped[str] = mapped_column(
-        sa.String(20), nullable=False, default="有効"
+        sa.String(20), nullable=False, default="active"
     )
     generation_conversation_id: Mapped[str | None] = mapped_column(sa.String(255))
     validation_conversation_id: Mapped[str | None] = mapped_column(sa.String(255))

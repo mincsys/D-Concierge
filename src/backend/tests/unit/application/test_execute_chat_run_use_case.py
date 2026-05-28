@@ -1082,7 +1082,7 @@ def test_execute_chat_run_marks_timeout_when_codex_times_out() -> None:
     assert publisher.events[-1].state is RunState.TIMED_OUT
     assert trace_logger.records[-1].event_name == "execution_timeout"
     assert trace_logger.records[-1].exception_type == "RunTimeoutError"
-    assert trace_logger.records[-1].run_state == "タイムアウト"
+    assert trace_logger.records[-1].run_state == "timed_out"
 
 
 def test_execute_chat_run_keeps_cancel_when_timeout_races_with_cancel() -> None:
