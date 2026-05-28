@@ -2,10 +2,10 @@ from pathlib import Path
 
 from backend.application.artifacts.get_artifact import GetArtifactUseCase
 from backend.application.references.get_reference_data import GetReferenceDataUseCase
-from backend.infrastructure.filesystem.artifacts.file_artifact_store import (
+from backend.infrastructure.filesystem.file_artifact_store import (
     FileArtifactStore,
 )
-from backend.infrastructure.filesystem.references.file_reference_store import (
+from backend.infrastructure.filesystem.file_reference_store import (
     FileReferenceStore,
 )
 from backend.tests.support.memory_repository import InMemoryChatRepository

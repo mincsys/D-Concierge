@@ -7,7 +7,7 @@ from backend.application.ports.filesystem.dto import (
     OpenedArtifactFile,
     SavedArtifactFile,
 )
-from backend.infrastructure.filesystem.artifacts.file_artifact_store import (
+from backend.infrastructure.filesystem.file_artifact_store import (
     FileArtifactStore,
 )
 from backend.shared.errors.error_type import ErrorType

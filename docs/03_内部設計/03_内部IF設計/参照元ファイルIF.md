@@ -2,7 +2,7 @@
 
 ## 1. 文書の目的
 
-本書は、`application/references` と `infrastructure/filesystem/references` の間で、`application/ports/filesystem/interface.py` を通じて利用する内部IFの契約を定義することを目的とする。
+本書は、`application/references` と `infrastructure/filesystem/file_reference_store.py` の間で、`application/ports/filesystem/interface.py` を通じて利用する内部IFの契約を定義することを目的とする。
 
 ## 2. 前提
 

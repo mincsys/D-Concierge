@@ -2,7 +2,7 @@
 
 ## 1. 文書の目的
 
-本書は、`application/artifacts` と `infrastructure/filesystem/artifacts` の間で、`application/ports/filesystem/interface.py` を通じて利用する内部IFの契約を定義することを目的とする。
+本書は、`application/artifacts` と `infrastructure/filesystem/file_artifact_store.py` の間で、`application/ports/filesystem/interface.py` を通じて利用する内部IFの契約を定義することを目的とする。
 
 ## 2. 前提
 

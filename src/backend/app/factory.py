@@ -77,10 +77,10 @@ from backend.infrastructure.database.repositories.sqlalchemy_chat_repository imp
     SqlAlchemyChatRepository,
 )
 from backend.infrastructure.database.session.factory import create_transaction_manager
-from backend.infrastructure.filesystem.artifacts.file_artifact_store import (
+from backend.infrastructure.filesystem.file_artifact_store import (
     FileArtifactStore,
 )
-from backend.infrastructure.filesystem.references.file_reference_store import (
+from backend.infrastructure.filesystem.file_reference_store import (
     FileReferenceStore,
 )
 from backend.infrastructure.runtime.account_deletion_dispatcher import (
