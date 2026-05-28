@@ -24,6 +24,7 @@ type StreamChatRunOptions = {
   sseUrl: string;
   isCurrent: () => boolean;
   onEvent: (event: SseEvent) => Promise<void> | void;
+  signal?: AbortSignal;
 };
 
 export class ChatApiError extends Error {
@@ -107,7 +108,11 @@ export async function deleteChat(chatId: string): Promise<DeletedChat> {
   };
 }
 
-export function streamChatRun({ sseUrl, isCurrent, onEvent }: StreamChatRunOptions) {
+export function streamChatRun({ sseUrl, isCurrent, onEvent, signal }: StreamChatRunOptions) {
+  if (signal?.aborted) {
+    return Promise.resolve();
+  }
+
   return new Promise<void>((resolve, reject) => {
     const eventSource = new EventSource(sseUrl);
     let settled = false;
@@ -119,6 +124,7 @@ export function streamChatRun({ sseUrl, isCurrent, onEvent }: StreamChatRunOptio
         return;
       }
       settled = true;
+      signal?.removeEventListener("abort", settleAsResolved);
       eventSource.close();
       resolve();
     }
@@ -128,6 +134,7 @@ export function streamChatRun({ sseUrl, isCurrent, onEvent }: StreamChatRunOptio
         return;
       }
       settled = true;
+      signal?.removeEventListener("abort", settleAsResolved);
       eventSource.close();
       reject(error);
     }
@@ -198,6 +205,11 @@ export function streamChatRun({ sseUrl, isCurrent, onEvent }: StreamChatRunOptio
         settleAsRejected(new Error("SSE接続が切断されました。"));
       }
     };
+
+    signal?.addEventListener("abort", settleAsResolved, { once: true });
+    if (signal?.aborted) {
+      settleAsResolved();
+    }
   });
 }
 

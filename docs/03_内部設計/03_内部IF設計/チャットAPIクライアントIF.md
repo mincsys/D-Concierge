@@ -76,6 +76,7 @@ sequenceDiagram
 | `sseUrl` | 受付応答で返却されたSSE購読URL |
 | `isCurrent` | 購読中ストリームが現在も有効かを判定する関数 |
 | `onEvent` | SSEイベントを画面状態へ反映する関数 |
+| `signal` | 呼出元がSSE購読を意図的に解除するためのAbortSignal |
 
 ### 6.2. 出力
 
@@ -99,7 +100,7 @@ sequenceDiagram
 | `appendChatRun` | 継続指示を受け付ける | チャットID、ユーザ指示本文 | `AcceptedChatRun` |
 | `cancelChatRun` | 実行中runのキャンセルを要求する | チャットID、run ID | `CancelChatRunResponse` |
 | `deleteChat` | チャット削除を要求する | チャットID | `DeleteChatResponse` |
-| `streamChatRun` | チャット実行のイベントを購読する | SSE URL、現行ストリーム判定、イベントハンドラ | 完了Promise |
+| `streamChatRun` | チャット実行のイベントを購読する | SSE URL、現行ストリーム判定、イベントハンドラ、AbortSignal | 完了Promise |
 
 ## 7. 例外処理
 
@@ -112,6 +113,7 @@ sequenceDiagram
 | SSE接続が終端イベント前に切断 | Errorをthrowし、呼出元でエラー表示または再読込判断を行う |
 | SSEイベントJSONが不正 | Errorをthrowし、EventSourceを閉じる |
 | 旧ストリーム化 | 正常終了としてEventSourceを閉じ、画面状態を更新しない |
+| 呼出元によるSSE購読解除 | 正常終了としてEventSourceを閉じ、SSE切断エラーを返さない |
 
 ## 8. 留意事項
 

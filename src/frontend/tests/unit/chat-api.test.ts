@@ -251,6 +251,56 @@ describe("chatApi", () => {
     await expect(stale).resolves.toBeUndefined();
   });
 
+  it("観点：SSE購読解除。確認：AbortSignalによる解除は接続を閉じて正常終了する。", async () => {
+    vi.stubGlobal("EventSource", FakeEventSource);
+    const controller = new AbortController();
+    const streaming = streamChatRun({
+      isCurrent: () => true,
+      onEvent: () => undefined,
+      signal: controller.signal,
+      sseUrl: "/api/sse-abort",
+    });
+    const eventSource = FakeEventSource.latest();
+
+    controller.abort();
+
+    await expect(streaming).resolves.toBeUndefined();
+    expect(eventSource.closed).toBe(true);
+  });
+
+  it("観点：SSE購読解除。確認：片方の購読解除は別購読の接続を閉じない。", async () => {
+    vi.stubGlobal("EventSource", FakeEventSource);
+    const firstController = new AbortController();
+    const secondController = new AbortController();
+    const firstStreaming = streamChatRun({
+      isCurrent: () => true,
+      onEvent: () => undefined,
+      signal: firstController.signal,
+      sseUrl: "/api/sse-first",
+    });
+    const firstSource = FakeEventSource.latest();
+    const secondStreaming = streamChatRun({
+      isCurrent: () => true,
+      onEvent: () => undefined,
+      signal: secondController.signal,
+      sseUrl: "/api/sse-second",
+    });
+    const secondSource = FakeEventSource.latest();
+
+    firstController.abort();
+
+    await expect(firstStreaming).resolves.toBeUndefined();
+    expect(firstSource.closed).toBe(true);
+    expect(secondSource.closed).toBe(false);
+
+    secondSource.emit("answer", {
+      answer: { blocks: [{ markdown: "回答", references: [] }] },
+      run_id: "run-2",
+      state: "completed",
+    });
+    await expect(secondStreaming).resolves.toBeUndefined();
+  });
+
   it("観点：SSE終端イベント。確認：error/canceledイベントと終端後onerrorを正常終了として扱う。", async () => {
     vi.stubGlobal("EventSource", FakeEventSource);
     const events: SseEvent[] = [];

@@ -16,7 +16,7 @@
 - アプリ設定、履歴一覧、チャット詳細、新規チャット開始、継続指示、キャンセル、チャット削除のREST通信を提供する。
 - チャット受付応答後、最新のチャット詳細を取得して画面モデルへ変換する。
 - SSEを購読し、受信イベントを順序どおりに呼出元へ通知する。
-- 終端イベント受信時点、旧ストリーム化、SSE接続異常に応じてEventSourceを閉じる。
+- 終端イベント受信時点、旧ストリーム化、呼出元による購読解除、SSE接続異常に応じてEventSourceを閉じる。
 - API応答データを `ChatHistoryItem`、`ChatSession`、`ChatRun`、`ChatAnswer` へ変換する。
 - 削除受付応答を `DeleteChatResponse` へ変換する。
 - APIエラー応答を、HTTPステータス、エラー分類、利用者向けメッセージを持つフロントエンド内部エラーへ変換する。
@@ -28,6 +28,7 @@
 - SSE終端イベントは `answer`、`error`、`canceled` のいずれかとし、終端後はEventSourceを閉じる。
 - 終端イベント受信後に届いたSSEイベントは、呼出元へ通知しない。
 - `isCurrent()` が `false` を返した後は、以降のSSEイベントを呼出元へ通知しない。
+- `AbortSignal` による購読解除は正常終了として扱い、呼出元へSSE切断エラーを返さない。
 - `startChat` と `appendChatRun` は、受付応答の `chat_id` を使ってチャット詳細を取得する。
 - API変換後の画面モデルでは、参照元配列が欠落していても空配列として扱う。
 - `deleteChat` は削除受付応答の `chat_state` が `deleting` であることを検証して返す。
@@ -45,7 +46,7 @@
 | `appendChatRun` | 既存チャットへ継続指示を受付する | チャットID、継続指示 | チャットID、受付応答、チャットセッション | チャットIDが空でないこと<br>指示本文をtrimした結果が空でないこと | 受付応答の `chat_id` に対応するチャット詳細が返ること |
 | `cancelChatRun` | 指定runのキャンセルを要求する | チャットID、run ID | キャンセル受付結果 | チャットIDとrun IDが空でないこと | 対象run ID、`cancel_requested` 状態、利用者向けメッセージが返ること |
 | `deleteChat` | 指定チャットの削除を要求する | チャットID | `DeleteChatResponse` | チャットIDが空でないこと | `DELETE /api/chats/{chatId}` を呼び、`{ chatId, chatState: "削除中" }` を返すこと |
-| `streamChatRun` | SSEを購読してイベントを順序処理する | SSE URL、現行ストリーム判定、イベントハンドラ | 終端または中断までの完了Promise | SSE URLが空でないこと<br>イベントハンドラが例外を呼出元へ返せること | 終端イベント受信時点でEventSourceが閉じられること<br>終端イベントのイベントハンドラ完了後にPromiseが完了すること<br>旧ストリーム化した場合は正常終了として扱うこと |
+| `streamChatRun` | SSEを購読してイベントを順序処理する | SSE URL、現行ストリーム判定、イベントハンドラ、AbortSignal | 終端または中断までの完了Promise | SSE URLが空でないこと<br>イベントハンドラが例外を呼出元へ返せること | 終端イベント受信時点でEventSourceが閉じられること<br>終端イベントのイベントハンドラ完了後にPromiseが完了すること<br>旧ストリーム化または呼出元による購読解除は正常終了として扱うこと |
 | `toChatHistoryItem` | 履歴API応答を画面モデルへ変換する | 履歴API応答1件 | 履歴画面モデル1件 | 入力にチャットID、タイトル、状態、更新日時があること | snake_case項目がcamelCaseへ変換されること |
 | `toApiError` | APIエラー応答を内部エラーへ変換する | `Response` と応答JSON | HTTPステータス、エラー分類、メッセージを持つエラー | 応答JSONが `ErrorResponseSchema` 相当であること | 呼出元が削除中、削除済み、削除受付失敗を判定できること |
 

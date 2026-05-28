@@ -16,6 +16,7 @@ import type { PdfReference } from "@/features/reference-viewer/model/types";
 type StreamChatRunOptions = {
   isCurrent: () => boolean;
   onEvent: (event: SseEvent) => Promise<void> | void;
+  signal?: AbortSignal;
   sseUrl: string;
 };
 
@@ -673,10 +674,46 @@ describe("ChatPage", () => {
     expect(testState.api.listChatHistories).toHaveBeenCalledTimes(2);
 
     await user.click(screen.getByRole("button", { name: "新規チャットへ戻る" }));
+    expect(testState.streams[0]?.options.signal?.aborted).toBe(true);
     await act(async () => testState.streams[0]?.resolve());
 
     expect(testState.api.listChatHistories).toHaveBeenCalledTimes(2);
     expect(screen.getByTestId("start-screen")).toBeInTheDocument();
+    expect(screen.queryByText("回答生成中の接続が切れました。再度お試しください。")).toBeNull();
+  });
+
+  it("観点：履歴切替。確認：実行中履歴から別履歴へ切り替えると旧SSE購読を解除する。", async () => {
+    const user = userEvent.setup();
+    testState.api.getChatDetail
+      .mockResolvedValueOnce(runningHistorySession())
+      .mockResolvedValueOnce(historySession());
+
+    render(<ChatPage />);
+    await user.click(await screen.findByRole("button", { name: "履歴を開く" }));
+    await waitFor(() => expect(testState.streams).toHaveLength(1));
+
+    await user.click(screen.getByRole("button", { name: "履歴を開く" }));
+
+    await waitFor(() => expect(testState.streams[0]?.options.signal?.aborted).toBe(true));
+    expect(screen.getByText("履歴回答")).toBeInTheDocument();
+    expect(screen.queryByText("回答生成中の接続が切れました。再度お試しください。")).toBeNull();
+  });
+
+  it("観点：履歴再表示。確認：SSE初期状態が終端済みの場合は詳細を再取得して反映する。", async () => {
+    const user = userEvent.setup();
+    testState.api.getChatDetail
+      .mockResolvedValueOnce(runningHistorySession())
+      .mockResolvedValueOnce(completedRunningHistorySession());
+
+    render(<ChatPage />);
+    await user.click(await screen.findByRole("button", { name: "履歴を開く" }));
+    await waitFor(() => expect(testState.streams).toHaveLength(1));
+
+    await emit(0, { event: "state", payload: { run_id: "run-running", state: "completed" } });
+
+    await waitFor(() => expect(testState.api.getChatDetail).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText("再取得後の回答")).toBeInTheDocument();
+    expect(testState.streams[0]?.options.signal?.aborted).toBe(true);
   });
 
   it("観点：回答反映。確認：回答開始前にMarkdown更新が来た場合も参照元を空配列として扱う。", async () => {
@@ -833,6 +870,29 @@ function runningHistorySession(): ChatSession {
         intermediateMessages: [{ id: "intermediate-1", text: "保存済み中間" }],
         runId: "run-running",
         state: "running",
+        userInstruction: "継続中指示",
+      },
+    ],
+    title: "履歴",
+  };
+}
+
+function completedRunningHistorySession(): ChatSession {
+  return {
+    id: "chat-history",
+    runs: [
+      {
+        answer: { blocks: [{ markdown: "履歴回答", references: [reference()] }] },
+        intermediateMessages: [],
+        runId: "run-history",
+        state: "completed",
+        userInstruction: "履歴指示",
+      },
+      {
+        answer: { blocks: [{ markdown: "再取得後の回答", references: [] }] },
+        intermediateMessages: [{ id: "intermediate-1", text: "保存済み中間" }],
+        runId: "run-running",
+        state: "completed",
         userInstruction: "継続中指示",
       },
     ],

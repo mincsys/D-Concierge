@@ -360,6 +360,29 @@ describe("ChatPage integration", () => {
     expect(await screen.findByText("履歴再接続回答", {}, { timeout: 3000 })).toBeInTheDocument();
   });
 
+  it("観点：画面遷移によるSSE購読解除。確認：表示対象を離れた場合は旧EventSourceだけを閉じる。", async () => {
+    const user = userEvent.setup();
+    runningHistory = true;
+
+    render(
+      <Providers>
+        <ChatPage />
+      </Providers>,
+    );
+
+    await user.click(await screen.findByRole("button", { name: "履歴1" }));
+    await waitFor(() => expect(FakeEventSource.instances).toHaveLength(1));
+    const runningStream = FakeEventSource.latest();
+
+    await user.click(screen.getByRole("button", { name: /新しいチャット/ }));
+
+    await waitFor(() => expect(runningStream.closed).toBe(true));
+    expect(await screen.findByRole("heading", { name: "ようこそ" })).toBeInTheDocument();
+    expect(
+      screen.queryByText("回答生成中の接続が切れました。再度お試しください。"),
+    ).not.toBeInTheDocument();
+  });
+
   it("観点：初期表示破棄。確認：初期取得完了前に破棄された場合は画面更新しない。", async () => {
     let resolveConfig: () => void = () => undefined;
     fetchMock.mockImplementationOnce(
@@ -651,6 +674,7 @@ function runningChatDetail(): ChatDetailResponse {
 
 class FakeEventSource extends EventTarget {
   static instances: FakeEventSource[] = [];
+  closed = false;
   onerror: ((event: Event) => void) | null = null;
 
   constructor(readonly url: string | URL) {
@@ -666,7 +690,9 @@ class FakeEventSource extends EventTarget {
     return source;
   }
 
-  close(): void {}
+  close(): void {
+    this.closed = true;
+  }
 
   emit(event: SseEvent): void {
     this.dispatchEvent(new MessageEvent(event.event, { data: JSON.stringify(event.payload) }));

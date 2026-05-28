@@ -81,11 +81,14 @@ export function ChatPage({
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
   const streamRunIdRef = useRef(0);
+  const streamAbortControllerRef = useRef<AbortController | null>(null);
   const handleUnauthorizedError = useCallback(
     (error: unknown) => {
       if (statusOf(error) !== 401) {
         return false;
       }
+      streamAbortControllerRef.current?.abort();
+      streamAbortControllerRef.current = null;
       streamRunIdRef.current += 1;
       onUnauthorized?.();
       return true;
@@ -146,11 +149,19 @@ export function ChatPage({
 
   useEffect(() => {
     return () => {
+      streamAbortControllerRef.current?.abort();
+      streamAbortControllerRef.current = null;
       streamRunIdRef.current += 1;
     };
   }, []);
 
+  function abortCurrentStream() {
+    streamAbortControllerRef.current?.abort();
+    streamAbortControllerRef.current = null;
+  }
+
   function nextStreamRunId() {
+    abortCurrentStream();
     streamRunIdRef.current += 1;
     return streamRunIdRef.current;
   }
@@ -274,15 +285,24 @@ export function ChatPage({
     response: { run_id: string; sse_url: string },
     streamId: number,
     displayedIntermediateMessageCount: number,
+    chatId: string,
   ) {
+    const streamController = new AbortController();
+    streamAbortControllerRef.current = streamController;
     let replayedMessagesToSkip = displayedIntermediateMessageCount;
     try {
       await streamChatRun({
         sseUrl: response.sse_url,
+        signal: streamController.signal,
         isCurrent: () => isCurrentStream(streamId),
-        onEvent: (event) => {
+        onEvent: async (event) => {
           if (event.event === "message" && replayedMessagesToSkip > 0) {
             replayedMessagesToSkip -= 1;
+            return;
+          }
+          if (event.event === "state" && isTerminalRunState(event.payload.state)) {
+            await refreshTerminalRunFromDetail(chatId, response.run_id, streamId);
+            streamController.abort();
             return;
           }
           return applySseEvent(event, streamId);
@@ -298,10 +318,36 @@ export function ChatPage({
         state: "error",
         statusMessage: SSE_DISCONNECTED_MESSAGE,
       }));
+    } finally {
+      if (streamAbortControllerRef.current === streamController) {
+        streamAbortControllerRef.current = null;
+      }
     }
 
     if (isCurrentStream(streamId)) {
       await refreshHistories();
+    }
+  }
+
+  async function refreshTerminalRunFromDetail(chatId: string, runId: string, streamId: number) {
+    try {
+      const refreshedSession = await getChatDetail(chatId);
+      if (!isCurrentStream(streamId)) {
+        return;
+      }
+      setSession(refreshedSession);
+      setCancelingRunId((currentRunId) => (currentRunId === runId ? null : currentRunId));
+    } catch (error) {
+      if (!isCurrentStream(streamId)) {
+        return;
+      }
+      if (handleUnauthorizedError(error)) {
+        return;
+      }
+      if (handleDeletedChatError(error)) {
+        return;
+      }
+      setSystemMessage(HISTORY_DETAIL_FAILED_MESSAGE);
     }
   }
 
@@ -335,6 +381,7 @@ export function ChatPage({
         accepted.response,
         streamId,
         countDisplayedIntermediateMessages(accepted.session, accepted.response.run_id),
+        accepted.response.chat_id,
       );
     } catch (error) {
       if (isCurrentStream(streamId)) {
@@ -375,6 +422,7 @@ export function ChatPage({
         accepted.response,
         streamId,
         countDisplayedIntermediateMessages(accepted.session, accepted.response.run_id),
+        accepted.response.chat_id,
       );
     } catch (error) {
       if (isCurrentStream(streamId)) {
@@ -433,6 +481,7 @@ export function ChatPage({
       },
       streamId,
       countDisplayedIntermediateMessages(nextSession, latestRun.runId),
+      nextSession.id,
     );
   }
 
@@ -686,5 +735,11 @@ function isInProgressRun(state: ChatRunState) {
     state === "running" ||
     state === "validating" ||
     state === "cancel_requested"
+  );
+}
+
+function isTerminalRunState(state: ChatRunState) {
+  return (
+    state === "completed" || state === "error" || state === "timed_out" || state === "canceled"
   );
 }
