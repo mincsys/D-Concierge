@@ -78,7 +78,7 @@ sequenceDiagram
 - 生成用Codexホームと検証用Codexホームを混在させない。
 - codex exec作業領域から許可外のファイルを採用済み成果物として扱わない。
 - 生成用の最終回答候補では、`readonly\...` の区切り文字差分を `readonly/...` へ標準化したうえで、絶対パス、UNC、URL、`codex/` から始まるパス、`readonly/` 配下以外のパス、HTML/メタデータファイルをPDF参照元pathとして扱わない。
-- `turn.failed`、プロセス異常終了、キャンセル要求後の `agent_message` は最終回答候補として返さない。
+- `type:error`、`turn.failed`、プロセス異常終了、キャンセル要求後の `agent_message` は最終回答候補として返さない。
 - `item.completed.agent_message.text` が `payload.kind="progress"` のJSONである場合だけ、`payload.text` を利用者向け中間メッセージとして返す。
 - `payload.kind="final"` の生成結果JSONまたは検証結果JSONは利用者向け中間メッセージとして返さない。
 - コマンド、標準出力、絶対パスは利用者向け中間メッセージとして返さない。
@@ -179,13 +179,15 @@ sequenceDiagram
 | `thread.started` | `thread_id` をCodex側resume用IDとして保持する。 |
 | `item.completed` の `agent_message` | `item.text` をJSONとして解析し、`payload.kind="progress"` の場合は `payload.text` を利用者向け中間メッセージへ変換する。`payload.kind="final"` の場合は中間メッセージへ変換しない。 |
 | `turn.completed` | 最新の `item.completed.agent_message.text` を最終回答候補または検証結果候補として返す。生成用最終回答と検証用最終結果の固定検証はapplication層で行う。 |
-| `turn.failed` または `error` | 最終回答候補を返さない。 |
+| `turn.failed` または `error` | 最終回答候補を返さず、`message` または `error.message` を調査用メッセージとして保持する。 |
 
 ## 7. 例外処理
 
 | 条件 | 扱い |
 | --- | --- |
 | codex exec起動失敗 | `ErrorType.SYSTEM` かつ `trace=True` の `AppError` へ変換し、Application層が生成フェーズまたは検証フェーズの利用者向けメッセージへ変換する |
+| Codex JSONLエラー | `type:error` または `turn.failed` を受信した時点でプロセス終了要求を送り、`ErrorType.SYSTEM` かつ `trace=True` のCodex側エラーとしてApplication層へ返す |
+| JSONLエラーなしの非ゼロ終了 | `ErrorType.SYSTEM` かつ `trace=True` のプロセス異常終了としてApplication層へ返す |
 | JSONL解析失敗 | 解析失敗行をtraceログ対象にし、実行をエラー終端へ変換する |
 | タイムアウト | プロセスへ終了要求を送り、run状態を `timed_out` へ更新できる結果を返す |
 | キャンセル要求 | ユーザキャンセル要求、`sent` / `already_exited` / `not_registered` の終了要求結果、プロセス終了結果を合わせて判定し、run状態を `canceled` へ更新できる結果を返す |

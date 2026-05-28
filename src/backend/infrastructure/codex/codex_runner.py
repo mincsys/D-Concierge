@@ -16,7 +16,12 @@ from backend.infrastructure.codex.jsonl_event_parser import (
     ParsedCodexEvent,
 )
 from backend.shared.errors.error_type import ErrorType
-from backend.shared.errors.errors import AppError, RunTimeoutError
+from backend.shared.errors.errors import (
+    AppError,
+    CodexProcessFailureError,
+    CodexProviderError,
+    RunTimeoutError,
+)
 
 CancelResult = CancelRequestResult
 _WINDOWS_CREATE_NEW_PROCESS_GROUP = 0x00000200
@@ -152,11 +157,11 @@ class CodexRunner:
 
     def run_generation(self, request: CodexRunRequest) -> CodexRunResult:
         """生成用codex execを起動する。"""
-        return self._run(request)
+        return self._run(request, stage="generation")
 
     def run_validation(self, request: CodexRunRequest) -> CodexRunResult:
         """検証用codex execを起動する。"""
-        return self._run(request)
+        return self._run(request, stage="validation")
 
     def cancel(self, run_id: UUID, trace_id: str) -> CancelResult:
         """実行中codex execへ終了要求を送る。"""
@@ -171,7 +176,7 @@ class CodexRunner:
             process.terminate()
             return CancelRequestResult.SENT
 
-    def _run(self, request: CodexRunRequest) -> CodexRunResult:
+    def _run(self, request: CodexRunRequest, stage: str) -> CodexRunResult:
         if request.timeout_seconds <= 0:
             raise _codex_system_error("Codex実行時間が不正です。")
 
@@ -193,6 +198,9 @@ class CodexRunner:
                 if event is None:
                     return
                 events.append(event)
+                if event.kind in {CodexEventKind.ERROR, CodexEventKind.TURN_FAILED}:
+                    process.terminate()
+                    raise _codex_provider_error(event, stage)
                 if request.on_event is not None:
                     request.on_event(event)
 
@@ -206,8 +214,12 @@ class CodexRunner:
                     "Codex出力を解析できませんでした。", exc
                 ) from exc
             if output.return_code != 0:
-                raise _codex_system_error("Codex実行が失敗しました。")
-            return _to_run_result(events)
+                raise CodexProcessFailureError(
+                    return_code=output.return_code,
+                    stderr=output.stderr,
+                    stage=stage,
+                )
+            return _to_run_result(events, stage)
         except CodexProcessTimeout as exc:
             process.kill()
             raise RunTimeoutError from exc
@@ -363,9 +375,12 @@ class _SubprocessCodexProcess:
         stdout_thread.join(timeout=1)
         stderr_thread.join(timeout=1)
         if reader_errors:
+            first_error = reader_errors[0]
+            if isinstance(first_error, JsonlParseError | CodexProviderError):
+                raise first_error
             raise RuntimeError(
                 "Codex出力読込中にエラーが発生しました。"
-            ) from reader_errors[0]
+            ) from first_error
 
         return CodexProcessOutput(
             stdout="".join(stdout_lines),
@@ -416,7 +431,7 @@ def _parse_stdout_line(line: str) -> ParsedCodexEvent | None:
     return JsonlEventParser.parse_line(line)
 
 
-def _to_run_result(events: list[ParsedCodexEvent]) -> CodexRunResult:
+def _to_run_result(events: list[ParsedCodexEvent], stage: str) -> CodexRunResult:
     codex_conversation_id: str | None = None
     latest_agent_message: str | None = None
     final_message: str | None = None
@@ -429,7 +444,7 @@ def _to_run_result(events: list[ParsedCodexEvent]) -> CodexRunResult:
             case CodexEventKind.TURN_COMPLETED:
                 final_message = latest_agent_message
             case CodexEventKind.TURN_FAILED | CodexEventKind.ERROR:
-                raise _codex_system_error("Codex実行が失敗しました。")
+                raise _codex_provider_error(event, stage)
             case _:
                 continue
 
@@ -440,6 +455,14 @@ def _to_run_result(events: list[ParsedCodexEvent]) -> CodexRunResult:
         events=tuple(events),
         final_message=final_message,
         codex_conversation_id=codex_conversation_id,
+    )
+
+
+def _codex_provider_error(event: ParsedCodexEvent, stage: str) -> CodexProviderError:
+    return CodexProviderError(
+        event_type=event.event_type,
+        message=event.message,
+        stage=stage,
     )
 
 

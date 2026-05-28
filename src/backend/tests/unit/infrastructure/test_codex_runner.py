@@ -27,7 +27,12 @@ from backend.infrastructure.codex.jsonl_event_parser import (
     ParsedCodexEvent,
 )
 from backend.shared.errors.error_type import ErrorType
-from backend.shared.errors.errors import AppError, RunTimeoutError
+from backend.shared.errors.errors import (
+    AppError,
+    CodexProcessFailureError,
+    CodexProviderError,
+    RunTimeoutError,
+)
 
 
 def test_codex_runner_starts_generation_and_parses_final_message(
@@ -184,6 +189,76 @@ def test_codex_runner_rejects_failed_or_incomplete_jsonl(
 
     assert failed_event_error.value.error_type is ErrorType.SYSTEM
     assert incomplete_error.value.error_type is ErrorType.SYSTEM
+
+
+def test_codex_runner_raises_provider_error_for_usage_limit_jsonl(
+    tmp_path: Path,
+) -> None:
+    """観点：CodexRunner異常系。
+
+    確認：Codex JSONLのerrorイベントをCodex側エラーとして扱い、元メッセージを保持する。
+    """
+    process = CompletedProcess(
+        stdout=(
+            '{"type":"thread.started","thread_id":"thread-limit"}\n'
+            '{"type":"error","message":"You\\u0027ve hit your usage limit."}\n'
+        )
+    )
+
+    with pytest.raises(CodexProviderError) as error_info:
+        CodexRunner(process_factory=RecordingProcessFactory(process)).run_generation(
+            _make_request(tmp_path)
+        )
+
+    assert process.terminated
+    assert error_info.value.error_type is ErrorType.SYSTEM
+    assert error_info.value.codex_event_type == "error"
+    assert error_info.value.codex_message == "You've hit your usage limit."
+    assert "You've hit your usage limit." in error_info.value.diagnostic_message
+
+
+def test_codex_runner_raises_provider_error_for_turn_failed_jsonl(
+    tmp_path: Path,
+) -> None:
+    """観点：CodexRunner異常系。
+
+    確認：turn.failedのerror.messageをCodex側エラー詳細として保持する。
+    """
+    process = CompletedProcess(
+        stdout=(
+            '{"type":"thread.started","thread_id":"thread-network"}\n'
+            '{"type":"turn.failed","error":{"message":"stream disconnected"}}\n'
+        )
+    )
+
+    with pytest.raises(CodexProviderError) as error_info:
+        CodexRunner(process_factory=RecordingProcessFactory(process)).run_generation(
+            _make_request(tmp_path)
+        )
+
+    assert process.terminated
+    assert error_info.value.codex_event_type == "turn.failed"
+    assert error_info.value.codex_message == "stream disconnected"
+
+
+def test_codex_runner_raises_process_failure_without_jsonl_error(
+    tmp_path: Path,
+) -> None:
+    """観点：CodexRunner異常系。
+
+    確認：JSONLエラーなしの非ゼロ終了をプロセス異常終了として扱う。
+    """
+    process = CompletedProcess(stdout="", stderr="fatal", return_code=1)
+
+    with pytest.raises(CodexProcessFailureError) as error_info:
+        CodexRunner(process_factory=RecordingProcessFactory(process)).run_generation(
+            _make_request(tmp_path)
+        )
+
+    assert error_info.value.error_type is ErrorType.SYSTEM
+    assert error_info.value.return_code == 1
+    assert error_info.value.stderr == "fatal"
+    assert "fatal" in error_info.value.diagnostic_message
 
 
 def test_codex_runner_handles_blank_and_unknown_events(tmp_path: Path) -> None:
@@ -490,6 +565,7 @@ class RecordingProcessFactory:
 @dataclass(slots=True)
 class CompletedProcess:
     stdout: str
+    stderr: str = ""
     return_code: int = 0
     terminated: bool = False
 
@@ -504,7 +580,7 @@ class CompletedProcess:
                 on_stdout_line(line)
         return CodexProcessOutput(
             stdout=self.stdout,
-            stderr="",
+            stderr=self.stderr,
             return_code=self.return_code,
         )
 

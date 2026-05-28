@@ -394,6 +394,7 @@ describe("frontend components", () => {
     expect(screen.getByText("初回指示")).toBeInTheDocument();
     expect(screen.getByText("調査中")).toBeInTheDocument();
     expect(screen.getByText("回答本文")).toBeInTheDocument();
+    expect(screen.getByText("回答生成に失敗しました。")).toHaveClass("whitespace-pre-line");
     expect(container.querySelectorAll(".animate-spin")).toHaveLength(1);
     await user.click(screen.getByRole("button", { name: /資料 p.1-2/ }));
     expect(onOpenPdf).toHaveBeenCalledWith(reference());

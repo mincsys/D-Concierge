@@ -108,3 +108,16 @@ def test_jsonl_event_parser_accepts_failed_event_without_message() -> None:
 
     assert event.kind is CodexEventKind.TURN_FAILED
     assert event.message is None
+
+
+def test_jsonl_event_parser_extracts_nested_turn_failed_message() -> None:
+    """観点：JSONL解析。
+
+    確認：turn.failedのerror.messageをCodex側エラー詳細として抽出する。
+    """
+    event = JsonlEventParser.parse_line(
+        '{"type":"turn.failed","error":{"message":"stream disconnected"}}'
+    )
+
+    assert event.kind is CodexEventKind.TURN_FAILED
+    assert event.message == "stream disconnected"

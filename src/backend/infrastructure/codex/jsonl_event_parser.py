@@ -65,7 +65,7 @@ class JsonlEventParser:
                 return ParsedCodexEvent(
                     kind=CodexEventKind.TURN_FAILED,
                     event_type=event_type,
-                    message=_optional_string(loaded, "message"),
+                    message=_optional_failed_message(loaded),
                 )
             case "error":
                 return ParsedCodexEvent(
@@ -134,3 +134,15 @@ def _optional_string(data: dict[str, JsonValue], key: str) -> str | None:
     if not isinstance(value, str):
         raise JsonlParseError(f"JSONL項目 {key} が不正です。")
     return value
+
+
+def _optional_failed_message(data: dict[str, JsonValue]) -> str | None:
+    error = data.get("error")
+    if error is None:
+        return _optional_string(data, "message")
+    if not isinstance(error, dict):
+        raise JsonlParseError("JSONL項目 error が不正です。")
+    nested_message = _optional_string(error, "message")
+    if nested_message is not None:
+        return nested_message
+    return _optional_string(data, "message")

@@ -192,6 +192,43 @@ class ValidationResultFormatError(AppError):
         )
 
 
+class CodexProviderError(AppError):
+    """codex execがJSONLでAIサービスプロバイダ側エラーを返したことを示す。"""
+
+    def __init__(self, event_type: str, message: str | None, stage: str) -> None:
+        diagnostic_message = (
+            "Codex JSONLエラーイベントを受信しました。"
+            f"event_type={event_type}; message={message or '(messageなし)'}"
+        )
+        super().__init__(
+            ErrorType.SYSTEM,
+            trace=True,
+            diagnostic_message=diagnostic_message,
+        )
+        self.codex_event_type = event_type
+        self.codex_message = message
+        self.stage = stage
+
+
+class CodexProcessFailureError(AppError):
+    """codex execがJSONLエラーなしに異常終了したことを示す。"""
+
+    def __init__(self, return_code: int, stderr: str, stage: str) -> None:
+        stderr_summary = stderr.strip() or "(stderrなし)"
+        diagnostic_message = (
+            "CodexプロセスがJSONLエラーなしに異常終了しました。"
+            f"return_code={return_code}; stderr={stderr_summary}"
+        )
+        super().__init__(
+            ErrorType.SYSTEM,
+            trace=True,
+            diagnostic_message=diagnostic_message,
+        )
+        self.return_code = return_code
+        self.stderr = stderr
+        self.stage = stage
+
+
 class RunTimeoutError(Exception):
     """チャット実行または外部実行がタイムアウトしたことを示す。"""
 

@@ -14,6 +14,10 @@ VALIDATION_COMPLETED_MESSAGE = "回答を検証しました。"
 ANSWER_REVISION_MESSAGE = "回答を修正します。"
 
 GENERATION_FAILURE_MESSAGE = "回答の生成に失敗しました。再度お試しください。"
+AI_PROVIDER_FAILURE_MESSAGE = (
+    "AIサービスプロバイダ側でエラーが発生しました。再度お試しください。\n"
+    "解決しない場合はサーバ管理者にお問い合わせください。"
+)
 VALIDATION_FAILURE_MESSAGE = "回答の生成に失敗しました。再度お試しください。"
 VALIDATION_RESULT_FAILURE_MESSAGE = "回答の検証に失敗しました。再度お試しください。"
 PDF_READ_FAILURE_MESSAGE = "PDF読み取り中にエラーが発生しました。"

@@ -18,6 +18,7 @@
 - 標準出力JSONLを逐次読み取り、構造化イベントとして通知する。
 - `thread.started.thread_id` を生成用または検証用Codex側resume用IDとして返す。
 - `turn.completed` 時に最新の `item.completed.agent_message.text` を最終出力候補として返す。
+- `type:error` または `turn.failed` を受信した場合は、Codex側エラーとして元メッセージを保持して返す。
 - キャンセル要求、タイムアウト、プロセス異常終了を検知する。
 - Windows/Linuxのプロセス制御差異を吸収し、codex execの子プロセスを含めて終了要求を送る。
 - 実行中プロセスの登録有無を確認し、終了要求結果を `sent`、`already_exited`、`not_registered` に分類して返す。
@@ -45,4 +46,4 @@
 | --- | --- | --- |
 | `jsonl_event` | codex execの標準出力から1行分のJSONLを読み取ったとき | 構造化済みJSONLイベントを通知する |
 | `process_completed` | codex execが正常終了し、最終出力候補を取得したとき | 終了コード、Codex側resume用ID、最終候補を通知する |
-| `process_failed` | 起動失敗、異常終了、タイムアウトが発生したとき | エラー分類と調査用要約を通知する |
+| `process_failed` | Codex側エラー、起動失敗、異常終了、タイムアウトが発生したとき | エラー分類と調査用要約を通知する |

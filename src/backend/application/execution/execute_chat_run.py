@@ -41,6 +41,8 @@ from backend.domain.references.pdf_reference import PdfLocator, PdfReference
 from backend.shared.errors.error_type import ErrorType
 from backend.shared.errors.errors import (
     AppError,
+    CodexProcessFailureError,
+    CodexProviderError,
     ProcessCanceledConflictError,
     ReferencePdfReadError,
     RunStateChangedError,
@@ -50,6 +52,7 @@ from backend.shared.errors.errors import (
 )
 from backend.shared.tracing.exception import exception_message, exception_stacktrace
 from backend.shared.user_messages import (
+    AI_PROVIDER_FAILURE_MESSAGE,
     ANSWER_REVISION_MESSAGE,
     ANSWER_VALIDATION_FAILED_MESSAGE,
     CANCELED_MESSAGE,
@@ -237,6 +240,47 @@ class ExecuteChatRunUseCase:
                     run_state=RunState.ERROR.value,
                     validation_failure_reason=exc.diagnostic_message,
                     stacktrace=exception_stacktrace(exc),
+                    message=exc.diagnostic_message,
+                )
+            )
+        except CodexProviderError as exc:
+            if self._is_canceled(chat_id, run_id):
+                self._finish_canceled(chat_id, run_id)
+                return
+            self._finish_error(chat_id, run_id, AI_PROVIDER_FAILURE_MESSAGE)
+            self._write_trace(
+                TraceLogRecord(
+                    trace_id=trace_id,
+                    event_name="execution_failed",
+                    stage=exc.stage,
+                    chat_id=chat_id,
+                    run_id=run_id,
+                    error_type=exc.error_type.value,
+                    exception_type=type(exc).__name__,
+                    run_state=RunState.ERROR.value,
+                    stacktrace=exception_stacktrace(exc),
+                    process_result=exc.codex_message or "(messageなし)",
+                    message=exc.diagnostic_message,
+                )
+            )
+        except CodexProcessFailureError as exc:
+            if self._is_canceled(chat_id, run_id):
+                self._finish_canceled(chat_id, run_id)
+                return
+            self._finish_error(chat_id, run_id, UNEXPECTED_FAILURE_MESSAGE)
+            self._write_trace(
+                TraceLogRecord(
+                    trace_id=trace_id,
+                    event_name="execution_failed",
+                    stage=exc.stage,
+                    chat_id=chat_id,
+                    run_id=run_id,
+                    error_type=exc.error_type.value,
+                    exception_type=type(exc).__name__,
+                    run_state=RunState.ERROR.value,
+                    stacktrace=exception_stacktrace(exc),
+                    codex_exit_status=str(exc.return_code),
+                    process_result=exc.stderr.strip() or "(stderrなし)",
                     message=exc.diagnostic_message,
                 )
             )

@@ -45,6 +45,8 @@ from backend.domain.references.pdf_reference import PdfLocator, PdfReference
 from backend.shared.errors.error_type import ErrorType
 from backend.shared.errors.errors import (
     AppError,
+    CodexProcessFailureError,
+    CodexProviderError,
     ReferencePdfReadError,
     RunTimeoutError,
     ValidationResultFormatError,
@@ -871,6 +873,87 @@ def test_execute_chat_run_marks_error_when_codex_generation_fails() -> None:
     assert trace_logger.records[-1].chat_id == accepted.chat_id
     assert trace_logger.records[-1].run_id == accepted.run_id
     assert trace_logger.records[-1].error_type == "system"
+
+
+def test_execute_chat_run_shows_provider_message_for_codex_jsonl_error() -> None:
+    """観点：チャット実行処理の異常系。
+
+    確認：Codex JSONLエラー時はAIサービスプロバイダ側エラーとして表示し、
+    元メッセージをtrace logへ残す。
+    """
+    repository = InMemoryChatRepository()
+    accepted = repository.create_chat_with_first_run("資料を要約してください")
+    publisher = RecordingPublisher()
+    trace_logger = RecordingTraceLogger()
+    use_case = ExecuteChatRunUseCase(
+        repository=repository,
+        codex_runner=FailingCodexRunner(
+            error=CodexProviderError(
+                event_type="error",
+                message="stream disconnected",
+                stage="generation",
+            )
+        ),
+        answer_validator=ParsingAnswerValidator(),
+        event_publisher=publisher,
+        trace_logger=trace_logger,
+    )
+
+    use_case.execute(accepted.chat_id, accepted.run_id, trace_id="trace-514")
+
+    detail = repository.get_chat_detail(accepted.chat_id)
+    expected_message = (
+        "AIサービスプロバイダ側でエラーが発生しました。再度お試しください。\n"
+        "解決しない場合はサーバ管理者にお問い合わせください。"
+    )
+    assert detail.runs[0].state is RunState.ERROR
+    assert detail.runs[0].user_message == expected_message
+    assert publisher.events[-1].event is RunEventType.ERROR
+    assert publisher.events[-1].user_message == expected_message
+    assert trace_logger.records[-1].exception_type == "CodexProviderError"
+    assert trace_logger.records[-1].stage == "generation"
+    assert trace_logger.records[-1].process_result == "stream disconnected"
+    assert trace_logger.records[-1].message is not None
+    assert "stream disconnected" in trace_logger.records[-1].message
+
+
+def test_execute_chat_run_shows_unexpected_message_for_codex_process_failure() -> None:
+    """観点：チャット実行処理の異常系。
+
+    確認：JSONLエラーなしのCodexプロセス異常終了は予期しないエラーとして表示する。
+    """
+    repository = InMemoryChatRepository()
+    accepted = repository.create_chat_with_first_run("資料を要約してください")
+    publisher = RecordingPublisher()
+    trace_logger = RecordingTraceLogger()
+    use_case = ExecuteChatRunUseCase(
+        repository=repository,
+        codex_runner=FailingCodexRunner(
+            error=CodexProcessFailureError(
+                return_code=1,
+                stderr="fatal",
+                stage="generation",
+            )
+        ),
+        answer_validator=ParsingAnswerValidator(),
+        event_publisher=publisher,
+        trace_logger=trace_logger,
+    )
+
+    use_case.execute(accepted.chat_id, accepted.run_id, trace_id="trace-515")
+
+    detail = repository.get_chat_detail(accepted.chat_id)
+    assert detail.runs[0].state is RunState.ERROR
+    assert detail.runs[0].user_message == (
+        "予期しないエラーが発生しました。開発者にお問い合わせください。"
+    )
+    assert publisher.events[-1].event is RunEventType.ERROR
+    assert publisher.events[-1].user_message == (
+        "予期しないエラーが発生しました。開発者にお問い合わせください。"
+    )
+    assert trace_logger.records[-1].exception_type == "CodexProcessFailureError"
+    assert trace_logger.records[-1].codex_exit_status == "1"
+    assert trace_logger.records[-1].process_result == "fatal"
 
 
 def test_execute_chat_run_marks_validation_error_for_invalid_validator_result() -> None:
