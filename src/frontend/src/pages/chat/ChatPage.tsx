@@ -312,6 +312,22 @@ export function ChatPage({
       if (!isCurrentStream(streamId)) {
         return;
       }
+      try {
+        await getChatDetail(chatId);
+      } catch (error) {
+        if (!isCurrentStream(streamId)) {
+          return;
+        }
+        if (handleUnauthorizedError(error)) {
+          return;
+        }
+        if (handleDeletedChatError(error)) {
+          return;
+        }
+      }
+      if (!isCurrentStream(streamId)) {
+        return;
+      }
       setCancelingRunId((currentRunId) => (currentRunId === response.run_id ? null : currentRunId));
       updateDisplayedRun(response.run_id, (run) => ({
         ...run,

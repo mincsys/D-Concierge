@@ -648,6 +648,32 @@ describe("ChatPage", () => {
     expect(screen.getByTestId("start-screen")).toBeInTheDocument();
   });
 
+  it("観点：削除中競合。確認：SSE再接続失敗時に削除中を検知した場合は開始画面へ戻す。", async () => {
+    const user = userEvent.setup();
+    let getChatDetailCallCount = 0;
+    testState.api.getChatDetail.mockImplementation(async () => {
+      getChatDetailCallCount += 1;
+      if (getChatDetailCallCount === 1) {
+        return runningHistorySession();
+      }
+      throw Object.assign(new Error("このチャットは削除中のため操作できません。"), {
+        status: 409,
+      });
+    });
+    testState.api.streamChatRun.mockRejectedValueOnce(new Error("SSE接続が切断されました。"));
+
+    render(<ChatPage />);
+    await user.click(await screen.findByRole("button", { name: "履歴を開く" }));
+
+    expect(
+      await screen.findByText("このチャットは削除中のため操作できません。"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("start-screen")).toBeInTheDocument();
+    expect(screen.getByTestId("active-chat-id")).toHaveTextContent("none");
+    expect(screen.queryByText("回答生成中の接続が切れました。再度お試しください。")).toBeNull();
+    expect(testState.api.getChatDetail).toHaveBeenCalledTimes(2);
+  });
+
   it("観点：旧ストリーム化。確認：受付応答前に別操作された場合は開始結果とSSE更新を無視する。", async () => {
     const user = userEvent.setup();
     let resolveStart: (response: AcceptedChatResponse) => void = () => undefined;
