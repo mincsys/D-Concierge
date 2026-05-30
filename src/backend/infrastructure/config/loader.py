@@ -7,6 +7,7 @@ import yaml
 from backend.infrastructure.config.models import (
     AppConfig,
     AppRuntimeConfig,
+    CodexDockerConfig,
     DatabaseConfig,
     GeneratorConfig,
     ServerConfig,
@@ -93,6 +94,14 @@ class ConfigLoader:
                     root, _required_str(data, ("validator", "output_schema"))
                 ),
             ),
+            codex_docker=CodexDockerConfig(
+                image=_required_str(data, ("codex_docker", "image")),
+                workspace_dir=_required_str(data, ("codex_docker", "workspace_dir")),
+                codex_home_dir=_required_str(data, ("codex_docker", "codex_home_dir")),
+                codex_api_key=_required_present_str(
+                    data, ("codex_docker", "codex_api_key")
+                ),
+            ),
             database=DatabaseConfig(url=_required_str(data, ("database", "url"))),
             server=ServerConfig(timeout_seconds=timeout_seconds),
             trace_log=TraceLogConfig(
@@ -123,6 +132,14 @@ def _nested(data: Mapping[str, YamlValue], path: tuple[str, ...]) -> YamlValue:
 def _required_str(data: Mapping[str, YamlValue], path: tuple[str, ...]) -> str:
     value = _nested(data, path)
     if not isinstance(value, str) or value.strip() == "":
+        dotted = ".".join(path)
+        raise _configuration_error(f"必須設定 {dotted} が不正です。")
+    return value
+
+
+def _required_present_str(data: Mapping[str, YamlValue], path: tuple[str, ...]) -> str:
+    value = _nested(data, path)
+    if not isinstance(value, str):
         dotted = ".".join(path)
         raise _configuration_error(f"必須設定 {dotted} が不正です。")
     return value

@@ -573,13 +573,19 @@ class SqlAlchemyChatRepository:
         chat = self._get_chat(session, chat_id)
         chat.updated_at = now
 
-    def get_reference(self, reference_id: UUID) -> DisplayReferenceData:
+    def get_reference(
+        self, reference_id: UUID, user_id: str = ""
+    ) -> DisplayReferenceData:
         """参照元IDに対応する配信メタ情報を返す。"""
         session = self._session()
-        reference = session.get(ReferenceModel, reference_id)
-        if reference is None:
+        row = session.execute(
+            self._reference_delivery_query(reference_id, user_id)
+        ).first()
+        if row is None:
             raise ReferenceNotFoundError()
-        self._raise_if_reference_chat_deleting(session, reference_id)
+        reference, chat_state = row
+        if chat_state == ChatState.DELETING.value:
+            raise ChatDeletingError()
         path_value = reference.locator.get("path")
         page_start_value = reference.locator.get("page_start")
         page_end_value = reference.locator.get("page_end")
@@ -598,13 +604,17 @@ class SqlAlchemyChatRepository:
             page_end=page_end_value,
         )
 
-    def get_artifact(self, artifact_id: UUID) -> ArtifactData:
+    def get_artifact(self, artifact_id: UUID, user_id: str = "") -> ArtifactData:
         """成果物IDに対応する配信メタ情報を返す。"""
         session = self._session()
-        artifact = session.get(ArtifactModel, artifact_id)
-        if artifact is None:
+        row = session.execute(
+            self._artifact_delivery_query(artifact_id, user_id)
+        ).first()
+        if row is None:
             raise ArtifactNotFoundError()
-        self._raise_if_artifact_chat_deleting(session, artifact_id)
+        artifact, chat_state = row
+        if chat_state == ChatState.DELETING.value:
+            raise ChatDeletingError()
         return ArtifactData(
             artifact_id=artifact.id,
             mime_type=artifact.mime_type,
@@ -862,11 +872,11 @@ class SqlAlchemyChatRepository:
             raise _system_error("履歴データが不整合です。")
         return instruction
 
-    def _raise_if_reference_chat_deleting(
-        self, session: Session, reference_id: UUID
-    ) -> None:
-        chat_state = session.scalar(
-            sa.select(ChatModel.chat_state)
+    def _reference_delivery_query(
+        self, reference_id: UUID, user_id: str = ""
+    ) -> sa.Select[tuple[ReferenceModel, str]]:
+        statement = (
+            sa.select(ReferenceModel, ChatModel.chat_state)
             .select_from(ReferenceModel)
             .join(
                 AnswerBlockModel,
@@ -876,14 +886,15 @@ class SqlAlchemyChatRepository:
             .join(ChatModel, ChatModel.id == ChatRunModel.chat_id)
             .where(ReferenceModel.id == reference_id)
         )
-        if chat_state == ChatState.DELETING.value:
-            raise ChatDeletingError()
+        if user_id:
+            statement = statement.where(ChatModel.user_id == user_id)
+        return statement
 
-    def _raise_if_artifact_chat_deleting(
-        self, session: Session, artifact_id: UUID
-    ) -> None:
-        chat_state = session.scalar(
-            sa.select(ChatModel.chat_state)
+    def _artifact_delivery_query(
+        self, artifact_id: UUID, user_id: str = ""
+    ) -> sa.Select[tuple[ArtifactModel, str]]:
+        statement = (
+            sa.select(ArtifactModel, ChatModel.chat_state)
             .select_from(ArtifactModel)
             .join(
                 AnswerBlockModel,
@@ -893,8 +904,9 @@ class SqlAlchemyChatRepository:
             .join(ChatModel, ChatModel.id == ChatRunModel.chat_id)
             .where(ArtifactModel.id == artifact_id)
         )
-        if chat_state == ChatState.DELETING.value:
-            raise ChatDeletingError()
+        if user_id:
+            statement = statement.where(ChatModel.user_id == user_id)
+        return statement
 
 
 def _user_instruction(user_instruction: str) -> UserInstruction:

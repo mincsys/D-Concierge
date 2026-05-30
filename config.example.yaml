@@ -36,6 +36,16 @@ validator:
   # 検証用Codexの最終出力JSONスキーマ。
   output_schema: "codex/output_json_schema/validator_schema.json"
 
+codex_docker:
+  # Codex実行コンテナに使用するDockerイメージ。
+  image: "codex-python-runner:latest"
+  # コンテナ内でCodex作業ディレクトリとして使用するパス。
+  workspace_dir: "/workspace"
+  # コンテナ内でCodexホームディレクトリとして使用するパス。
+  codex_home_dir: "/home/codex/.codex"
+  # Codex実行コンテナへCODEX_API_KEYとして渡す値。Codexホーム側認証を使う場合は空文字を指定する。
+  codex_api_key: ""
+
 database:
   # PostgreSQL接続URL。SQLAlchemyのURL形式で指定する。
   url: "postgresql+psycopg://d_concierge:d_concierge@127.0.0.1:5432/d_concierge"

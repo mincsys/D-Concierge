@@ -79,7 +79,7 @@ sequenceDiagram
 ### 5.3. 不変条件
 
 - RepositoryはHTTP応答スキーマを返さない。
-- Repositoryはcodex exec、ファイル、SSE、トレースログを直接呼び出さない。
+- RepositoryはCodex実行コンテナ、ファイル、SSE、トレースログを直接呼び出さない。
 - 更新系Repositoryは有効なトランザクション内でのみ呼び出す。
 - 途中失敗時に一部だけcommitしない。
 - 同一チャットに未完了runを複数保存しない。Repositoryの事前確認に加え、DBの部分UNIQUE制約違反も競合として扱う。

@@ -7,7 +7,7 @@
 ## 2. 前提
 
 - 対象は、同一システム内のモジュール間API、application ports、イベント配信、ファイルアクセス、設定読込などの内部境界とする。
-- 画面バックエンドAPI、codex exec CLI引数、設定ファイル項目そのものの外部向け仕様は外部設計書で扱い、本書では内部実装が利用する契約だけを扱う。
+- 画面バックエンドAPI、Codex実行方式、設定ファイル項目そのものの外部向け仕様は外部設計書で扱い、本書では内部実装が利用する契約だけを扱う。
 - 単純なReact props、private helper、型定義のみの境界は本書の詳細対象から除外する。
 
 ## 3. 収集対象
@@ -29,7 +29,7 @@
 | バックエンド application/runtime | RunExecutionDispatcher IF | `application/chat`、`app` | `application/ports/runtime/interface.py`、実装は `infrastructure/runtime` | 受付済みrunをバックグラウンド実行へ登録し、起動時に未完了runを整合させる。 | [RunExecutionDispatcherIF.md](RunExecutionDispatcherIF.md) |
 | バックエンド application/runtime | ChatDeletionDispatcher IF | `application/chat`、`app` | `application/ports/runtime/interface.py`、実装は `infrastructure/runtime` | 削除対象チャットをバックグラウンド削除へ登録し、起動時に`deleting`のチャットを再登録する。 | [ChatDeletionDispatcherIF.md](ChatDeletionDispatcherIF.md) |
 | バックエンド application/runtime | AccountDeletionDispatcher IF | `application/account`、`app` | `application/ports/runtime/interface.py`、実装は `infrastructure/runtime` | 削除対象ユーザをバックグラウンド削除へ登録し、起動時に`deleting`のユーザを再登録する。 | [AccountDeletionDispatcherIF.md](AccountDeletionDispatcherIF.md) |
-| バックエンド application port | Codex実行IF | `application/execution`、`application/validation`、`application/chat`、`application/account` | `application/ports/codex/interface.py`、実装は `infrastructure/codex` | 生成用Codex実行、参照元検証、終了制御、作業領域解決、作業領域削除を抽象化する。 | [Codex実行IF.md](Codex実行IF.md) |
+| バックエンド application port | Codex実行IF | `application/execution`、`application/validation`、`application/chat`、`application/account` | `application/ports/codex/interface.py`、実装は `infrastructure/codex` | 生成用Codex実行、Codex検証処理、終了制御、作業領域解決、作業領域削除を抽象化する。 | [Codex実行IF.md](Codex実行IF.md) |
 | バックエンド presentation/application | SSEイベント配信IF | `application/execution` | `presentation/sse` | run状態、中間メッセージ、回答、エラー、キャンセルをSSE購読者へ配信する。 | [SSEイベント配信IF.md](SSEイベント配信IF.md) |
 | バックエンド application port | 成果物ファイルIF | `application/artifacts`、`application/chat`、`application/account` | `application/ports/filesystem/interface.py`、実装は `infrastructure/filesystem/file_artifact_store.py` | 採用済みCodex成果物の保存、配信用読込、保存済み成果物実体削除を抽象化する。 | [成果物ファイルIF.md](成果物ファイルIF.md) |
 | バックエンド application port | 参照元ファイルIF | `application/references` | `application/ports/filesystem/interface.py`、実装は `infrastructure/filesystem/file_reference_store.py` | 保存済みPDF参照元の安全な取得を抽象化する。 | [参照元ファイルIF.md](参照元ファイルIF.md) |

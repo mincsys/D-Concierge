@@ -124,13 +124,13 @@ class ApplicationCodexRunner(Protocol):
     """既定実行構成が利用するCodexRunner境界。"""
 
     def run_generation(self, request: CodexRunRequest) -> InfrastructureCodexRunResult:
-        """生成用codex execを実行する。"""
+        """生成用Codex Docker実行を行う。"""
 
     def run_validation(self, request: CodexRunRequest) -> InfrastructureCodexRunResult:
-        """検証用codex execを実行する。"""
+        """検証用Codex Docker実行を行う。"""
 
     def cancel(self, run_id: UUID, trace_id: str) -> CancelResult:
-        """実行中codex execへ終了要求を送る。"""
+        """実行中Codex Docker実行へ終了要求を送る。"""
 
 
 class ApplicationRepositoryPort(ChatRepositoryPort, AccountRepositoryPort, Protocol):
@@ -391,6 +391,7 @@ def _create_runtime_services(
         repository=chat_repository,
         codex_runner=runtime_codex_runner,
         generator_config=app_config.generator,
+        codex_docker_config=app_config.codex_docker,
         datasource_dir=app_config.datasource_dir,
         timeout_seconds=app_config.server.timeout_seconds,
         transaction_manager=transaction_manager,
@@ -402,6 +403,7 @@ def _create_runtime_services(
         repository=chat_repository,
         codex_runner=runtime_codex_runner,
         validator_config=app_config.validator,
+        codex_docker_config=app_config.codex_docker,
         datasource_dir=app_config.datasource_dir,
         timeout_seconds=app_config.server.timeout_seconds,
         transaction_manager=transaction_manager,

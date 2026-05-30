@@ -34,13 +34,12 @@ from backend.infrastructure.codex.reference_validator import (
     CodexValidationRunnerAdapter,
     InfrastructureCodexRunner,
 )
-from backend.infrastructure.config.models import ValidatorConfig
+from backend.infrastructure.config.models import CodexDockerConfig, ValidatorConfig
 from backend.shared.errors.errors import (
     ReferencePdfReadError,
     ValidationWorkspacePreparationError,
 )
 from backend.tests.support.memory_repository import InMemoryChatRepository
-from backend.tests.support.symlink import require_symlink_support
 from backend.tests.support.transaction_manager import NoopTransactionManager
 
 
@@ -100,6 +99,9 @@ def test_codex_validation_runner_runs_validation_and_saves_resume_id(
     assert codex_runner.requests[0].run_id == accepted.run_id
     assert codex_runner.requests[0].prompt == '{"input":"value"}'
     assert codex_runner.requests[0].codex_conversation_id == "previous-val-thread"
+    assert codex_runner.requests[0].datasource_dir == datasource_dir
+    assert codex_runner.requests[0].docker_config == _docker_config()
+    assert codex_runner.requests[0].artifact_mount_dir is None
     assert codex_runner.requests[0].workdir == (
         tmp_path
         / "codex/sessions_validator"
@@ -135,18 +137,15 @@ def test_codex_validation_runner_prepares_readonly_validation_context(
         trace_id="trace",
     )
 
-    readonly_dir = codex_runner.requests[0].workdir / "readonly"
-    assert readonly_dir.is_symlink()
-    assert readonly_dir.resolve() == datasource_dir.resolve()
-    assert (readonly_dir / "manual.pdf").resolve() == datasource_dir / "manual.pdf"
+    assert codex_runner.requests[0].datasource_dir == datasource_dir
+    assert not (codex_runner.requests[0].workdir / "readonly").exists()
     assert (codex_runner.requests[0].workdir / "tmp").is_dir()
 
 
 def test_codex_validation_runner_links_generation_artifacts_when_needed(
     tmp_path: Path,
 ) -> None:
-    """観点：検証用Codex連携。確認：成果物リンクがある回答では生成成果物を検証用workdirへ提示する。"""
-    require_symlink_support(tmp_path, target_is_directory=True)
+    """観点：検証用Codex連携。確認：成果物リンクがある回答では生成成果物領域をmount対象にする。"""
     repository = InMemoryChatRepository()
     accepted = repository.create_chat_with_first_run("資料を要約")
     context = repository.get_chat_runtime_context(accepted.chat_id)
@@ -177,9 +176,8 @@ def test_codex_validation_runner_links_generation_artifacts_when_needed(
         has_artifact_links=True,
     )
 
-    validation_artifacts = codex_runner.requests[0].workdir / "artifacts"
-    assert validation_artifacts.is_symlink()
-    assert (validation_artifacts / "chart.svg").read_text(encoding="utf-8") == "<svg />"
+    assert codex_runner.requests[0].artifact_mount_dir == generation_artifacts
+    assert not (codex_runner.requests[0].workdir / "artifacts").exists()
 
 
 def test_codex_validation_runner_streams_intermediate_messages(
@@ -315,6 +313,40 @@ def test_codex_validation_runner_requires_generation_artifacts_when_needed(
     assert codex_runner.requests == []
 
 
+def test_codex_validation_runner_skips_artifact_mount_when_directory_missing(
+    tmp_path: Path,
+) -> None:
+    """観点：検証用Codex連携。確認：生成用artifactsが存在しなければmount対象にしない。"""
+    repository = InMemoryChatRepository()
+    accepted = repository.create_chat_with_first_run("資料を要約")
+    context = repository.get_chat_runtime_context(accepted.chat_id)
+    datasource_dir = tmp_path / "readonly"
+    datasource_dir.mkdir()
+    codex_runner = RecordingCodexRunner(_valid_infrastructure_result())
+    runner = _validation_runner(
+        repository=repository,
+        codex_runner=codex_runner,
+        datasource_dir=datasource_dir,
+        tmp_path=tmp_path,
+    )
+    generation_workdir = (
+        tmp_path / "codex/sessions" / context.user_id / str(context.session_id)
+    )
+    generation_workdir.mkdir(parents=True)
+
+    runner.run_validation(
+        chat_id=accepted.chat_id,
+        run_id=accepted.run_id,
+        prompt="prompt",
+        timeout_seconds=120,
+        trace_id="trace",
+        session_workdir=generation_workdir,
+        has_artifact_links=True,
+    )
+
+    assert codex_runner.requests[0].artifact_mount_dir is None
+
+
 @dataclass(slots=True)
 class RecordingCodexRunner:
     result: InfrastructureCodexRunResult
@@ -372,6 +404,7 @@ def _validation_runner(
             workdir=tmp_path / "codex/sessions_validator",
             output_schema=tmp_path / "validator-schema.json",
         ),
+        codex_docker_config=_docker_config(),
         datasource_dir=datasource_dir,
         timeout_seconds=120,
         transaction_manager=transaction_manager or NoopTransactionManager(),
@@ -392,3 +425,12 @@ def _write_pdf(path: Path, *, page_count: int) -> None:
         writer.add_blank_page(width=72, height=72)
     with path.open("wb") as pdf_file:
         writer.write(pdf_file)
+
+
+def _docker_config() -> CodexDockerConfig:
+    return CodexDockerConfig(
+        image="codex-python-runner:latest",
+        workspace_dir="/workspace",
+        codex_home_dir="/home/codex/.codex",
+        codex_api_key="",
+    )

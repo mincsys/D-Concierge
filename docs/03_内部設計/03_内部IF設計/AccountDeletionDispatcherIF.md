@@ -69,7 +69,7 @@ sequenceDiagram
 
 ### 6.3. 不変条件
 
-- DispatcherはDB、ファイル、codex execを直接操作しない。
+- DispatcherはDB、ファイル、Codex実行コンテナを直接操作しない。
 - Dispatcherは削除対象ユーザIDの重複登録を抑止する。
 - Dispatcherは物理削除完了通知や進捗通知を提供しない。
 - 削除ジョブの失敗時、対象ユーザは`deleting`のまま維持され、起動時再登録の対象になる。

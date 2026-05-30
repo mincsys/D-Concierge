@@ -10,7 +10,7 @@
 - 呼出主体: `SaveAdoptedArtifactsUseCase`、`GetArtifactUseCase`、`ExecuteChatDeletionUseCase`、`ExecuteAccountDeletionUseCase`。
 - 本IFはCodex作業領域内の成果物候補と、保存済み成果物領域を分離して扱う。
 - セッション内 `artifacts/` は採用前の一時領域であり、履歴表示やブラウザ配信では直接参照しない。
-- 回答本文内の成果物リンクは固定検証で `artifacts/...` または `./artifacts/...` 形式に限定される。
+- 回答本文内の成果物リンクは固定検証処理で `artifacts/...` または `./artifacts/...` 形式に限定される。
 
 ## 3. IF概要
 
@@ -134,4 +134,4 @@ sequenceDiagram
 ## 8. 留意事項
 
 - 回答ブロック本文内の成果物URL置換はapplication層が行い、ファイルコピーは本IFが行う。
-- 回答本文内の成果物リンク形式、拡張子、実ファイル存在の固定検証はapplication層の成果物リンク検証で行い、本IFは保存と配信用読込のファイル操作に集中する。
+- 回答本文内の成果物リンク形式、拡張子、実ファイル存在の固定検証処理はapplication層の成果物リンク検証で行い、本IFは保存と配信用読込のファイル操作に集中する。

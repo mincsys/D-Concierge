@@ -1,17 +1,6 @@
-running_after_ui_delete=削除中/実行中
-running_chat_after_terminal_retry=0
-running_workdir_deleted:codex/sessions=true
-running_workdir_deleted:codex/sessions_validator=true
-protected_chat_rows=0
-protected_run_rows=0
-protected_instruction_rows=0
-protected_intermediate_rows=0
-protected_answer_rows=0
-protected_reference_rows=0
-protected_artifact_rows=0
-protected_workdir_deleted:codex/sessions=true
-protected_workdir_deleted:codex/sessions_validator=true
-protected_artifact_deleted=true
-other_chat_artifact_retained=true
-trace_retained=true
-shared_datasource_retained=true
+DB残件: {'chats': 0, 'chat_runs': 0, 'user_instructions': 0, 'intermediate_messages': 0, 'answer_blocks': 0, 'references': 0, 'artifacts': 0}
+生成用作業ディレクトリ存在: False codex/sessions/st-auto-api-1229/019e76f0-24f5-776b-bb00-4c7879810803
+検証用作業ディレクトリ存在: False codex/sessions_validator/st-auto-api-1229/019e76f0-24f5-776b-bb00-4c7879810803
+保存済み成果物ディレクトリ存在: False codex/saved_artifacts/st-auto-api-1229/019e76f0-24f5-776b-bb00-4c7879810803
+共有データソース存在: True
+トレースログルート存在: True logs/trace

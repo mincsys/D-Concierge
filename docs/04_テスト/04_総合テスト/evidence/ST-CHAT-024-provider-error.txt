@@ -1,0 +1,10 @@
+register {"user":{"user_id":"st-provider-1230","user_name":"Provider確認"}}
+start 200 {"chat_id":"019e76fc-e317-7685-b2e9-386f87e02b35","run_id":"019e76fc-e317-7685-b2e9-38700fb37fd5","sse_url":"/api/chats/019e76fc-e317-7685-b2e9-386f87e02b35/runs/019e76fc-e317-7685-b2e9-38700fb37fd5/sse","state":"accepted"}
+event: state
+data: {"run_id":"019e76fc-e317-7685-b2e9-38700fb37fd5","state":"running"}
+
+event: message
+data: {"run_id":"019e76fc-e317-7685-b2e9-38700fb37fd5","text":"作業を開始します。"}
+
+event: error
+data: {"run_id":"019e76fc-e317-7685-b2e9-38700fb37fd5","state":"error","user_message":"AIサービスプロバイダ側でエラーが発生しました。再度お試しください。\n解決しない場合はサーバ管理者にお問い合わせください。"}

@@ -357,8 +357,8 @@ def create_api_router(
             stage="reference_delivery",
             reference_id=reference_id,
         )
-        _authenticated_user(request, authenticate_session_usecase)
-        opened = get_reference_data_usecase.execute(reference_id)
+        user = _authenticated_user(request, authenticate_session_usecase)
+        opened = get_reference_data_usecase.execute(reference_id, user_id=user.user_id)
         return FileResponse(opened.path, media_type=opened.mime_type)
 
     @router.get("/api/artifacts/{artifact_id}")
@@ -369,8 +369,8 @@ def create_api_router(
             stage="artifact_delivery",
             artifact_id=artifact_id,
         )
-        _authenticated_user(request, authenticate_session_usecase)
-        opened = get_artifact_usecase.execute(artifact_id)
+        user = _authenticated_user(request, authenticate_session_usecase)
+        opened = get_artifact_usecase.execute(artifact_id, user_id=user.user_id)
         return FileResponse(opened.path, media_type=opened.mime_type)
 
     return router

@@ -46,6 +46,7 @@ from backend.infrastructure.codex.jsonl_event_parser import (
 from backend.infrastructure.config.models import (
     AppConfig,
     AppRuntimeConfig,
+    CodexDockerConfig,
     DatabaseConfig,
     GeneratorConfig,
     ServerConfig,
@@ -1028,16 +1029,13 @@ def test_default_runtime_executes_start_chat_through_codex_adapters(
     assert saved_context.validation_conversation_id == "validation-thread"
     assert codex_runner.generation_requests[0].timeout_seconds == 300
     assert codex_runner.validation_requests[0].timeout_seconds == 300
-    generation_readonly_pdf = (
-        codex_runner.generation_requests[0].workdir / "readonly" / "manual.pdf"
-    )
-    validation_readonly_pdf = (
-        codex_runner.validation_requests[0].workdir / "readonly" / "manual.pdf"
-    )
-    assert (codex_runner.generation_requests[0].workdir / "readonly").is_symlink()
-    assert (codex_runner.validation_requests[0].workdir / "readonly").is_symlink()
-    assert generation_readonly_pdf.resolve() == datasource_dir / "manual.pdf"
-    assert validation_readonly_pdf.resolve() == datasource_dir / "manual.pdf"
+    assert codex_runner.generation_requests[0].datasource_dir == datasource_dir
+    assert codex_runner.validation_requests[0].datasource_dir == datasource_dir
+    assert not (codex_runner.generation_requests[0].workdir / "readonly").exists()
+    assert not (codex_runner.validation_requests[0].workdir / "readonly").exists()
+    assert (codex_runner.generation_requests[0].workdir / "tmp").is_dir()
+    assert (codex_runner.generation_requests[0].workdir / "artifacts").is_dir()
+    assert (codex_runner.validation_requests[0].workdir / "tmp").is_dir()
     assert not (
         codex_runner.validation_requests[0].workdir
         / "readonly"
@@ -1229,6 +1227,12 @@ def _make_config(tmp_path: Path) -> AppConfig:
             home=tmp_path / "codex/.codex_validator",
             workdir=tmp_path / "codex/sessions_validator",
             output_schema=tmp_path / "codex/output_json_schema/validator_schema.json",
+        ),
+        codex_docker=CodexDockerConfig(
+            image="codex-python-runner:latest",
+            workspace_dir="/workspace",
+            codex_home_dir="/home/codex/.codex",
+            codex_api_key="",
         ),
         database=DatabaseConfig(url=_integration_database_url()),
         server=ServerConfig(timeout_seconds=300),

@@ -10,6 +10,7 @@ from backend.application.ports.database.dto import HistoryItem
 from backend.infrastructure.config.models import (
     AppConfig,
     AppRuntimeConfig,
+    CodexDockerConfig,
     DatabaseConfig,
     GeneratorConfig,
     ServerConfig,
@@ -156,6 +157,12 @@ def _make_config(tmp_path: Path) -> AppConfig:
             home=tmp_path / "codex/.codex_validator",
             workdir=tmp_path / "codex/sessions_validator",
             output_schema=tmp_path / "codex/output_json_schema/validator_schema.json",
+        ),
+        codex_docker=CodexDockerConfig(
+            image="codex-python-runner:latest",
+            workspace_dir="/workspace",
+            codex_home_dir="/home/codex/.codex",
+            codex_api_key="",
         ),
         database=DatabaseConfig(
             url="postgresql+psycopg://user:password@127.0.0.1:5432/db"

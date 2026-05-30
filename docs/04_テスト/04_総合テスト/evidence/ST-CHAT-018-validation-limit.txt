@@ -1,0 +1,31 @@
+register {"user":{"user_id":"st-validation-1230","user_name":"検証失敗確認"}}
+start 200 {"chat_id":"019e76fd-6ab7-72ef-993e-28c2099aabeb","run_id":"019e76fd-6ab7-72ef-993e-28c38a3f69af","sse_url":"/api/chats/019e76fd-6ab7-72ef-993e-28c2099aabeb/runs/019e76fd-6ab7-72ef-993e-28c38a3f69af/sse","state":"accepted"}
+event: state
+data: {"run_id":"019e76fd-6ab7-72ef-993e-28c38a3f69af","state":"running"}
+
+event: message
+data: {"run_id":"019e76fd-6ab7-72ef-993e-28c38a3f69af","text":"作業を開始します。"}
+
+event: message
+data: {"run_id":"019e76fd-6ab7-72ef-993e-28c38a3f69af","text":"指定されたPDFの31ページだけを確認します。"}
+
+event: message
+data: {"run_id":"019e76fd-6ab7-72ef-993e-28c38a3f69af","text":"標準のPDF抽出コマンドが利用できないため、別の方法で31ページを抽出します。"}
+
+event: message
+data: {"run_id":"019e76fd-6ab7-72ef-993e-28c38a3f69af","text":"PDF内の31ページ相当の本文を直接読み取れる形式で確認します。"}
+
+event: message
+data: {"run_id":"019e76fd-6ab7-72ef-993e-28c38a3f69af","text":"PDFのページ構成を確認し、指定ページの有無を照合しています。"}
+
+event: message
+data: {"run_id":"019e76fd-6ab7-72ef-993e-28c38a3f69af","text":"作業が完了しました。"}
+
+event: state
+data: {"run_id":"019e76fd-6ab7-72ef-993e-28c38a3f69af","state":"validating"}
+
+event: message
+data: {"run_id":"019e76fd-6ab7-72ef-993e-28c38a3f69af","text":"回答を検証します。"}
+
+event: error
+data: {"run_id":"019e76fd-6ab7-72ef-993e-28c38a3f69af","state":"error","user_message":"回答の生成に失敗しました。再度お試しください。"}

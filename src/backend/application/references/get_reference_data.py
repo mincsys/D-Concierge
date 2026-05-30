@@ -28,10 +28,10 @@ class GetReferenceDataUseCase:
             else NoopTransactionManager()
         )
 
-    def execute(self, reference_id: UUID) -> OpenedReferenceFile:
+    def execute(self, reference_id: UUID, user_id: str = "") -> OpenedReferenceFile:
         """参照元IDからPDFファイルを開く。"""
         with self._transaction_manager.transaction():
-            reference = self._repository.get_reference(reference_id)
+            reference = self._repository.get_reference(reference_id, user_id=user_id)
         if reference.source_type is not SourceType.PDF:
             raise ReferenceNotDisplayableError()
         return self._reference_store.open_reference_file(reference.relative_path)

@@ -193,7 +193,7 @@ class ValidationResultFormatError(AppError):
 
 
 class CodexProviderError(AppError):
-    """codex execがJSONLでAIサービスプロバイダ側エラーを返したことを示す。"""
+    """Codex実行がJSONLでAIサービスプロバイダ側エラーを返したことを示す。"""
 
     def __init__(self, event_type: str, message: str | None, stage: str) -> None:
         diagnostic_message = (
@@ -211,7 +211,7 @@ class CodexProviderError(AppError):
 
 
 class CodexProcessFailureError(AppError):
-    """codex execがJSONLエラーなしに異常終了したことを示す。"""
+    """Codex実行がJSONLエラーなしに異常終了したことを示す。"""
 
     def __init__(self, return_code: int, stderr: str, stage: str) -> None:
         stderr_summary = stderr.strip() or "(stderrなし)"

@@ -241,10 +241,12 @@ class ChatReadRepositoryPort(Protocol):
     def get_chat_detail(self, chat_id: UUID, user_id: str = "") -> ChatDetail:
         """チャット詳細を返す。"""
 
-    def get_reference(self, reference_id: UUID) -> DisplayReferenceData:
+    def get_reference(
+        self, reference_id: UUID, user_id: str = ""
+    ) -> DisplayReferenceData:
         """参照元配信メタ情報を返す。"""
 
-    def get_artifact(self, artifact_id: UUID) -> ArtifactData:
+    def get_artifact(self, artifact_id: UUID, user_id: str = "") -> ArtifactData:
         """成果物配信メタ情報を返す。"""
 
 

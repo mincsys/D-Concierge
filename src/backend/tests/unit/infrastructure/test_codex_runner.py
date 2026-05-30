@@ -26,6 +26,7 @@ from backend.infrastructure.codex.codex_runner import (
 from backend.infrastructure.codex.jsonl_event_parser import (
     ParsedCodexEvent,
 )
+from backend.infrastructure.config.models import CodexDockerConfig
 from backend.shared.errors.error_type import ErrorType
 from backend.shared.errors.errors import (
     AppError,
@@ -38,7 +39,7 @@ from backend.shared.errors.errors import (
 def test_codex_runner_starts_generation_and_parses_final_message(
     tmp_path: Path,
 ) -> None:
-    """観点：CodexRunner。確認：生成用codex execを起動し、JSONLから最終候補を返す。"""
+    """観点：CodexRunner。確認：生成用Docker起動スクリプトを起動し、JSONLから最終候補を返す。"""
     process = CompletedProcess(
         stdout=(
             '{"type":"thread.started","thread_id":"thread-001"}\n'
@@ -48,7 +49,8 @@ def test_codex_runner_starts_generation_and_parses_final_message(
         )
     )
     factory = RecordingProcessFactory(process)
-    runner = CodexRunner(process_factory=factory)
+    script_path = tmp_path / "run_codex_docker.sh"
+    runner = CodexRunner(process_factory=factory, script_path=script_path)
 
     result = runner.run_generation(
         CodexRunRequest(
@@ -56,7 +58,10 @@ def test_codex_runner_starts_generation_and_parses_final_message(
             prompt="資料を要約してください",
             codex_home=tmp_path / "codex-home",
             workdir=tmp_path / "session",
+            datasource_dir=tmp_path / "readonly",
             output_schema=tmp_path / "schema.json",
+            docker_config=_docker_config(codex_api_key="sk-test"),
+            artifact_mount_dir=None,
             codex_conversation_id=None,
             timeout_seconds=30,
             trace_id="trace-401",
@@ -71,21 +76,34 @@ def test_codex_runner_starts_generation_and_parses_final_message(
         CodexEventKind.TURN_COMPLETED,
     ]
     assert factory.command == (
-        "codex",
-        "exec",
-        "--json",
-        "--output-schema",
-        str(tmp_path / "schema.json"),
-        "-C",
+        str(script_path),
+        "--container-name",
+        "d-concierge-generator-00000000-0000-0000-0000-000000000701",
+        "--image",
+        "codex-python-runner:latest",
+        "--workspace-dir",
+        "/workspace",
+        "--codex-home-dir",
+        "/home/codex/.codex",
+        "--host-codex-home",
+        str(tmp_path / "codex-home"),
+        "--host-workdir",
         str(tmp_path / "session"),
+        "--host-datasource",
+        str(tmp_path / "readonly"),
+        "--host-schema-dir",
+        str(tmp_path),
+        "--schema-file",
+        "schema.json",
+        "--prompt",
         "資料を要約してください",
     )
     assert factory.cwd == tmp_path / "session"
-    assert factory.env["CODEX_HOME"] == str(tmp_path / "codex-home")
+    assert factory.env["CODEX_API_KEY"] == "sk-test"
 
 
 def test_codex_runner_places_resume_after_exec_options(tmp_path: Path) -> None:
-    """観点：CodexRunner。確認：resume利用時もexecオプションをresumeより前に指定する。"""
+    """観点：CodexRunner。確認：resume利用時は会話継続IDをスクリプト引数として渡す。"""
     process = CompletedProcess(
         stdout=(
             '{"type":"thread.started","thread_id":"thread-002"}\n'
@@ -94,7 +112,8 @@ def test_codex_runner_places_resume_after_exec_options(tmp_path: Path) -> None:
         )
     )
     factory = RecordingProcessFactory(process)
-    runner = CodexRunner(process_factory=factory)
+    script_path = tmp_path / "run_codex_docker.sh"
+    runner = CodexRunner(process_factory=factory, script_path=script_path)
 
     result = runner.run_validation(
         CodexRunRequest(
@@ -102,7 +121,10 @@ def test_codex_runner_places_resume_after_exec_options(tmp_path: Path) -> None:
             prompt="参照元を検証してください",
             codex_home=tmp_path / "validator-home",
             workdir=tmp_path / "validator-session",
+            datasource_dir=tmp_path / "readonly",
             output_schema=tmp_path / "validator-schema.json",
+            docker_config=_docker_config(),
+            artifact_mount_dir=tmp_path / "artifacts",
             codex_conversation_id="thread-previous",
             timeout_seconds=30,
             trace_id="trace-402",
@@ -111,11 +133,18 @@ def test_codex_runner_places_resume_after_exec_options(tmp_path: Path) -> None:
 
     assert result.final_message == "検証結果"
     assert factory.command is not None
-    assert factory.command.index("resume") > factory.command.index("-C")
-    assert factory.command[-3:] == (
-        "resume",
+    assert factory.command[:5] == (
+        str(script_path),
+        "--container-name",
+        "d-concierge-validator-00000000-0000-0000-0000-000000000702",
+        "--image",
+        "codex-python-runner:latest",
+    )
+    assert "--host-artifacts" in factory.command
+    assert str(tmp_path / "artifacts") in factory.command
+    assert factory.command[-2:] == (
+        "--conversation-id",
         "thread-previous",
-        "参照元を検証してください",
     )
 
 
@@ -152,15 +181,22 @@ def test_codex_runner_converts_process_start_and_exit_failures(
     assert exit_error.value.error_type is ErrorType.SYSTEM
 
 
-def test_codex_runner_kills_process_when_timeout_occurs(tmp_path: Path) -> None:
-    """観点：CodexRunner異常系。確認：codex execタイムアウト時はプロセスをkillする。"""
+def test_codex_runner_stops_container_when_timeout_occurs(tmp_path: Path) -> None:
+    """観点：CodexRunner異常系。確認：Docker実行タイムアウト時は対象コンテナへstopを送る。"""
     process = TimeoutProcess()
-    runner = CodexRunner(process_factory=RecordingProcessFactory(process))
+    stopper = RecordingContainerStopper()
+    runner = CodexRunner(
+        process_factory=RecordingProcessFactory(process),
+        container_stopper=stopper,
+    )
 
     with pytest.raises(RunTimeoutError):
         runner.run_generation(_make_request(tmp_path))
 
     assert process.killed
+    assert stopper.calls == [
+        ("d-concierge-generator-00000000-0000-0000-0000-000000000799", 10)
+    ]
 
 
 def test_codex_runner_rejects_failed_or_incomplete_jsonl(
@@ -204,13 +240,23 @@ def test_codex_runner_raises_provider_error_for_usage_limit_jsonl(
             '{"type":"error","message":"You\\u0027ve hit your usage limit."}\n'
         )
     )
+    stopper = RecordingContainerStopper()
 
     with pytest.raises(CodexProviderError) as error_info:
-        CodexRunner(process_factory=RecordingProcessFactory(process)).run_generation(
-            _make_request(tmp_path)
+        CodexRunner(
+            process_factory=RecordingProcessFactory(process),
+            container_stopper=stopper,
+        ).run_generation(
+            _make_request(
+                tmp_path,
+                run_id=UUID("00000000-0000-0000-0000-000000000703"),
+            )
         )
 
     assert process.terminated
+    assert stopper.calls == [
+        ("d-concierge-generator-00000000-0000-0000-0000-000000000703", 10)
+    ]
     assert error_info.value.error_type is ErrorType.SYSTEM
     assert error_info.value.codex_event_type == "error"
     assert error_info.value.codex_message == "You've hit your usage limit."
@@ -288,7 +334,7 @@ def test_codex_runner_notifies_jsonl_events_before_process_completion(
 ) -> None:
     """観点：CodexRunner逐次JSONL通知。
 
-    確認：codex execが完了する前に読み取ったJSONLイベントを呼出元へ通知する。
+    確認：Codex Docker実行が完了する前に読み取ったJSONLイベントを呼出元へ通知する。
     """
     process = StreamingProcess(
         first_stdout_line='{"type":"thread.started","thread_id":"thread-stream"}\n',
@@ -321,7 +367,7 @@ def test_codex_runner_notifies_jsonl_events_before_process_completion(
 
 
 def test_codex_runner_cancels_registered_process(tmp_path: Path) -> None:
-    """観点：CodexRunner。確認：登録済み生存プロセスへ終了要求を送る。"""
+    """観点：CodexRunner。確認：登録済み生存コンテナへ終了要求を送る。"""
     process = BlockingProcess(
         stdout=(
             '{"type":"thread.started","thread_id":"thread-004"}\n'
@@ -329,14 +375,21 @@ def test_codex_runner_cancels_registered_process(tmp_path: Path) -> None:
             '{"type":"turn.completed"}\n'
         )
     )
-    runner = CodexRunner(process_factory=RecordingProcessFactory(process))
+    stopper = RecordingContainerStopper()
+    runner = CodexRunner(
+        process_factory=RecordingProcessFactory(process),
+        container_stopper=stopper,
+    )
     run_id = UUID("00000000-0000-0000-0000-000000000704")
     request = CodexRunRequest(
         run_id=run_id,
         prompt="資料を要約してください",
         codex_home=tmp_path / "codex-home",
         workdir=tmp_path / "session",
+        datasource_dir=tmp_path / "readonly",
         output_schema=tmp_path / "schema.json",
+        docker_config=_docker_config(),
+        artifact_mount_dir=None,
         codex_conversation_id=None,
         timeout_seconds=30,
         trace_id="trace-404",
@@ -346,14 +399,45 @@ def test_codex_runner_cancels_registered_process(tmp_path: Path) -> None:
         future = executor.submit(runner.run_generation, request)
         process.started.wait(timeout=1)
         cancel_result = runner.cancel(run_id=run_id, trace_id="trace-405")
+        process.release()
 
     assert cancel_result is CancelRequestResult.SENT
-    assert process.terminated
+    assert not process.terminated
+    assert stopper.calls == [
+        ("d-concierge-generator-00000000-0000-0000-0000-000000000704", 10)
+    ]
     assert future.result().final_message == "結果"
     assert (
         runner.cancel(run_id=run_id, trace_id="trace-406")
         is CancelRequestResult.NOT_REGISTERED
     )
+
+
+def test_codex_runner_returns_not_registered_when_container_stop_fails(
+    tmp_path: Path,
+) -> None:
+    """観点：CodexRunnerキャンセル。確認：Docker stop失敗は未登録相当として扱う。"""
+    process = BlockingProcess(stdout='{"type":"thread.started","thread_id":"thread"}\n')
+    stopper = RecordingContainerStopper(result=False)
+    runner = CodexRunner(
+        process_factory=RecordingProcessFactory(process),
+        container_stopper=stopper,
+    )
+    request = _make_request(tmp_path)
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(runner.run_generation, request)
+        process.started.wait(timeout=1)
+        cancel_result = runner.cancel(run_id=request.run_id, trace_id="trace-408")
+        process.release()
+
+    assert cancel_result is CancelRequestResult.NOT_REGISTERED
+    assert not process.terminated
+    assert stopper.calls == [
+        ("d-concierge-generator-00000000-0000-0000-0000-000000000799", 10)
+    ]
+    with pytest.raises(AppError):
+        future.result()
 
 
 def test_subprocess_codex_process_streams_stdout_and_collects_stderr(
@@ -502,7 +586,11 @@ def test_codex_runner_returns_already_exited_for_registered_exited_process(
     """観点：CodexRunnerキャンセル。確認：登録済み終了プロセスをalready_exitedにする。"""
     runner = CodexRunner()
     run_id = UUID("00000000-0000-0000-0000-000000000705")
-    runner._register_process(run_id, CompletedProcess(stdout="", return_code=0))
+    runner._register_process(
+        run_id,
+        CompletedProcess(stdout="", return_code=0),
+        "d-concierge-generator-00000000-0000-0000-0000-000000000705",
+    )
 
     result = runner.cancel(run_id=run_id, trace_id="trace-407")
 
@@ -560,6 +648,16 @@ class RecordingProcessFactory:
         self.cwd = cwd
         self.env = env
         return self.process
+
+
+@dataclass(slots=True)
+class RecordingContainerStopper:
+    calls: list[tuple[str, int]] = field(default_factory=list)
+    result: bool = True
+
+    def stop(self, container_name: str, timeout_seconds: int) -> bool:
+        self.calls.append((container_name, timeout_seconds))
+        return self.result
 
 
 @dataclass(slots=True)
@@ -658,6 +756,9 @@ class BlockingProcess:
         self.terminated = True
         self.released.set()
 
+    def release(self) -> None:
+        self.released.set()
+
 
 @dataclass(slots=True)
 class StreamingProcess:
@@ -703,17 +804,30 @@ class StreamingProcess:
 
 def _make_request(
     tmp_path: Path,
+    run_id: UUID | None = None,
     timeout_seconds: int = 30,
     on_event: Callable[[ParsedCodexEvent], None] | None = None,
 ) -> CodexRunRequest:
     return CodexRunRequest(
-        run_id=UUID("00000000-0000-0000-0000-000000000799"),
+        run_id=run_id or UUID("00000000-0000-0000-0000-000000000799"),
         prompt="資料を要約してください",
         codex_home=tmp_path / "codex-home",
         workdir=tmp_path / "session",
+        datasource_dir=tmp_path / "readonly",
         output_schema=tmp_path / "schema.json",
+        docker_config=_docker_config(),
+        artifact_mount_dir=None,
         codex_conversation_id=None,
         timeout_seconds=timeout_seconds,
         trace_id="trace-499",
         on_event=on_event,
+    )
+
+
+def _docker_config(codex_api_key: str = "") -> CodexDockerConfig:
+    return CodexDockerConfig(
+        image="codex-python-runner:latest",
+        workspace_dir="/workspace",
+        codex_home_dir="/home/codex/.codex",
+        codex_api_key=codex_api_key,
     )

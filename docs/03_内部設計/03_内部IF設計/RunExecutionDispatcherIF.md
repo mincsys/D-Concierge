@@ -86,7 +86,7 @@ sequenceDiagram
 | `accepted` | dispatcherへ再登録する。再登録失敗時は `error` へ更新する。 |
 | `running` | アプリ再起動により対応するcodexプロセスを失っているため `error` へ更新する。 |
 | `validating` | アプリ再起動により対応するcodexプロセスを失っているため `error` へ更新する。 |
-| `cancel_requested` | プロセス終了要求が不要または継続不能な状態として `canceled` へ更新する。 |
+| `cancel_requested` | コンテナ終了要求が不要または継続不能な状態として `canceled` へ更新する。 |
 
 ## 8. 例外処理
 

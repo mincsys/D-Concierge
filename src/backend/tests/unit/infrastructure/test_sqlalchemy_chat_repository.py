@@ -108,11 +108,41 @@ def test_sqlalchemy_repository_filters_chat_data_by_account_user() -> None:
 
     own = repository.create_chat_with_first_run("自分の履歴", user_id="demo-user")
     other = repository.create_chat_with_first_run("他人の履歴", user_id="other-user")
+    own_reference_id = uuid7()
+    own_artifact_id = uuid7()
+    other_reference_id = uuid7()
+    other_artifact_id = uuid7()
+    repository.save_completed_answer(
+        own.chat_id,
+        own.run_id,
+        _answer_with_reference_and_artifact(
+            reference_id=own_reference_id,
+            artifact_id=own_artifact_id,
+            artifact_path="demo-user/session/own.svg",
+        ),
+    )
+    repository.save_completed_answer(
+        other.chat_id,
+        other.run_id,
+        _answer_with_reference_and_artifact(
+            reference_id=other_reference_id,
+            artifact_id=other_artifact_id,
+            artifact_path="other-user/session/other.svg",
+        ),
+    )
 
     histories = repository.list_histories(user_id="demo-user")
     assert [history.chat_id for history in histories] == [own.chat_id]
     assert repository.get_chat_detail(own.chat_id, user_id="demo-user").title == (
         "自分の履歴"
+    )
+    assert (
+        repository.get_reference(own_reference_id, user_id="demo-user").reference_id
+        == own_reference_id
+    )
+    assert (
+        repository.get_artifact(own_artifact_id, user_id="demo-user").artifact_id
+        == own_artifact_id
     )
 
     with pytest.raises(AppError) as detail_error:
@@ -122,6 +152,14 @@ def test_sqlalchemy_repository_filters_chat_data_by_account_user() -> None:
     with pytest.raises(AppError) as delete_error:
         repository.mark_chat_deleting(other.chat_id, user_id="demo-user")
     assert delete_error.value.error_type is ErrorType.NOT_FOUND
+
+    with pytest.raises(AppError) as reference_error:
+        repository.get_reference(other_reference_id, user_id="demo-user")
+    assert reference_error.value.error_type is ErrorType.NOT_FOUND
+
+    with pytest.raises(AppError) as artifact_error:
+        repository.get_artifact(other_artifact_id, user_id="demo-user")
+    assert artifact_error.value.error_type is ErrorType.NOT_FOUND
 
 
 def test_sqlalchemy_repository_marks_and_deletes_account_user_chats() -> None:
@@ -673,6 +711,38 @@ def _insert_user(
             )
 
 
+def _answer_with_reference_and_artifact(
+    *,
+    reference_id: UUID,
+    artifact_id: UUID,
+    artifact_path: str,
+) -> AnswerData:
+    return AnswerData(
+        blocks=(
+            AnswerBlockData(
+                markdown="検証済み回答",
+                references=(
+                    DisplayReferenceData(
+                        reference_id=reference_id,
+                        source_type=SourceType.PDF,
+                        label="資料",
+                        relative_path="manual.pdf",
+                        page_start=1,
+                        page_end=1,
+                    ),
+                ),
+                artifacts=(
+                    ArtifactData(
+                        artifact_id=artifact_id,
+                        mime_type="image/svg+xml",
+                        relative_path=artifact_path,
+                    ),
+                ),
+            ),
+        ),
+    )
+
+
 class TransactionalSqlAlchemyChatRepository(SqlAlchemyChatRepository):
     """Repositoryテスト用に各呼び出しを明示トランザクションへ包む。"""
 
@@ -782,13 +852,15 @@ class TransactionalSqlAlchemyChatRepository(SqlAlchemyChatRepository):
         with self._transaction_manager.transaction():
             super().cancel_run(chat_id, run_id)
 
-    def get_reference(self, reference_id: UUID) -> DisplayReferenceData:
+    def get_reference(
+        self, reference_id: UUID, user_id: str = ""
+    ) -> DisplayReferenceData:
         with self._transaction_manager.transaction():
-            return super().get_reference(reference_id)
+            return super().get_reference(reference_id, user_id=user_id)
 
-    def get_artifact(self, artifact_id: UUID) -> ArtifactData:
+    def get_artifact(self, artifact_id: UUID, user_id: str = "") -> ArtifactData:
         with self._transaction_manager.transaction():
-            return super().get_artifact(artifact_id)
+            return super().get_artifact(artifact_id, user_id=user_id)
 
     def mark_chat_deleting(self, chat_id: UUID, user_id: str = "") -> DeleteChatResult:
         with self._transaction_manager.transaction():

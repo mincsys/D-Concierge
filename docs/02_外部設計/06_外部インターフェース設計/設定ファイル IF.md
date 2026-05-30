@@ -2,7 +2,7 @@
 
 ## 1. 文書の目的
 
-本書は、D-Conciergeがアプリケーション設定から読み取る設定項目と、それらが画面表示、codex exec連携、検証、実行制約に与える影響を定義することを目的とする。
+本書は、D-Conciergeがアプリケーション設定から読み取る設定項目と、それらが画面表示、Codex実行、検証、実行制約に与える影響を定義することを目的とする。
 
 ## 2. 前提
 
@@ -39,14 +39,18 @@
 | `ui.input_suggestions` | 任意 | 開始画面の入力候補チップ文字列配列。YAMLの `\n` による改行指定を表示上の改行として扱う。 | `GET /api/app-config` |
 | `datasource.dir` | 必須 | 共有データソースのベースディレクトリ。 | 参照元表示、回答生成、回答検証 |
 | `generator.max_retries` | 必須 | 生成回答が検証で不採用になった場合の再生成上限。 | 回答検証 |
-| `generator.home` | 必須 | 生成指示を記載した `AGENTS.md` と生成用Skillsを含む、生成用codex execのホームディレクトリ。 | codex exec IF |
-| `generator.workdir` | 必須 | 生成用セッションベースディレクトリ。 | codex exec IF |
-| `generator.output_schema` | 必須 | 生成用codex execの出力契約。 | 回答生成、形式検証 |
+| `generator.home` | 必須 | 生成指示を記載した `AGENTS.md` と生成用Skillsを含む、生成用Codex実行のホスト側ホームディレクトリ。 | Codex実行 IF |
+| `generator.workdir` | 必須 | 生成用セッションベースディレクトリ。 | Codex実行 IF |
+| `generator.output_schema` | 必須 | 生成用Codex実行の出力契約。 | 回答生成、固定検証処理 |
 | `generator.saved_artifacts_dir` | 必須 | 検証済み回答が参照するCodex成果物本体の保存領域。 | Codex成果物配信 |
 | `validator.max_retries` | 必須 | 検証用Codexの最終出力形式が不正だった場合の再出力上限。 | 回答検証 |
-| `validator.home` | 必須 | 検証指示を記載した `AGENTS.md` と検証用Skillsを含む、検証用codex execのホームディレクトリ。 | codex exec IF |
-| `validator.workdir` | 必須 | 検証用セッションベースディレクトリ。 | codex exec IF |
-| `validator.output_schema` | 必須 | 検証用codex execの検証結果出力契約。 | 回答検証 |
+| `validator.home` | 必須 | 検証指示を記載した `AGENTS.md` と検証用Skillsを含む、検証用Codex実行のホスト側ホームディレクトリ。 | Codex実行 IF |
+| `validator.workdir` | 必須 | 検証用セッションベースディレクトリ。 | Codex実行 IF |
+| `validator.output_schema` | 必須 | 検証用Codex実行の検証結果出力契約。 | 回答検証 |
+| `codex_docker.image` | 必須 | Codex実行コンテナに使用するDockerイメージ名。 | Codex実行 IF |
+| `codex_docker.workspace_dir` | 必須 | コンテナ内でCodex作業ディレクトリとして使用するパス。 | Codex実行 IF |
+| `codex_docker.codex_home_dir` | 必須 | コンテナ内でCodexホームディレクトリとして使用するパス。 | Codex実行 IF |
+| `codex_docker.codex_api_key` | 必須 | Codex認証情報としてコンテナへ渡す値。空文字を指定できる。 | Codex実行 IF |
 | `database.url` | 必須 | データベース接続先。 | 永続化 |
 | `server.timeout_seconds` | 必須 | 回答生成から検証完了までのタイムアウト値。 | 実行制約 |
 | `trace_log.dir` | 必須 | 異常系トレースログYAMLファイルの保存先。 | ログ設計 |
@@ -66,10 +70,11 @@
 
 次の情報は画面へ返さない。
 
-- codex execのホームディレクトリ。
+- Codex実行のホームディレクトリ。
 - 作業ディレクトリ。
 - 共有データソース配置先。
 - Codex成果物保存領域。
+- Codex認証情報。
 - データベース接続先。
 - トレースログ保存先。
 - アプリ共通タイムゾーン。
@@ -80,16 +85,20 @@
 
 - 共有データソース配置先は `datasource.dir` から決まる。
 - 生成回答の再生成上限は `generator.max_retries` から決まる。
-- 生成用 `CODEX_HOME` は `generator.home` から決まる。
+- 生成用ホスト側 `CODEX_HOME` は `generator.home` から決まる。
 - 生成指示と生成用Skillsは、`generator.home` 配下の `AGENTS.md` とSkillsから決まる。
 - 生成用作業ディレクトリは、DBに保存されたユーザIDとセッションIDを使い、`generator.workdir/<user-id>/<session-id>` から決まる。
 - 生成用出力スキーマは `generator.output_schema` から決まる。
 - 保存済みCodex成果物領域は `generator.saved_artifacts_dir` から決まる。
 - 検証用Codexの最終出力形式不正時の再出力上限は `validator.max_retries` から決まる。
-- 検証用 `CODEX_HOME` は `validator.home` から決まる。
+- 検証用ホスト側 `CODEX_HOME` は `validator.home` から決まる。
 - 検証指示と検証用Skillsは、`validator.home` 配下の `AGENTS.md` とSkillsから決まる。
 - 検証用作業ディレクトリは、DBに保存されたユーザIDとセッションIDを使い、`validator.workdir/<user-id>/<session-id>` から決まる。
 - 検証用出力スキーマは `validator.output_schema` から決まる。
+- Codex実行に使用するDockerイメージは `codex_docker.image` から決まる。
+- コンテナ側のCodex作業ディレクトリは `codex_docker.workspace_dir` から決まる。生成用・検証用のホスト側作業ディレクトリは、このパスへマウントする。
+- コンテナ側のCodexホームディレクトリは `codex_docker.codex_home_dir` から決まる。生成用・検証用のホスト側ホームディレクトリは、このパスへマウントする。
+- Codex認証情報は `codex_docker.codex_api_key` から決まる。空文字の場合もコンテナへ渡す値として扱う。
 - トレースログ保存期間は `trace_log.retention_days` から決まる。
 - アプリケーション起動ごとの同日トレースログ最大保存件数は `trace_log.max_files_per_day` から決まる。
 - トレースログの日付ディレクトリ、ファイル名、発生日時、保存期間判定は `app.timezone` から決まる。
@@ -101,6 +110,7 @@
 | --- | --- |
 | 必須設定不足 | アプリケーション起動または対象機能の実行を失敗させ、トレースログを保存する。 |
 | 不正なパス設定 | 許可範囲外参照として拒否する。 |
+| 不正なCodex実行設定 | Codex実行を開始せず、トレースログを保存する。 |
 | UI設定不足 | ウェルカムメッセージまたは入力候補チップを表示しない。 |
 | タイムアウト設定不正 | 実行受付を行わず、利用者向けエラーを返す。 |
 | タイムゾーン設定不正 | アプリケーション起動または対象機能の実行を失敗させ、トレースログを保存する。 |

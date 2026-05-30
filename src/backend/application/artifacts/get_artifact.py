@@ -26,10 +26,10 @@ class GetArtifactUseCase:
             else NoopTransactionManager()
         )
 
-    def execute(self, artifact_id: UUID) -> OpenedArtifactFile:
+    def execute(self, artifact_id: UUID, user_id: str = "") -> OpenedArtifactFile:
         """成果物IDから保存済みファイルを開く。"""
         with self._transaction_manager.transaction():
-            artifact = self._repository.get_artifact(artifact_id)
+            artifact = self._repository.get_artifact(artifact_id, user_id=user_id)
         return self._artifact_store.open_saved_file(
             relative_path=artifact.relative_path,
             mime_type=artifact.mime_type,

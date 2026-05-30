@@ -18,7 +18,7 @@ from backend.infrastructure.codex.intermediate_messages import (
 from backend.infrastructure.codex.jsonl_event_parser import (
     ParsedCodexEvent,
 )
-from backend.infrastructure.config.models import GeneratorConfig
+from backend.infrastructure.config.models import CodexDockerConfig, GeneratorConfig
 from backend.tests.support.memory_repository import InMemoryChatRepository
 from backend.tests.support.transaction_manager import NoopTransactionManager
 
@@ -71,6 +71,7 @@ def test_codex_generation_runner_builds_request_and_saves_resume_id(
             output_schema=tmp_path / "schema.json",
             saved_artifacts_dir=tmp_path / "codex/saved_artifacts",
         ),
+        codex_docker_config=_docker_config(),
         datasource_dir=datasource_dir,
         timeout_seconds=300,
         transaction_manager=NoopTransactionManager(),
@@ -98,6 +99,9 @@ def test_codex_generation_runner_builds_request_and_saves_resume_id(
     assert codex_runner.requests[0].codex_conversation_id == "previous-thread"
     assert codex_runner.requests[0].codex_home == tmp_path / "codex/.codex"
     assert codex_runner.requests[0].output_schema == tmp_path / "schema.json"
+    assert codex_runner.requests[0].datasource_dir == datasource_dir
+    assert codex_runner.requests[0].docker_config == _docker_config()
+    assert codex_runner.requests[0].artifact_mount_dir is None
     assert codex_runner.requests[0].workdir == (
         tmp_path
         / "codex/sessions"
@@ -139,6 +143,7 @@ def test_codex_generation_runner_prepares_readonly_datasource(
             output_schema=tmp_path / "schema.json",
             saved_artifacts_dir=tmp_path / "codex/saved_artifacts",
         ),
+        codex_docker_config=_docker_config(),
         datasource_dir=datasource_dir,
         timeout_seconds=300,
         transaction_manager=NoopTransactionManager(),
@@ -150,11 +155,8 @@ def test_codex_generation_runner_prepares_readonly_datasource(
         "資料を要約してください",
     )
 
-    readonly_dir = codex_runner.requests[0].workdir / "readonly"
-    assert readonly_dir.is_symlink()
-    assert readonly_dir.resolve() == datasource_dir.resolve()
-    assert (readonly_dir / "manual.pdf").resolve() == datasource_dir / "manual.pdf"
-    assert (readonly_dir / "nested").resolve() == datasource_dir / "nested"
+    assert codex_runner.requests[0].datasource_dir == datasource_dir
+    assert not (codex_runner.requests[0].workdir / "readonly").exists()
     assert (codex_runner.requests[0].workdir / "tmp").is_dir()
     assert (codex_runner.requests[0].workdir / "artifacts").is_dir()
 
@@ -209,6 +211,7 @@ def test_codex_generation_runner_streams_intermediate_messages(
             output_schema=tmp_path / "schema.json",
             saved_artifacts_dir=tmp_path / "codex/saved_artifacts",
         ),
+        codex_docker_config=_docker_config(),
         datasource_dir=datasource_dir,
         timeout_seconds=300,
         transaction_manager=NoopTransactionManager(),
@@ -350,3 +353,12 @@ class StreamingRecordingCodexRunner(RecordingCodexRunner):
             if request.on_event is not None:
                 request.on_event(event)
         return self.result
+
+
+def _docker_config() -> CodexDockerConfig:
+    return CodexDockerConfig(
+        image="codex-python-runner:latest",
+        workspace_dir="/workspace",
+        codex_home_dir="/home/codex/.codex",
+        codex_api_key="",
+    )

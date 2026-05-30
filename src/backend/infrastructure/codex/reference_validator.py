@@ -27,14 +27,13 @@ from backend.infrastructure.codex.codex_runner import (
 from backend.infrastructure.codex.codex_runner import (
     CodexRunResult as InfrastructureCodexRunResult,
 )
+from backend.infrastructure.codex.codex_workspace_preparer import (
+    prepare_validation_workspace,
+)
 from backend.infrastructure.codex.intermediate_messages import (
     CodexIntermediateMessageStreamer,
 )
-from backend.infrastructure.codex.session_readonly import (
-    prepare_validation_session_artifacts,
-    prepare_validation_session_readonly,
-)
-from backend.infrastructure.config.models import ValidatorConfig
+from backend.infrastructure.config.models import CodexDockerConfig, ValidatorConfig
 from backend.infrastructure.filesystem.path_security import PathSecurityService
 from backend.shared.errors.errors import (
     AppError,
@@ -47,7 +46,7 @@ class InfrastructureCodexRunner(Protocol):
     """実CodexRunnerの検証実行境界。"""
 
     def run_validation(self, request: CodexRunRequest) -> InfrastructureCodexRunResult:
-        """検証用codex execを実行する。"""
+        """検証用Codex Docker実行を行う。"""
 
 
 class CodexReferenceFileValidator:
@@ -78,6 +77,7 @@ class CodexValidationRunnerAdapter:
         repository: ChatRuntimeRepositoryPort,
         codex_runner: InfrastructureCodexRunner,
         validator_config: ValidatorConfig,
+        codex_docker_config: CodexDockerConfig,
         datasource_dir: Path,
         timeout_seconds: int,
         transaction_manager: TransactionManagerPort,
@@ -85,6 +85,7 @@ class CodexValidationRunnerAdapter:
         self._repository = repository
         self._codex_runner = codex_runner
         self._validator_config = validator_config
+        self._codex_docker_config = codex_docker_config
         self._datasource_dir = datasource_dir
         self._timeout_seconds = timeout_seconds
         self._transaction_manager = transaction_manager
@@ -100,27 +101,23 @@ class CodexValidationRunnerAdapter:
         session_workdir: Path | None = None,
         has_artifact_links: bool = False,
     ) -> ValidatorCodexRunResult:
-        """検証用codex execを1回実行し、rawな最終出力を返す。"""
+        """検証用Codex Docker実行を1回行い、rawな最終出力を返す。"""
         with self._transaction_manager.transaction():
             context = self._repository.get_chat_runtime_context(chat_id)
         workdir = (
             self._validator_config.workdir / context.user_id / str(context.session_id)
         )
 
-        prepare_validation_session_readonly(
-            workdir=workdir,
-            datasource_dir=self._datasource_dir,
-        )
+        prepare_validation_workspace(workdir)
+        artifact_mount_dir: Path | None = None
         if has_artifact_links:
             if session_workdir is None:
                 raise ValidationWorkspacePreparationError(
                     "生成成果物ディレクトリを検証用作業領域へ提示できません。",
                 )
-            prepare_validation_session_artifacts(
-                validation_workdir=workdir,
-                generation_workdir=session_workdir,
-                has_artifact_links=True,
-            )
+            candidate_artifacts_dir = session_workdir / "artifacts"
+            if candidate_artifacts_dir.is_dir():
+                artifact_mount_dir = candidate_artifacts_dir
         intermediate_streamer = CodexIntermediateMessageStreamer(
             on_intermediate_message
         )
@@ -130,7 +127,10 @@ class CodexValidationRunnerAdapter:
                 prompt=prompt,
                 codex_home=self._validator_config.home,
                 workdir=workdir,
+                datasource_dir=self._datasource_dir,
                 output_schema=self._validator_config.output_schema,
+                docker_config=self._codex_docker_config,
+                artifact_mount_dir=artifact_mount_dir,
                 codex_conversation_id=context.validation_conversation_id,
                 timeout_seconds=timeout_seconds,
                 trace_id=trace_id,

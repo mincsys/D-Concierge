@@ -14,20 +14,20 @@ from backend.infrastructure.codex.codex_runner import (
 from backend.infrastructure.codex.codex_runner import (
     CodexRunResult as InfrastructureCodexRunResult,
 )
+from backend.infrastructure.codex.codex_workspace_preparer import (
+    prepare_generation_workspace,
+)
 from backend.infrastructure.codex.intermediate_messages import (
     CodexIntermediateMessageStreamer,
 )
-from backend.infrastructure.codex.session_readonly import (
-    prepare_generation_session_readonly,
-)
-from backend.infrastructure.config.models import GeneratorConfig
+from backend.infrastructure.config.models import CodexDockerConfig, GeneratorConfig
 
 
 class InfrastructureCodexRunner(Protocol):
     """実CodexRunnerの生成実行境界。"""
 
     def run_generation(self, request: CodexRunRequest) -> InfrastructureCodexRunResult:
-        """生成用codex execを実行する。"""
+        """生成用Codex Docker実行を行う。"""
 
 
 class CodexGenerationRunnerAdapter:
@@ -38,6 +38,7 @@ class CodexGenerationRunnerAdapter:
         repository: ChatRuntimeRepositoryPort,
         codex_runner: InfrastructureCodexRunner,
         generator_config: GeneratorConfig,
+        codex_docker_config: CodexDockerConfig,
         datasource_dir: Path,
         timeout_seconds: int,
         transaction_manager: TransactionManagerPort,
@@ -45,6 +46,7 @@ class CodexGenerationRunnerAdapter:
         self._repository = repository
         self._codex_runner = codex_runner
         self._generator_config = generator_config
+        self._codex_docker_config = codex_docker_config
         self._datasource_dir = datasource_dir
         self._timeout_seconds = timeout_seconds
         self._transaction_manager = transaction_manager
@@ -64,10 +66,7 @@ class CodexGenerationRunnerAdapter:
         workdir = (
             self._generator_config.workdir / context.user_id / str(context.session_id)
         )
-        prepare_generation_session_readonly(
-            workdir=workdir,
-            datasource_dir=self._datasource_dir,
-        )
+        prepare_generation_workspace(workdir)
         intermediate_streamer = CodexIntermediateMessageStreamer(
             on_intermediate_message
         )
@@ -77,7 +76,10 @@ class CodexGenerationRunnerAdapter:
                 prompt=user_instruction,
                 codex_home=self._generator_config.home,
                 workdir=workdir,
+                datasource_dir=self._datasource_dir,
                 output_schema=self._generator_config.output_schema,
+                docker_config=self._codex_docker_config,
+                artifact_mount_dir=None,
                 codex_conversation_id=context.generation_conversation_id,
                 timeout_seconds=(
                     timeout_seconds

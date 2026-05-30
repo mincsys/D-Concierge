@@ -28,6 +28,11 @@ validator:
   home: "codex/.codex_validator"
   workdir: "codex/sessions_validator"
   output_schema: "codex/output_json_schema/validator_schema.json"
+codex_docker:
+  image: "codex-python-runner:latest"
+  workspace_dir: "/workspace"
+  codex_home_dir: "/home/codex/.codex"
+  codex_api_key: ""
 database:
   url: "postgresql+psycopg://user:password@127.0.0.1:5432/db"
 server:
@@ -53,6 +58,10 @@ def test_config_loader_returns_typed_public_ui_settings(tmp_path: Path) -> None:
     assert config.database.url == "postgresql+psycopg://user:password@127.0.0.1:5432/db"
     assert config.server.timeout_seconds == 300
     assert config.datasource_dir == tmp_path / "data"
+    assert config.codex_docker.image == "codex-python-runner:latest"
+    assert config.codex_docker.workspace_dir == "/workspace"
+    assert config.codex_docker.codex_home_dir == "/home/codex/.codex"
+    assert config.codex_docker.codex_api_key == ""
     assert config.trace_log.retention_days == 90
     assert config.trace_log.max_files_per_day == 1000
 
@@ -154,6 +163,28 @@ def test_config_loader_uses_absolute_paths_without_base_dir_join(
                 'url: ""',
             ),
             "database.url",
+        ),
+        (
+            VALID_CONFIG.replace('image: "codex-python-runner:latest"', 'image: ""'),
+            "codex_docker.image",
+        ),
+        (
+            VALID_CONFIG.replace('workspace_dir: "/workspace"', 'workspace_dir: ""'),
+            "codex_docker.workspace_dir",
+        ),
+        (
+            VALID_CONFIG.replace(
+                'codex_home_dir: "/home/codex/.codex"', 'codex_home_dir: ""'
+            ),
+            "codex_docker.codex_home_dir",
+        ),
+        (
+            VALID_CONFIG.replace('codex_api_key: ""', "codex_api_key: 1"),
+            "codex_docker.codex_api_key",
+        ),
+        (
+            VALID_CONFIG.replace("codex_docker:\n", ""),
+            "codex_docker.image",
         ),
         (
             VALID_CONFIG.replace("timeout_seconds: 300", 'timeout_seconds: "300"'),

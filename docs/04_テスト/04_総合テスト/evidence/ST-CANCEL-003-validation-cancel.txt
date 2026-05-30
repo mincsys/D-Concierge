@@ -1,0 +1,44 @@
+case ST-CANCEL-003
+target-user st-cancel-validation
+register 200 {'user': {'user_id': 'st-cancel-validation', 'user_name': '検証中キャンセル確認'}}
+start 200 {'chat_id': '019e7718-8a8f-70ea-ab52-036266fdea4c', 'run_id': '019e7718-8a8f-70ea-ab52-0363c3686500', 'sse_url': '/api/chats/019e7718-8a8f-70ea-ab52-036266fdea4c/runs/019e7718-8a8f-70ea-ab52-0363c3686500/sse', 'state': 'accepted'}
+target-chat 019e7718-8a8f-70ea-ab52-036266fdea4c
+target-run 019e7718-8a8f-70ea-ab52-0363c3686500
+event: state
+data: {"run_id":"019e7718-8a8f-70ea-ab52-0363c3686500","state":"accepted"}
+
+event: state
+data: {"run_id":"019e7718-8a8f-70ea-ab52-0363c3686500","state":"running"}
+
+event: message
+data: {"run_id":"019e7718-8a8f-70ea-ab52-0363c3686500","text":"作業を開始します。"}
+
+event: message
+data: {"run_id":"019e7718-8a8f-70ea-ab52-0363c3686500","text":"指定された成果物を作成しています。"}
+
+event: message
+data: {"run_id":"019e7718-8a8f-70ea-ab52-0363c3686500","text":"画像ファイルの内容を反映します。"}
+
+event: message
+data: {"run_id":"019e7718-8a8f-70ea-ab52-0363c3686500","text":"成果物が作成されたことを確認しています。"}
+
+event: message
+data: {"run_id":"019e7718-8a8f-70ea-ab52-0363c3686500","text":"作業が完了しました。"}
+
+event: state
+data: {"run_id":"019e7718-8a8f-70ea-ab52-0363c3686500","state":"validating"}
+cancel-during-validating (200, {'run_id': '019e7718-8a8f-70ea-ab52-0363c3686500', 'state': 'cancel_requested', 'user_message': '処理をキャンセルしています。'})
+
+event: message
+data: {"run_id":"019e7718-8a8f-70ea-ab52-0363c3686500","text":"回答を検証します。"}
+
+event: state
+data: {"run_id":"019e7718-8a8f-70ea-ab52-0363c3686500","state":"cancel_requested"}
+
+event: canceled
+data: {"run_id":"019e7718-8a8f-70ea-ab52-0363c3686500","state":"canceled","user_message":"処理をキャンセルしました。"}
+
+db-run ('canceled', '処理をキャンセルしました。')
+db-answer-blocks 0
+db-artifacts 0
+result PASS

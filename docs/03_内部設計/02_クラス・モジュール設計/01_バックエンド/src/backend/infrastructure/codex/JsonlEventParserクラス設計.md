@@ -11,7 +11,7 @@
 
 ## 3. 責務
 
-- codex exec標準出力の1行をJSONとして解析する。
+- Codex実行コンテナの標準出力1行をJSONとして解析する。
 - `thread.started`、`turn.started`、`item.started`、`item.completed`、`turn.completed`、`turn.failed`、`error` を構造化イベントへ変換する。
 - `error.message` と `turn.failed.error.message` をCodex側エラーの調査用メッセージとして抽出する。
 - `item.completed` の `agent_message` を、利用側が中間メッセージ候補または最終回答候補として判定できる構造化イベントへ変換する。

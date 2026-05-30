@@ -10,6 +10,7 @@
 - 呼出主体: FastAPIアプリ組み立て、各ユースケース、infrastructure実装。
 - 設定ファイル項目そのものの外部仕様は `docs/02_外部設計/06_外部インターフェース設計/設定ファイル IF.md` を正とする。
 - `server.timeout_seconds` は回答生成開始から検証完了までの実行全体deadlineを決める値として読み込み、CodexRunnerへ直接固定値として渡さない。
+- `codex_docker` はCodex実行コンテナの起動設定として読み込み、生成用/検証用のホーム、作業領域、出力スキーマとは分離して保持する。
 
 ## 3. IF概要
 
@@ -55,7 +56,7 @@ sequenceDiagram
 - application層は生YAMLやdictを直接参照しない。
 - パス設定は文字列連結ではなく、正規化済みPathとして扱う。
 - 機密情報を画面、SSE、利用者向けエラーへそのまま出力しない。
-- `server.timeout_seconds` は外部設定として1項目のまま保持し、内部では `ExecuteChatRunUseCase` が `execution_deadline_at` と各codex execへの残り秒数へ分解する。
+- `server.timeout_seconds` は外部設定として1項目のまま保持し、内部では `ExecuteChatRunUseCase` が `execution_deadline_at` と各Codex実行への残り秒数へ分解する。
 
 ## 6. 入出力とデータ項目
 
@@ -70,10 +71,14 @@ sequenceDiagram
 
 | 項目 | 内容 |
 | --- | --- |
-| `AppConfig` | アプリ表示設定、DB、生成用Codex、検証用Codex、ファイル、ログ、タイムアウトなどの型付き設定 |
+| `AppConfig` | アプリ表示設定、DB、生成用Codex、検証用Codex、Codex Docker実行、ファイル、ログ、タイムアウトなどの型付き設定 |
 | `app.timezone` | 運用者向け日時に使用するIANA timezone名を検証済みタイムゾーンとして保持する |
 | `generator.max_retries` | 検証不合格時に生成用Codexへ回答の再出力を依頼する追加試行回数 |
 | `validator.max_retries` | 検証用Codexの最終出力形式不正時に最終検証結果JSONの再出力を依頼する追加試行回数 |
+| `codex_docker.image` | Codex実行コンテナに使用するDockerイメージ名 |
+| `codex_docker.workspace_dir` | コンテナ内でCodex作業ディレクトリとして使うパス。運用上は絶対パスを設定する |
+| `codex_docker.codex_home_dir` | コンテナ内でCodexホームとして使うパス。運用上は絶対パスを設定する |
+| `codex_docker.codex_api_key` | Codex実行コンテナへ `CODEX_API_KEY` として渡す値。空文字も許可する |
 | `normalized_paths` | 共有データソース、生成用Codex作業領域、検証用Codex作業領域、成果物保存先、トレースログ出力先 |
 | `trace_log.retention_days` | トレースログ日付ディレクトリの保持日数 |
 | `trace_log.max_files_per_day` | アプリケーション起動ごとの同日トレースログ最大保存件数 |
@@ -83,7 +88,7 @@ sequenceDiagram
 | 項目 | 内容 |
 | --- | --- |
 | `server.timeout_seconds` | 回答生成から検証完了までの実行全体上限秒数。`ExecuteChatRunUseCase` が `running` 遷移時に `execution_deadline_at` を計算する。 |
-| codex exec単位の `timeout_seconds` | `execution_deadline_at` から現在時刻を引いた残り秒数。生成用/検証用codex exec起動ごとに算出する。 |
+| Codex実行単位の `timeout_seconds` | `execution_deadline_at` から現在時刻を引いた残り秒数。生成用/検証用Codex実行コンテナ起動ごとに算出する。 |
 | 終了要求後のgrace timeout | CodexRunner内部の短い固定値として扱い、外部設定項目にはしない。 |
 
 ## 7. 例外処理
@@ -93,6 +98,7 @@ sequenceDiagram
 | 設定ファイルが存在しない | `ErrorType.CONFIGURATION` かつ `trace=True` の `AppError` として起動を失敗させる |
 | YAML構文不正 | `ErrorType.CONFIGURATION` かつ `trace=True` の `AppError` として起動を失敗させる |
 | 必須項目欠落 | 欠落項目名を `diagnostic_message` に含む設定不備エラーとして扱う |
+| `codex_docker.image` 空文字 | Dockerイメージ名の設定不備として扱う |
 | タイムゾーン名不正 | `ErrorType.CONFIGURATION` かつ `trace=True` の `AppError` として起動を失敗させる |
 | パスが許可外または作成不可 | `diagnostic_message` に対象項目を含む設定不備エラーとして扱う |
 

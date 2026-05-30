@@ -473,20 +473,24 @@ class InMemoryChatRepository:
             run.user_message = CANCELED_MESSAGE
             self._chats[chat_id].updated_at = now
 
-    def get_reference(self, reference_id: UUID) -> DisplayReferenceData:
+    def get_reference(
+        self, reference_id: UUID, user_id: str = ""
+    ) -> DisplayReferenceData:
         """参照元IDに対応する配信メタ情報を返す。"""
         reference = self._references.get(reference_id)
         if reference is None:
             raise ReferenceNotFoundError()
-        self._raise_if_deleting(self._reference_chat_ids[reference_id])
+        chat_id = self._reference_chat_ids[reference_id]
+        self._get_active_chat_locked(chat_id, user_id=user_id)
         return reference
 
-    def get_artifact(self, artifact_id: UUID) -> ArtifactData:
+    def get_artifact(self, artifact_id: UUID, user_id: str = "") -> ArtifactData:
         """成果物IDに対応する配信メタ情報を返す。"""
         artifact = self._artifacts.get(artifact_id)
         if artifact is None:
             raise ArtifactNotFoundError()
-        self._raise_if_deleting(self._artifact_chat_ids[artifact_id])
+        chat_id = self._artifact_chat_ids[artifact_id]
+        self._get_active_chat_locked(chat_id, user_id=user_id)
         return artifact
 
     def mark_chat_deleting(self, chat_id: UUID, user_id: str = "") -> DeleteChatResult:

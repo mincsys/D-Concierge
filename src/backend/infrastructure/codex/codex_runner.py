@@ -15,6 +15,7 @@ from backend.infrastructure.codex.jsonl_event_parser import (
     JsonlParseError,
     ParsedCodexEvent,
 )
+from backend.infrastructure.config.models import CodexDockerConfig
 from backend.shared.errors.error_type import ErrorType
 from backend.shared.errors.errors import (
     AppError,
@@ -26,15 +27,16 @@ from backend.shared.errors.errors import (
 CancelResult = CancelRequestResult
 _WINDOWS_CREATE_NEW_PROCESS_GROUP = 0x00000200
 _POSIX_SIGKILL = 9
+_DOCKER_STOP_TIMEOUT_SECONDS = 10
 
 
 class CodexProcessTimeout(Exception):
-    """codex execプロセスが指定時間内に終了しなかったことを示す。"""
+    """Codex Docker起動プロセスが指定時間内に終了しなかったことを示す。"""
 
 
 @dataclass(frozen=True, slots=True)
 class CodexProcessOutput:
-    """codex execプロセスの完了出力。"""
+    """Codex Docker起動プロセスの完了出力。"""
 
     stdout: str
     stderr: str
@@ -63,7 +65,7 @@ class CodexProcess(Protocol):
 
 
 class CodexProcessFactory(Protocol):
-    """codex execプロセス生成境界。"""
+    """Codex Docker起動プロセス生成境界。"""
 
     def start(
         self,
@@ -71,7 +73,7 @@ class CodexProcessFactory(Protocol):
         cwd: Path,
         env: Mapping[str, str],
     ) -> CodexProcess:
-        """指定コマンドでcodex execプロセスを起動する。"""
+        """指定コマンドでCodex Docker起動プロセスを開始する。"""
 
 
 class SubprocessHandle(Protocol):
@@ -116,15 +118,26 @@ class ProcessGroupTerminator(Protocol):
         """子プロセスを含む強制終了要求を送る。"""
 
 
+class ContainerStopper(Protocol):
+    """Dockerコンテナ終了要求境界。"""
+
+    def stop(self, container_name: str, timeout_seconds: int) -> bool:
+        """対象コンテナへ終了要求を送り、終了要求が成功した場合はTrueを返す。"""
+        ...
+
+
 @dataclass(frozen=True, slots=True)
 class CodexRunRequest:
-    """codex exec起動要求。"""
+    """Codex Docker実行要求。"""
 
     run_id: UUID
     prompt: str
     codex_home: Path
     workdir: Path
+    datasource_dir: Path
     output_schema: Path
+    docker_config: CodexDockerConfig
+    artifact_mount_dir: Path | None
     codex_conversation_id: str | None
     timeout_seconds: int
     trace_id: str
@@ -133,47 +146,70 @@ class CodexRunRequest:
 
 @dataclass(frozen=True, slots=True)
 class CodexRunResult:
-    """codex exec正常完了結果。"""
+    """Codex Docker実行の正常完了結果。"""
 
     events: tuple[ParsedCodexEvent, ...]
     final_message: str
     codex_conversation_id: str
 
 
+@dataclass(frozen=True, slots=True)
+class _RunningProcess:
+    process: CodexProcess
+    container_name: str
+
+
 class CodexRunner:
-    """codex execを起動し、JSONLと最終出力を検証して返す。"""
+    """Codex実行コンテナを起動し、JSONLと最終出力を検証して返す。"""
 
     def __init__(
         self,
         process_factory: CodexProcessFactory | None = None,
+        script_path: Path | None = None,
+        container_stopper: ContainerStopper | None = None,
     ) -> None:
         self._process_factory = (
             process_factory
             if process_factory is not None
             else SubprocessCodexProcessFactory()
         )
-        self._running_processes: dict[UUID, CodexProcess] = {}
+        self._script_path = (
+            script_path
+            if script_path is not None
+            else Path(__file__).with_name("run_codex_docker.sh")
+        )
+        self._container_stopper = (
+            container_stopper
+            if container_stopper is not None
+            else DockerContainerStopper()
+        )
+        self._running_processes: dict[UUID, _RunningProcess] = {}
         self._lock = RLock()
 
     def run_generation(self, request: CodexRunRequest) -> CodexRunResult:
-        """生成用codex execを起動する。"""
+        """生成用Codex Docker実行を開始する。"""
         return self._run(request, stage="generation")
 
     def run_validation(self, request: CodexRunRequest) -> CodexRunResult:
-        """検証用codex execを起動する。"""
+        """検証用Codex Docker実行を開始する。"""
         return self._run(request, stage="validation")
 
     def cancel(self, run_id: UUID, trace_id: str) -> CancelResult:
-        """実行中codex execへ終了要求を送る。"""
+        """実行中Codexコンテナへ終了要求を送る。"""
         _ = trace_id
         with self._lock:
-            process = self._running_processes.get(run_id)
-            if process is None:
+            running_process = self._running_processes.get(run_id)
+            if running_process is None:
                 return CancelRequestResult.NOT_REGISTERED
-            if process.poll() is not None:
+            if running_process.process.poll() is not None:
                 self._running_processes.pop(run_id, None)
                 return CancelRequestResult.ALREADY_EXITED
-            process.terminate()
+            stopped = self._container_stopper.stop(
+                running_process.container_name,
+                _DOCKER_STOP_TIMEOUT_SECONDS,
+            )
+            if not stopped:
+                return CancelRequestResult.NOT_REGISTERED
             return CancelRequestResult.SENT
 
     def _run(self, request: CodexRunRequest, stage: str) -> CodexRunResult:
@@ -182,14 +218,19 @@ class CodexRunner:
 
         _ = request.trace_id
         request.workdir.mkdir(parents=True, exist_ok=True)
-        command = _build_command(request)
-        env = {"CODEX_HOME": str(request.codex_home)}
+        container_name = _container_name(stage, request.run_id)
+        command = _build_command(
+            request=request,
+            script_path=self._script_path,
+            container_name=container_name,
+        )
+        env = {"CODEX_API_KEY": request.docker_config.codex_api_key}
         try:
             process = self._process_factory.start(command, request.workdir, env)
         except OSError as exc:
             raise _codex_system_error("Codex実行を開始できませんでした。", exc) from exc
 
-        self._register_process(request.run_id, process)
+        self._register_process(request.run_id, process, container_name)
         try:
             events: list[ParsedCodexEvent] = []
 
@@ -199,6 +240,10 @@ class CodexRunner:
                     return
                 events.append(event)
                 if event.kind in {CodexEventKind.ERROR, CodexEventKind.TURN_FAILED}:
+                    self._container_stopper.stop(
+                        container_name,
+                        _DOCKER_STOP_TIMEOUT_SECONDS,
+                    )
                     process.terminate()
                     raise _codex_provider_error(event, stage)
                 if request.on_event is not None:
@@ -221,23 +266,36 @@ class CodexRunner:
                 )
             return _to_run_result(events, stage)
         except CodexProcessTimeout as exc:
+            self._container_stopper.stop(
+                container_name,
+                _DOCKER_STOP_TIMEOUT_SECONDS,
+            )
             process.kill()
             raise RunTimeoutError from exc
         finally:
             self._release_process(request.run_id, process)
 
-    def _register_process(self, run_id: UUID, process: CodexProcess) -> None:
+    def _register_process(
+        self,
+        run_id: UUID,
+        process: CodexProcess,
+        container_name: str,
+    ) -> None:
         with self._lock:
-            self._running_processes[run_id] = process
+            self._running_processes[run_id] = _RunningProcess(
+                process=process,
+                container_name=container_name,
+            )
 
     def _release_process(self, run_id: UUID, process: CodexProcess) -> None:
         with self._lock:
-            if self._running_processes.get(run_id) is process:
+            running_process = self._running_processes.get(run_id)
+            if running_process is not None and running_process.process is process:
                 self._running_processes.pop(run_id, None)
 
 
 class SubprocessCodexProcessFactory:
-    """標準subprocessでcodex execを起動するプロセスファクトリ。"""
+    """標準subprocessでCodex Docker起動スクリプトを起動するプロセスファクトリ。"""
 
     def start(
         self,
@@ -268,6 +326,28 @@ class SubprocessCodexProcessFactory:
                 start_new_session=True,
             )
         return _SubprocessCodexProcess(process)
+
+
+class DockerContainerStopper:
+    """Docker CLIで実行中コンテナへ終了要求を送る。"""
+
+    def stop(self, container_name: str, timeout_seconds: int) -> bool:
+        try:
+            completed = subprocess.run(
+                (
+                    "docker",
+                    "stop",
+                    "-t",
+                    str(timeout_seconds),
+                    container_name,
+                ),
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        except OSError:
+            return False
+        return completed.returncode == 0
 
 
 def _kill_process_group(pid: int, sig: int) -> None:
@@ -404,19 +484,49 @@ class _SubprocessCodexProcess:
             self._process.kill()
 
 
-def _build_command(request: CodexRunRequest) -> tuple[str, ...]:
-    command = (
-        "codex",
-        "exec",
-        "--json",
-        "--output-schema",
-        str(request.output_schema),
-        "-C",
+def _build_command(
+    *,
+    request: CodexRunRequest,
+    script_path: Path,
+    container_name: str,
+) -> tuple[str, ...]:
+    command: tuple[str, ...] = (
+        str(script_path),
+        "--container-name",
+        container_name,
+        "--image",
+        request.docker_config.image,
+        "--workspace-dir",
+        request.docker_config.workspace_dir,
+        "--codex-home-dir",
+        request.docker_config.codex_home_dir,
+        "--host-codex-home",
+        str(request.codex_home),
+        "--host-workdir",
         str(request.workdir),
+        "--host-datasource",
+        str(request.datasource_dir),
+        "--host-schema-dir",
+        str(request.output_schema.parent),
+        "--schema-file",
+        request.output_schema.name,
     )
+    if request.artifact_mount_dir is not None:
+        command = (
+            *command,
+            "--host-artifacts",
+            str(request.artifact_mount_dir),
+        )
+    command = (*command, "--prompt", request.prompt)
     if request.codex_conversation_id is None:
-        return (*command, request.prompt)
-    return (*command, "resume", request.codex_conversation_id, request.prompt)
+        return command
+    return (*command, "--conversation-id", request.codex_conversation_id)
+
+
+def _container_name(stage: str, run_id: UUID) -> str:
+    if stage == "validation":
+        return f"d-concierge-validator-{run_id}"
+    return f"d-concierge-generator-{run_id}"
 
 
 def _completed_return_code(process: SubprocessHandle) -> int:

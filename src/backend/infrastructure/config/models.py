@@ -20,7 +20,7 @@ class UiConfig:
 
 @dataclass(frozen=True, slots=True)
 class GeneratorConfig:
-    """生成用codex execの再生成上限、ホーム、作業領域、出力契約、成果物保存先設定。"""
+    """生成用Codexの再生成上限、ホーム、作業領域、出力契約、成果物保存先設定。"""
 
     max_retries: int
     home: Path
@@ -31,12 +31,22 @@ class GeneratorConfig:
 
 @dataclass(frozen=True, slots=True)
 class ValidatorConfig:
-    """検証用codex execの再出力上限、ホーム、作業領域、出力契約設定。"""
+    """検証用Codexの再出力上限、ホーム、作業領域、出力契約設定。"""
 
     max_retries: int
     home: Path
     workdir: Path
     output_schema: Path
+
+
+@dataclass(frozen=True, slots=True)
+class CodexDockerConfig:
+    """Codex実行コンテナの起動設定。"""
+
+    image: str
+    workspace_dir: str
+    codex_home_dir: str
+    codex_api_key: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,6 +81,7 @@ class AppConfig:
     datasource_dir: Path
     generator: GeneratorConfig
     validator: ValidatorConfig
+    codex_docker: CodexDockerConfig
     database: DatabaseConfig
     server: ServerConfig
     trace_log: TraceLogConfig

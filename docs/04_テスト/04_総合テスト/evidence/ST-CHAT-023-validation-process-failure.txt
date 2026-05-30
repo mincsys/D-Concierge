@@ -1,0 +1,49 @@
+register {"user":{"user_id":"st-validator-format3","user_name":"検証形式確認3"}}
+start 200 {"chat_id":"019e7701-1cf4-771d-95b4-bddad00652c3","run_id":"019e7701-1cf4-771d-95b4-bddb84b5e17e","sse_url":"/api/chats/019e7701-1cf4-771d-95b4-bddad00652c3/runs/019e7701-1cf4-771d-95b4-bddb84b5e17e/sse","state":"accepted"}
+event: state
+data: {"run_id":"019e7701-1cf4-771d-95b4-bddb84b5e17e","state":"accepted"}
+
+event: state
+data: {"run_id":"019e7701-1cf4-771d-95b4-bddb84b5e17e","state":"running"}
+
+event: message
+data: {"run_id":"019e7701-1cf4-771d-95b4-bddb84b5e17e","text":"作業を開始します。"}
+
+event: message
+data: {"run_id":"019e7701-1cf4-771d-95b4-bddb84b5e17e","text":"対象文書を確認して要約に必要な本文を抽出します。"}
+
+event: message
+data: {"run_id":"019e7701-1cf4-771d-95b4-bddb84b5e17e","text":"作業が完了しました。"}
+
+event: state
+data: {"run_id":"019e7701-1cf4-771d-95b4-bddb84b5e17e","state":"validating"}
+
+event: message
+data: {"run_id":"019e7701-1cf4-771d-95b4-bddb84b5e17e","text":"回答を検証します。"}
+
+event: state
+data: {"run_id":"019e7701-1cf4-771d-95b4-bddb84b5e17e","state":"running"}
+
+event: message
+data: {"run_id":"019e7701-1cf4-771d-95b4-bddb84b5e17e","text":"回答を修正します。"}
+
+event: message
+data: {"run_id":"019e7701-1cf4-771d-95b4-bddb84b5e17e","text":"指定文書の内容を確認し、参照範囲を特定します。"}
+
+event: message
+data: {"run_id":"019e7701-1cf4-771d-95b4-bddb84b5e17e","text":"文書変換ツールが使えないため、別の方法で本文を抽出します。"}
+
+event: message
+data: {"run_id":"019e7701-1cf4-771d-95b4-bddb84b5e17e","text":"各ページの短い本文を確認し、文書全体の要点をまとめます。"}
+
+event: message
+data: {"run_id":"019e7701-1cf4-771d-95b4-bddb84b5e17e","text":"作業が完了しました。"}
+
+event: state
+data: {"run_id":"019e7701-1cf4-771d-95b4-bddb84b5e17e","state":"validating"}
+
+event: message
+data: {"run_id":"019e7701-1cf4-771d-95b4-bddb84b5e17e","text":"回答を検証します。"}
+
+event: error
+data: {"run_id":"019e7701-1cf4-771d-95b4-bddb84b5e17e","state":"error","user_message":"回答の検証に失敗しました。再度お試しください。"}

@@ -90,13 +90,13 @@ sequenceDiagram
 | `client` | 接続元情報 |
 | `request_validation_errors` | リクエストバリデーションエラー詳細 |
 | `runner_type` | 生成用または検証用のrunner種別 |
-| `codex_exit_status` | codex execの終了状態 |
+| `codex_exit_status` | Codex実行の終了状態 |
 | `process_result` | プロセス終了、終了要求、タイムアウトなどの結果 |
 | `execution_deadline_at` | 実行全体deadline |
-| `timeout_state` | 全体deadline超過、codex exec単位タイムアウト、終了待ちgrace timeoutのいずれか |
+| `timeout_state` | 全体deadline超過、Codex実行単位タイムアウト、終了待ちgrace timeoutのいずれか |
 | `cancel_state` | キャンセル要求との競合状態 |
 | `retry_count` | 再生成回数 |
-| `validation_failure_reason` | 固定検証、参照元検証、参照元PDF読み取り失敗の理由 |
+| `validation_failure_reason` | 固定検証処理、Codex検証処理、参照元PDF読み取り失敗の理由 |
 | `validation_comment` | 最後の検証結果コメント |
 | `config_path` | アプリ生成時に利用した設定ファイルパス |
 | `recovery_summary` | 起動時回復の失敗概要 |

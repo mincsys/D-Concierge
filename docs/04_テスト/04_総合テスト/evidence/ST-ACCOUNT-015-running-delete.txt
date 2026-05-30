@@ -1,0 +1,43 @@
+case ST-ACCOUNT-015
+target-user st-account-running
+register 200 {'user': {'user_id': 'st-account-running', 'user_name': '実行中削除確認'}}
+start 200 {'chat_id': '019e770b-2b3b-769e-a80b-046ed47eaa31', 'run_id': '019e770b-2b3b-769e-a80b-046f571ce4af', 'sse_url': '/api/chats/019e770b-2b3b-769e-a80b-046ed47eaa31/runs/019e770b-2b3b-769e-a80b-046f571ce4af/sse', 'state': 'accepted'}
+target-chat 019e770b-2b3b-769e-a80b-046ed47eaa31
+target-run 019e770b-2b3b-769e-a80b-046f571ce4af
+event: state
+data: {"run_id":"019e770b-2b3b-769e-a80b-046f571ce4af","state":"accepted"}
+
+event: state
+data: {"run_id":"019e770b-2b3b-769e-a80b-046f571ce4af","state":"running"}
+
+event: message
+data: {"run_id":"019e770b-2b3b-769e-a80b-046f571ce4af","text":"作業を開始します。"}
+target-session 019e770b-2b3c-711a-9c8e-9041577dc7ee
+before-delete-state {'user_state': 'active', 'sessions': 1, 'chats': 1}
+before-generator-session-dir True
+before-validator-session-dir False
+before-saved-artifacts-user-dir False
+delete-account 202 {'account_state': 'deleting'}
+after-accept-state {'user_state': 'deleting', 'sessions': 0, 'chats': 1}
+run-state-poll 0 running
+run-state-poll 1 running
+run-state-poll 2 running
+run-state-poll 3 running
+run-state-poll 4 running
+run-state-poll 5 running
+run-state-poll 6 error
+post-run-state {'user_state': 'deleting', 'sessions': 0, 'chats': 1}
+generator-session-dir-before-restart True
+validator-session-dir-before-restart False
+result-before-restart NEEDS_STARTUP_RETRY
+after-backend-restart
+poll 0 {'users': 0, 'login_sessions': 0, 'chats_by_user': 0, 'chats_by_id': 0, 'chat_runs': 0, 'user_instructions': 0, 'intermediate_messages': 0, 'answer_blocks': 0, 'references': 0, 'artifacts': 0}
+generator_user_dir False codex/sessions/st-account-running
+validator_user_dir False codex/sessions_validator/st-account-running
+saved_artifacts_user_dir False codex/saved_artifacts/st-account-running
+generator_session_dir False codex/sessions/st-account-running/019e770b-2b3c-711a-9c8e-9041577dc7ee
+validator_session_dir False codex/sessions_validator/st-account-running/019e770b-2b3c-711a-9c8e-9041577dc7ee
+saved_artifacts_session_dir False codex/saved_artifacts/st-account-running/019e770b-2b3c-711a-9c8e-9041577dc7ee
+readonly_reference_pdf True codex/readonly/system-test-reference.pdf
+trace_log_root True logs/trace
+result PASS
