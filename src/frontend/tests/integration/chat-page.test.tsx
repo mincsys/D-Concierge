@@ -204,9 +204,9 @@ describe("ChatPage integration", () => {
       await Promise.resolve();
     });
 
-    await user.click(await screen.findByRole("button", { name: "作業プロセス" }));
+    await user.click(await screen.findByRole("button", { name: "作業中" }));
     expect(screen.queryByText("調査中")).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "作業プロセス" }));
+    await user.click(screen.getByRole("button", { name: "作業中" }));
     expect(await screen.findByText("調査中")).toBeInTheDocument();
 
     cancelShouldFail = true;

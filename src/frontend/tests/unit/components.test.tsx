@@ -18,7 +18,12 @@ import { ChatStartScreen } from "@/features/chat/components/ChatStartScreen";
 import { ChatThread } from "@/features/chat/components/ChatThread";
 import { ThoughtPanel } from "@/features/chat/components/ThoughtPanel";
 import { splitRevealChunks, revealSubmittedAnswer } from "@/features/chat/lib/revealAnswer";
-import type { ChatAnswer, ChatHistoryItem, ChatSession } from "@/features/chat/model/types";
+import type {
+  ChatAnswer,
+  ChatHistoryItem,
+  ChatRunState,
+  ChatSession,
+} from "@/features/chat/model/types";
 import { ReferenceLink } from "@/features/reference-viewer/components/ReferenceLink";
 import { ReferenceViewerDialog } from "@/features/reference-viewer/components/ReferenceViewerDialog";
 import { formatPdfPageRange } from "@/features/reference-viewer/lib/pageRange";
@@ -400,8 +405,10 @@ describe("frontend components", () => {
     expect(container.querySelectorAll(".animate-spin")).toHaveLength(1);
     await user.click(screen.getByRole("button", { name: /資料 p.1-2/ }));
     expect(onOpenPdf).toHaveBeenCalledWith(reference());
-    expect(screen.getAllByRole("button", { name: /作業プロセス/ })).toHaveLength(3);
-    await user.click(screen.getAllByRole("button", { name: /作業プロセス/ })[0]);
+    expect(screen.getByRole("button", { name: "作業完了" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "エラー発生" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "作業中" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "作業完了" }));
     expect(onToggleThought).toHaveBeenCalledWith("run-1");
     await user.click(screen.getByLabelText("キャンセル"));
     expect(onCancelRun).toHaveBeenCalledWith("run-3");
@@ -1001,7 +1008,7 @@ describe("frontend components", () => {
     expect(screen.queryByText("閉じた思考")).not.toBeInTheDocument();
   });
 
-  it("観点：ChatThread。確認：中間メッセージがないrunでも作業プロセス見出しを表示する。", () => {
+  it("観点：ChatThread。確認：中間メッセージがないrunでも状態別の作業プロセス見出しを表示する。", () => {
     render(
       <Providers>
         <ChatThread
@@ -1029,7 +1036,49 @@ describe("frontend components", () => {
       </Providers>,
     );
 
-    expect(screen.getByRole("button", { name: /作業プロセス/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "作業完了" })).toBeInTheDocument();
+  });
+
+  it("観点：ChatThread。確認：run状態ごとの作業プロセス見出しを表示する。", () => {
+    const runStates: { label: string; state: ChatRunState }[] = [
+      { label: "作業準備中", state: "accepted" },
+      { label: "作業中", state: "running" },
+      { label: "検証中", state: "validating" },
+      { label: "作業完了", state: "completed" },
+      { label: "エラー発生", state: "error" },
+      { label: "キャンセル中", state: "cancel_requested" },
+      { label: "キャンセル済み", state: "canceled" },
+      { label: "タイムアウト", state: "timed_out" },
+    ];
+
+    render(
+      <Providers>
+        <ChatThread
+          cancelingRunId={null}
+          openThoughtRunIds={new Set()}
+          session={{
+            id: "chat-state-labels",
+            runs: runStates.map(({ label, state }) => ({
+              intermediateMessages: [],
+              runId: `run-${state}`,
+              state,
+              userInstruction: label,
+            })),
+            title: "状態別見出し",
+          }}
+          sidebarCollapsed={false}
+          onCancelRun={vi.fn()}
+          onOpenPdf={vi.fn()}
+          onScrollTargetHandled={vi.fn()}
+          onSubmitInstruction={vi.fn()}
+          onToggleThought={vi.fn()}
+        />
+      </Providers>,
+    );
+
+    for (const { label } of runStates) {
+      expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
+    }
   });
 
   it("観点：ChatComposerとChatThreadの境界状態。確認：空送信、長文高さ、空セッション、キャンセル中表示を扱う。", async () => {

@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef } from "react";
 
 import { AnswerContent } from "@/features/answer-rendering/components/AnswerContent";
-import type { ChatSession } from "@/features/chat/model/types";
+import type { ChatRunState, ChatSession } from "@/features/chat/model/types";
 import type { PdfReference } from "@/features/reference-viewer/model/types";
 import { cn } from "@/lib/utils";
 import { ChatComposer } from "./ChatComposer";
@@ -9,6 +9,16 @@ import { ThoughtPanel } from "./ThoughtPanel";
 
 const CONTINUED_RUN_SCROLL_OFFSET_RATIO = 0.2;
 const CONTINUED_RUN_SCROLL_RESERVE_CLASS = "min-h-[80vh]";
+const RUN_STATE_PROCESS_LABELS: Record<ChatRunState, string> = {
+  accepted: "作業準備中",
+  running: "作業中",
+  validating: "検証中",
+  completed: "作業完了",
+  error: "エラー発生",
+  cancel_requested: "キャンセル中",
+  canceled: "キャンセル済み",
+  timed_out: "タイムアウト",
+};
 
 export function ChatThread({
   cancelingRunId,
@@ -101,6 +111,7 @@ export function ChatThread({
             >
               <ThoughtPanel
                 busy={isInProgressRun(run.state)}
+                label={RUN_STATE_PROCESS_LABELS[run.state]}
                 open={openThoughtRunIds.has(run.runId)}
                 messages={run.intermediateMessages}
                 onToggle={() => onToggleThought(run.runId)}
