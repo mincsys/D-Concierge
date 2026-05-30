@@ -241,7 +241,7 @@ def create_app(
     )
     get_reference_data_usecase = GetReferenceDataUseCase(
         repository=chat_repository,
-        reference_store=FileReferenceStore(app_config.datasource_dir),
+        reference_store=FileReferenceStore(app_config.data_source_dir),
         transaction_manager=runtime_transaction_manager,
     )
     get_artifact_usecase = GetArtifactUseCase(
@@ -392,19 +392,19 @@ def _create_runtime_services(
         codex_runner=runtime_codex_runner,
         generator_config=app_config.generator,
         codex_docker_config=app_config.codex_docker,
-        datasource_dir=app_config.datasource_dir,
+        data_source_dir=app_config.data_source_dir,
         timeout_seconds=app_config.server.timeout_seconds,
         transaction_manager=transaction_manager,
     )
     reference_file_validator = CodexReferenceFileValidator(
-        datasource_dir=app_config.datasource_dir,
+        data_source_dir=app_config.data_source_dir,
     )
     validator_codex_runner = CodexValidationRunnerAdapter(
         repository=chat_repository,
         codex_runner=runtime_codex_runner,
         validator_config=app_config.validator,
         codex_docker_config=app_config.codex_docker,
-        datasource_dir=app_config.datasource_dir,
+        data_source_dir=app_config.data_source_dir,
         timeout_seconds=app_config.server.timeout_seconds,
         transaction_manager=transaction_manager,
     )

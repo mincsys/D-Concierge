@@ -1,26 +1,26 @@
 ---
 name: analyze-hydraulic-systems
-description: readonly/hydraulic_systems_dataset の油圧システム状態監視データを分析する。センサー時系列、profile条件値、サイクル抽出、特徴量作成、条件別集計、必要に応じた一時的なML分析を扱う。
+description: data_source/hydraulic_systems_dataset の油圧システム状態監視データを分析する。センサー時系列、profile条件値、サイクル抽出、特徴量作成、条件別集計、必要に応じた一時的なML分析を扱う。
 ---
 
 # Analyze Hydraulic Systems
 
 ## 概要
 
-`readonly/hydraulic_systems_dataset` の油圧試験装置データを、サイクル単位の多変量時系列として分析する。標準ではデータ理解、サイクル抽出、特徴量作成、条件別集計を行う。ユーザ要求に答えるためにML分析が必要または有効な場合は、一時スクリプトを作成して分析してよい。
+`data_source/hydraulic_systems_dataset` の油圧試験装置データを、サイクル単位の多変量時系列として分析する。標準ではデータ理解、サイクル抽出、特徴量作成、条件別集計を行う。ユーザ要求に答えるためにML分析が必要または有効な場合は、一時スクリプトを作成して分析してよい。
 
 ## 最初に読むファイル
 
 分析を始める前に、必ず以下を全文読む。
 
-- `readonly/hydraulic_systems_dataset/説明.md`
-- `readonly/hydraulic_systems_dataset/dataset/documentation.txt`
-- `readonly/hydraulic_systems_dataset/dataset/description.txt`
+- `data_source/hydraulic_systems_dataset/説明.md`
+- `data_source/hydraulic_systems_dataset/dataset/documentation.txt`
+- `data_source/hydraulic_systems_dataset/dataset/description.txt`
 
 ## 前提
 
-- 作業ディレクトリ直下に `readonly/`、`tmp/`、`artifacts/` がある。
-- 入力データは主に `readonly/hydraulic_systems_dataset/dataset` から読む。
+- 作業ディレクトリ直下に `data_source/`、`tmp/`、`artifacts/` がある。
+- 入力データは主に `data_source/hydraulic_systems_dataset/dataset` から読む。
 - `dataset/` 内のセンサー時系列ファイルと `profile.tsv` はタブ区切りTSVとして読み込める。
 - `description.txt` と `documentation.txt` は説明文ファイルであり、TSVデータとして扱わない。
 - 中間生成物、一時スクリプト、特徴量CSV、モデルファイルは原則 `tmp/` に保存する。
@@ -53,7 +53,7 @@ Python は必ず `uv run python` で実行する。
 ### データセットを確認する
 
 ```bash
-uv run python "$CODEX_HOME/skills/custom/analyze-hydraulic-systems/scripts/inspect_dataset.py" readonly/hydraulic_systems_dataset/dataset
+uv run python "$CODEX_HOME/skills/custom/analyze-hydraulic-systems/scripts/inspect_dataset.py" data_source/hydraulic_systems_dataset/dataset
 ```
 
 センサーごとの行数、列数、ファイルサイズ、推定サンプリング周波数、`profile.tsv` の値分布をMarkdownで出力する。
@@ -61,7 +61,7 @@ uv run python "$CODEX_HOME/skills/custom/analyze-hydraulic-systems/scripts/inspe
 ### サイクルを抽出する
 
 ```bash
-uv run python "$CODEX_HOME/skills/custom/analyze-hydraulic-systems/scripts/extract_cycles.py" readonly/hydraulic_systems_dataset/dataset --cycles 1,100,200 --sensors PS1 FS1 TS1
+uv run python "$CODEX_HOME/skills/custom/analyze-hydraulic-systems/scripts/extract_cycles.py" data_source/hydraulic_systems_dataset/dataset --cycles 1,100,200 --sensors PS1 FS1 TS1
 ```
 
 指定したサイクル番号とセンサーの先頭・末尾・基本統計をMarkdownで出力する。全量CSVが必要な場合は `--output tmp/cycles.csv` を指定する。
@@ -69,7 +69,7 @@ uv run python "$CODEX_HOME/skills/custom/analyze-hydraulic-systems/scripts/extra
 ### サイクル特徴量を作る
 
 ```bash
-uv run python "$CODEX_HOME/skills/custom/analyze-hydraulic-systems/scripts/extract_cycle_features.py" readonly/hydraulic_systems_dataset/dataset --sensors PS1 FS1 TS1 --output tmp/hydraulic_cycle_features.csv
+uv run python "$CODEX_HOME/skills/custom/analyze-hydraulic-systems/scripts/extract_cycle_features.py" data_source/hydraulic_systems_dataset/dataset --sensors PS1 FS1 TS1 --output tmp/hydraulic_cycle_features.csv
 ```
 
 センサー時系列を1サイクル1行の特徴量CSVに変換し、`profile.tsv` の5列を結合する。標準特徴量は `mean`、`std`、`min`、`max`、`median`、`q25`、`q75`、`first`、`last`、`range`、`slope`。

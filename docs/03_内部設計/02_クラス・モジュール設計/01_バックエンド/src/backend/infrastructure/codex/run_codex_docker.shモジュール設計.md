@@ -25,7 +25,7 @@
 - `CODEX_API_KEY` は空文字でもDockerコンテナへ環境変数として渡す。
 - `HOME` は `/home/codex`、`CODEX_HOME` は `--codex-home-dir` の値としてDockerコンテナへ渡す。
 - チャット作業ディレクトリは `--workspace-dir` へbind mountし、`--workdir` も同じ値にする。
-- 共有データソースは `<workspace_dir>/readonly` へ読み取り専用でbind mountする。
+- 共有データソースは `<workspace_dir>/data_source` へ読み取り専用でbind mountする。
 - 出力スキーマ親ディレクトリは `/tmp/output_json_schema` へ読み取り専用でbind mountする。
 - `--schema-file` はファイル名だけを許可し、`/` または `..` を含む値を拒否する。
 
@@ -39,7 +39,7 @@
 | `--codex-home-dir` | 必須 | コンテナ内Codexホームディレクトリ |
 | `--host-codex-home` | 必須 | ホスト側Codexホームディレクトリ |
 | `--host-workdir` | 必須 | ホスト側セッション作業ディレクトリ |
-| `--host-datasource` | 必須 | ホスト側共有データソースディレクトリ |
+| `--host-data-source` | 必須 | ホスト側共有データソースディレクトリ |
 | `--host-schema-dir` | 必須 | ホスト側出力スキーマ親ディレクトリ |
 | `--schema-file` | 必須 | 出力スキーマファイル名 |
 | `--prompt` | 必須 | Codexへ渡すプロンプト |

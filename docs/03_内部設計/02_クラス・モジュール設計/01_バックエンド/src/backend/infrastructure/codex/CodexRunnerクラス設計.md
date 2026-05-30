@@ -29,7 +29,7 @@
 - `resume` を使う場合、Codex側resume用IDを `--conversation-id` としてshへ渡す。未指定時は `--conversation-id` 自体を渡さない。
 - 生成用は `codex/.codex` と `codex/sessions/<user-id>/<session-id>` を使い、検証用は `codex/.codex_validator` と `codex/sessions_validator/<user-id>/<session-id>` を使う。
 - 生成用コンテナ名は `d-concierge-generator-<run_id>`、検証用コンテナ名は `d-concierge-validator-<run_id>` とする。
-- 共有データソースはshへホストパスとして渡し、コンテナ内では作業ディレクトリ直下の `readonly/` として読み取り専用で提示する。
+- 共有データソースはshへホストパスとして渡し、コンテナ内では作業ディレクトリ直下の `data_source/` として読み取り専用で提示する。
 - 出力スキーマはshへ親ディレクトリとファイル名を渡し、コンテナ内では `/tmp/output_json_schema/<schema-file>` として読み取り専用で提示する。
 - 検証用で生成用 `artifacts/` が存在する場合だけ、shへ `--host-artifacts` を渡す。
 - コマンド文字列、標準出力、絶対パスは利用者向け中間メッセージへ渡さない。Codex由来の中間メッセージは `payload.kind="progress"` の `payload.text` だけから返す。`payload.kind="final"` の生成結果JSONまたは検証結果JSONは利用者向け中間メッセージへ渡さない。

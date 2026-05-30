@@ -26,7 +26,7 @@ def test_parse_generation_final_output_preserves_answer_blocks() -> None:
                   {
                     "source_type": "pdf",
                     "locator": {
-                      "path": "readonly/manuals/guide.pdf",
+                      "path": "data_source/manuals/guide.pdf",
                       "start_page": 2,
                       "end_page": 4
                     }
@@ -67,7 +67,7 @@ def test_parse_generation_final_output_accepts_payload_final_answers() -> None:
                   {
                     "source_type": "pdf",
                     "locator": {
-                      "path": "readonly/system-test-reference.pdf",
+                      "path": "data_source/system-test-reference.pdf",
                       "start_page": 1,
                       "end_page": 1
                     }
@@ -86,10 +86,10 @@ def test_parse_generation_final_output_accepts_payload_final_answers() -> None:
     )
 
 
-def test_parse_generation_final_output_normalizes_readonly_backslashes() -> None:
+def test_parse_generation_final_output_normalizes_data_source_backslashes() -> None:
     """観点：回答候補固定検証。
 
-    確認：Codex出力のreadonly配下pathは区切り文字差分をPOSIX相対形式へ標準化する。
+    確認：Codex出力のdata_source配下pathは区切り文字差分をPOSIX相対形式へ標準化する。
     """
     candidate = parse_generation_final_output(
         """
@@ -103,7 +103,7 @@ def test_parse_generation_final_output_normalizes_readonly_backslashes() -> None
                   {
                     "source_type": "pdf",
                     "locator": {
-                      "path": "readonly\\\\raw\\\\pdf\\\\manual.pdf",
+                      "path": "data_source\\\\raw\\\\pdf\\\\manual.pdf",
                       "start_page": 1,
                       "end_page": 1
                     }
@@ -145,7 +145,7 @@ def test_parse_generation_final_output_reports_invalid_reference_paths() -> None
                       {
                         "source_type": "pdf",
                         "locator": {
-                          "path": "readonly/html/manual/index.html",
+                          "path": "data_source/html/manual/index.html",
                           "start_page": 2,
                           "end_page": 3
                         }
@@ -159,7 +159,7 @@ def test_parse_generation_final_output_reports_invalid_reference_paths() -> None
         )
 
     assert exc_info.value.failure == InvalidReferencePathFailure(
-        paths=("manual.pdf", "readonly/html/manual/index.html"),
+        paths=("manual.pdf", "data_source/html/manual/index.html"),
     )
 
 
@@ -181,7 +181,7 @@ def test_parse_generation_final_output_reports_invalid_page_ranges() -> None:
                       {
                         "source_type": "pdf",
                         "locator": {
-                          "path": "readonly/manual.pdf",
+                          "path": "data_source/manual.pdf",
                           "start_page": 0,
                           "end_page": 1
                         }
@@ -189,7 +189,7 @@ def test_parse_generation_final_output_reports_invalid_page_ranges() -> None:
                       {
                         "source_type": "pdf",
                         "locator": {
-                          "path": "readonly/guide.pdf",
+                          "path": "data_source/guide.pdf",
                           "start_page": 4,
                           "end_page": 3
                         }
@@ -207,8 +207,8 @@ def test_parse_generation_final_output_reports_invalid_page_ranges() -> None:
     assert [
         (item.path, item.page_start, item.page_end) for item in failure.page_ranges
     ] == [
-        ("readonly/manual.pdf", 0, 1),
-        ("readonly/guide.pdf", 4, 3),
+        ("data_source/manual.pdf", 0, 1),
+        ("data_source/guide.pdf", 4, 3),
     ]
 
 
@@ -287,7 +287,7 @@ def test_parse_generation_final_output_reports_invalid_page_ranges() -> None:
         ),
         (
             '{"payload":{"kind":"final","answers":[{"text":"回答","references":['
-            '{"source_type":"pdf","locator":{"path":"readonly/manual.pdf",'
+            '{"source_type":"pdf","locator":{"path":"data_source/manual.pdf",'
             '"start_page":1,"end_page":1}},'
             '{"source_type":"web","locator":{}}]}]}}',
             "未対応の参照元種別です。"
@@ -296,7 +296,7 @@ def test_parse_generation_final_output_reports_invalid_page_ranges() -> None:
         ),
         (
             '{"payload":{"kind":"final","answers":[{"text":"回答","references":['
-            '{"source_type":"pdf","locator":{"path":"readonly/manual.pdf",'
+            '{"source_type":"pdf","locator":{"path":"data_source/manual.pdf",'
             '"start_page":1,"end_page":1}},'
             '{"source_type":"pdf","locator":1}]}]}}',
             "参照位置の形式が不正です。"
@@ -305,7 +305,7 @@ def test_parse_generation_final_output_reports_invalid_page_ranges() -> None:
         ),
         (
             '{"payload":{"kind":"final","answers":[{"text":"回答","references":['
-            '{"source_type":"pdf","locator":{"path":"readonly/manual.pdf",'
+            '{"source_type":"pdf","locator":{"path":"data_source/manual.pdf",'
             '"start_page":1,"end_page":1}},'
             '{"source_type":"pdf","locator":{"path":1,'
             '"start_page":1,"end_page":1}}]}]}}',
@@ -367,17 +367,17 @@ def test_parse_generation_final_output_reports_generic_failure_messages(
         ),
         (
             '{"payload":{"kind":"final","answers":[{"text":"回答","references":'
-            '[{"source_type":"pdf","locator":{"path":"codex/readonly/manual.pdf",'
+            '[{"source_type":"pdf","locator":{"path":"codex/data_source/manual.pdf",'
             '"start_page":1,"end_page":1}}]}]}}'
         ),
         (
             '{"payload":{"kind":"final","answers":[{"text":"回答","references":'
-            '[{"source_type":"pdf","locator":{"path":"readonly/../secret.pdf",'
+            '[{"source_type":"pdf","locator":{"path":"data_source/../secret.pdf",'
             '"start_page":1,"end_page":1}}]}]}}'
         ),
         (
             '{"payload":{"kind":"final","answers":[{"text":"回答","references":'
-            '[{"source_type":"pdf","locator":{"path":"readonly/memo.txt",'
+            '[{"source_type":"pdf","locator":{"path":"data_source/memo.txt",'
             '"start_page":1,"end_page":1}}]}]}}'
         ),
         (
@@ -392,7 +392,7 @@ def test_parse_generation_final_output_reports_generic_failure_messages(
         ),
         (
             '{"payload":{"kind":"final","answers":[{"text":"回答","references":'
-            '[{"source_type":"pdf","locator":{"path":"readonly\\\\..\\\\secret.pdf",'
+            '[{"source_type":"pdf","locator":{"path":"data_source\\\\..\\\\secret.pdf",'
             '"start_page":1,"end_page":1}}]}]}}'
         ),
         (

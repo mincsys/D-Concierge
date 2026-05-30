@@ -48,8 +48,8 @@ def html_path_for_pdf(pdf_path: str) -> Path:
 
     posix_path = PurePosixPath(normalized_pdf_path)
     parts = posix_path.parts
-    if not parts or parts[0] != "readonly":
-        raise ValueError("pdf path must start with readonly/")
+    if not parts or parts[0] != "data_source":
+        raise ValueError("pdf path must start with data_source/")
     if ".." in parts:
         raise ValueError("pdf path must not contain parent directory references")
     if posix_path.suffix.lower() != ".pdf":
@@ -61,10 +61,10 @@ def html_path_for_pdf(pdf_path: str) -> Path:
         document_name = posix_path.with_suffix("").name
     else:
         raise ValueError(
-            "pdf path must be readonly/IPA_books/raw/pdf/<document>.pdf"
+            "pdf path must be data_source/IPA_books/raw/pdf/<document>.pdf"
         )
 
-    html_path = Path("readonly") / "IPA_books" / "html" / document_name / "index.html"
+    html_path = Path("data_source") / "IPA_books" / "html" / document_name / "index.html"
     if not html_path.is_file():
         raise ValueError(f"matching HTML not found: {html_path.as_posix()}")
     return html_path

@@ -75,7 +75,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 RUN mkdir -p \
       /home/codex/.codex \
       /workspace \
-      /workspace/readonly \
+      /workspace/data_source \
       /workspace/artifacts \
       /workspace/tmp \
       /tmp/.cache \
@@ -84,7 +84,7 @@ RUN mkdir -p \
       /home/codex \
       /home/codex/.codex \
       /workspace \
-      /workspace/readonly \
+      /workspace/data_source \
       /workspace/artifacts \
       /workspace/tmp \
       /tmp/.cache \

@@ -71,7 +71,7 @@ sequenceDiagram
 - 検証用は中間メッセージイベントとrawな最終検証結果JSONを返す。最終検証結果JSONの固定検証処理はapplication層で行う。
 - `thread.started.thread_id` を受信した場合、生成用は `generation_conversation_id`、検証用は `validation_conversation_id` として保存できる値を返す。
 - 正常終了時はJSONL上の最新 `item.completed.agent_message.text` を最終出力候補として返す。
-- 生成用の最終回答候補に含まれるPDF参照元pathは、Codex作業領域上の `readonly/` から始まる実PDFファイルへの相対パスである。
+- 生成用の最終回答候補に含まれるPDF参照元pathは、Codex作業領域上の `data_source/` から始まる実PDFファイルへの相対パスである。
 - タイムアウトまたはキャンセル時はコンテナ終了要求を行い、終端状態へ変換可能な結果を返す。
 
 ### 5.3. 不変条件
@@ -79,7 +79,7 @@ sequenceDiagram
 - JSONLの生文字列はinfrastructure内に閉じ、applicationへは構造化イベントだけを返す。
 - 生成用Codexホームと検証用Codexホームを混在させない。
 - Codex作業領域から許可外のファイルを採用済み成果物として扱わない。
-- 生成用の最終回答候補では、`readonly\...` の区切り文字差分を `readonly/...` へ標準化したうえで、絶対パス、UNC、URL、`codex/` から始まるパス、`readonly/` 配下以外のパス、HTML/メタデータファイルをPDF参照元pathとして扱わない。
+- 生成用の最終回答候補では、`data_source\...` の区切り文字差分を `data_source/...` へ標準化したうえで、絶対パス、UNC、URL、`codex/` から始まるパス、`data_source/` 配下以外のパス、HTML/メタデータファイルをPDF参照元pathとして扱わない。
 - `type:error`、`turn.failed`、プロセス異常終了、キャンセル要求後の `agent_message` は最終回答候補として返さない。
 - `item.completed.agent_message.text` が `payload.kind="progress"` のJSONである場合だけ、`payload.text` を利用者向け中間メッセージとして返す。
 - `payload.kind="final"` の生成結果JSONまたは検証結果JSONは利用者向け中間メッセージとして返さない。
@@ -103,7 +103,7 @@ sequenceDiagram
 | `timeout_seconds` | 全体deadlineから算出した当該Codex実行の残り秒数 |
 | `trace_id` | 実行ログとAPI呼出を関連付けるID |
 | `session_workdir` | 生成用または検証用のセッション作業領域 |
-| `datasource_dir` | Codex実行コンテナへ `readonly/` として読み取り専用で提示する共有データソース |
+| `data_source_dir` | Codex実行コンテナへ `data_source/` として読み取り専用で提示する共有データソース |
 | `output_schema` | Codex実行コンテナへ読み取り専用で提示する出力スキーマ |
 | `artifact_mount_dir` | 検証用Codex実行コンテナへ `artifacts/` として読み取り専用で提示する生成用成果物候補領域。存在する場合だけ指定する |
 | `user_id` | 削除対象作業領域のユーザID |
@@ -140,14 +140,14 @@ sequenceDiagram
 
 ### 6.3. 検証用Codex入力
 
-検証用Codexへ渡す `prompt` は、以下の `ValidatorCodexInput` JSONとする。DB保存用の共有データソース相対パスは含めず、検証用Codexが実際に読む作業領域上の `readonly/` 付きPDFパスだけを渡す。
+検証用Codexへ渡す `prompt` は、以下の `ValidatorCodexInput` JSONとする。DB保存用の共有データソース相対パスは含めず、検証用Codexが実際に読む作業領域上の `data_source/` 付きPDFパスだけを渡す。
 
 | 項目 | 内容 |
 | --- | --- |
 | `instruction` | 利用者が送信した元のユーザ指示本文。再生成指示は含めない |
 | `answers[].text` | 検証対象の回答本文 |
 | `answers[].references[].label` | 参照元表示名 |
-| `answers[].references[].path` | 検証用作業領域上の `readonly/` から始まるPDF相対パス |
+| `answers[].references[].path` | 検証用作業領域上の `data_source/` から始まるPDF相対パス |
 | `answers[].references[].page_start` | 検証対象PDF開始ページ |
 | `answers[].references[].page_end` | 検証対象PDF終了ページ |
 
@@ -172,7 +172,7 @@ sequenceDiagram
 | 生成用 | `codex/sessions/<user-id>/<session-id>/artifacts/` | 採用前のCodex成果物候補を一時配置する。 |
 | 検証用 | `codex/sessions_validator/<user-id>/<session-id>/` | 検証用Codex実行コンテナの `/workspace` に相当する作業領域。 |
 | 検証用 | `codex/sessions_validator/<user-id>/<session-id>/tmp/` | 検証用Codexがresumeをまたいで使う中間作業ファイルを配置する。 |
-| mount | `<workspace>/readonly/` | 生成用・検証用Codex実行コンテナへ共有データソースを読み取り専用で提示する。 |
+| mount | `<workspace>/data_source/` | 生成用・検証用Codex実行コンテナへ共有データソースを読み取り専用で提示する。 |
 | mount | `<workspace>/artifacts/` | 検証用Codex実行コンテナへ生成用成果物候補領域を読み取り専用で提示する。生成用では作業領域内の `artifacts/` をそのまま使う。 |
 | 削除対象 | `codex/sessions/<user-id>/<session-id>/` | チャット物理削除時に、生成用作業領域としてディレクトリごと削除する。 |
 | 削除対象 | `codex/sessions_validator/<user-id>/<session-id>/` | チャット物理削除時に、検証用作業領域としてディレクトリごと削除する。 |

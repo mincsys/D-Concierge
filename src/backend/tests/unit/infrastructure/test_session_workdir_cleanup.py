@@ -12,21 +12,23 @@ def test_session_workdir_cleanup_removes_generation_and_validation_session_dirs(
 ) -> None:
     """観点：Codex実行IF。
 
-    確認：生成用・検証用セッション作業領域を削除し、readonlyリンク先実体は保持する。
+    確認：生成用・検証用セッション作業領域を削除し、data_sourceリンク先実体は保持する。
     """
     require_symlink_support(tmp_path, target_is_directory=True)
     user_id = "demo-user"
     session_id = UUID("00000000-0000-0000-0000-000000000902")
     generation_root = tmp_path / "generator"
     validation_root = tmp_path / "validator"
-    datasource = tmp_path / "readonly"
-    datasource.mkdir()
-    (datasource / "manual.pdf").write_text("pdf", encoding="utf-8")
+    data_source = tmp_path / "data_source"
+    data_source.mkdir()
+    (data_source / "manual.pdf").write_text("pdf", encoding="utf-8")
     generation_session = generation_root / user_id / str(session_id)
     validation_session = validation_root / user_id / str(session_id)
     generation_session.mkdir(parents=True)
     validation_session.mkdir(parents=True)
-    (generation_session / "readonly").symlink_to(datasource, target_is_directory=True)
+    (generation_session / "data_source").symlink_to(
+        data_source, target_is_directory=True
+    )
     (validation_session / "work.txt").write_text("work", encoding="utf-8")
     cleanup = CodexSessionWorkdirCleanup(
         generation_workdir=generation_root,
@@ -37,4 +39,4 @@ def test_session_workdir_cleanup_removes_generation_and_validation_session_dirs(
 
     assert generation_session.exists() is False
     assert validation_session.exists() is False
-    assert (datasource / "manual.pdf").read_text(encoding="utf-8") == "pdf"
+    assert (data_source / "manual.pdf").read_text(encoding="utf-8") == "pdf"

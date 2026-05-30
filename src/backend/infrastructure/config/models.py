@@ -78,7 +78,7 @@ class AppConfig:
 
     app: AppRuntimeConfig
     ui: UiConfig
-    datasource_dir: Path
+    data_source_dir: Path
     generator: GeneratorConfig
     validator: ValidatorConfig
     codex_docker: CodexDockerConfig

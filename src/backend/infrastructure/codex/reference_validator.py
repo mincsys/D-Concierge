@@ -52,8 +52,8 @@ class InfrastructureCodexRunner(Protocol):
 class CodexReferenceFileValidator:
     """参照元PDFファイル固定検証境界へ実ファイル検証を適合させる。"""
 
-    def __init__(self, datasource_dir: Path) -> None:
-        self._datasource_dir = datasource_dir
+    def __init__(self, data_source_dir: Path) -> None:
+        self._data_source_dir = data_source_dir
 
     def validate_reference_files(
         self,
@@ -62,7 +62,7 @@ class CodexReferenceFileValidator:
         """回答候補の参照元PDFファイルとページ範囲を固定検証する。"""
         validation = _validate_reference_files(
             references=parsed_candidate_references(candidate),
-            datasource_dir=self._datasource_dir,
+            data_source_dir=self._data_source_dir,
         )
         if validation is not None:
             return validation
@@ -78,7 +78,7 @@ class CodexValidationRunnerAdapter:
         codex_runner: InfrastructureCodexRunner,
         validator_config: ValidatorConfig,
         codex_docker_config: CodexDockerConfig,
-        datasource_dir: Path,
+        data_source_dir: Path,
         timeout_seconds: int,
         transaction_manager: TransactionManagerPort,
     ) -> None:
@@ -86,7 +86,7 @@ class CodexValidationRunnerAdapter:
         self._codex_runner = codex_runner
         self._validator_config = validator_config
         self._codex_docker_config = codex_docker_config
-        self._datasource_dir = datasource_dir
+        self._data_source_dir = data_source_dir
         self._timeout_seconds = timeout_seconds
         self._transaction_manager = transaction_manager
 
@@ -127,7 +127,7 @@ class CodexValidationRunnerAdapter:
                 prompt=prompt,
                 codex_home=self._validator_config.home,
                 workdir=workdir,
-                datasource_dir=self._datasource_dir,
+                data_source_dir=self._data_source_dir,
                 output_schema=self._validator_config.output_schema,
                 docker_config=self._codex_docker_config,
                 artifact_mount_dir=artifact_mount_dir,
@@ -167,7 +167,7 @@ def _intermediate_messages(
 
 def _validate_reference_files(
     references: tuple[PdfReference, ...],
-    datasource_dir: Path,
+    data_source_dir: Path,
 ) -> ReferenceValidationResult | None:
     invalid_paths: list[str] = []
     resolved_paths: dict[str, Path] = {}
@@ -175,7 +175,7 @@ def _validate_reference_files(
         display_path = reference.codex_visible_path()
         try:
             resolved_path = PathSecurityService.resolve_file(
-                datasource_dir,
+                data_source_dir,
                 reference.relative_path,
                 (".pdf",),
             )

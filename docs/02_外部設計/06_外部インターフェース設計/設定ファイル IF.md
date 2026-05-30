@@ -37,7 +37,7 @@
 | `app.timezone` | 必須 | アプリケーションが運用者向け日時へ使用するIANA timezone名。標準は `Asia/Tokyo`。 | トレースログ、日時表示 |
 | `ui.welcome_message` | 任意 | 開始画面の入力欄上に表示する文言。YAMLの `\n` による改行指定を表示上の改行として扱う。 | `GET /api/app-config` |
 | `ui.input_suggestions` | 任意 | 開始画面の入力候補チップ文字列配列。YAMLの `\n` による改行指定を表示上の改行として扱う。 | `GET /api/app-config` |
-| `datasource.dir` | 必須 | 共有データソースのベースディレクトリ。 | 参照元表示、回答生成、回答検証 |
+| `data_source.dir` | 必須 | 共有データソースのベースディレクトリ。 | 参照元表示、回答生成、回答検証 |
 | `generator.max_retries` | 必須 | 生成回答が検証で不採用になった場合の再生成上限。 | 回答検証 |
 | `generator.home` | 必須 | 生成指示を記載した `AGENTS.md` と生成用Skillsを含む、生成用Codex実行のホスト側ホームディレクトリ。 | Codex実行 IF |
 | `generator.workdir` | 必須 | 生成用セッションベースディレクトリ。 | Codex実行 IF |
@@ -83,7 +83,7 @@
 
 ## 6. パス設定の扱い
 
-- 共有データソース配置先は `datasource.dir` から決まる。
+- 共有データソース配置先は `data_source.dir` から決まる。
 - 生成回答の再生成上限は `generator.max_retries` から決まる。
 - 生成用ホスト側 `CODEX_HOME` は `generator.home` から決まる。
 - 生成指示と生成用Skillsは、`generator.home` 配下の `AGENTS.md` とSkillsから決まる。

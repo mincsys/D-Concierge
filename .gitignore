@@ -20,7 +20,7 @@ __pycache__/
 !/codex/.codex_validator/skills/
 /codex/.codex_validator/skills/.system/
 !/codex/.codex_validator/AGENTS.md
-/codex/readonly/
+/codex/data_source/
 /codex/saved_artifacts
 /codex/sessions/
 /codex/sessions_validator/

@@ -38,6 +38,6 @@ saved_artifacts_user_dir False codex/saved_artifacts/st-account-running
 generator_session_dir False codex/sessions/st-account-running/019e770b-2b3c-711a-9c8e-9041577dc7ee
 validator_session_dir False codex/sessions_validator/st-account-running/019e770b-2b3c-711a-9c8e-9041577dc7ee
 saved_artifacts_session_dir False codex/saved_artifacts/st-account-running/019e770b-2b3c-711a-9c8e-9041577dc7ee
-readonly_reference_pdf True codex/readonly/system-test-reference.pdf
+data_source_reference_pdf True codex/data_source/system-test-reference.pdf
 trace_log_root True logs/trace
 result PASS

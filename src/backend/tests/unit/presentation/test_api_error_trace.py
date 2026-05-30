@@ -143,7 +143,7 @@ def _make_config(tmp_path: Path) -> AppConfig:
             welcome_message="ようこそ",
             input_suggestions=("要約してください",),
         ),
-        datasource_dir=tmp_path / "readonly",
+        data_source_dir=tmp_path / "data_source",
         generator=GeneratorConfig(
             max_retries=2,
             home=tmp_path / "codex/.codex",

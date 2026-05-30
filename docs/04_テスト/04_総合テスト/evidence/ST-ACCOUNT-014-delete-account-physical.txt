@@ -10,6 +10,6 @@ saved_artifacts_user_dir False codex/saved_artifacts/st-account-del
 generator_session_dir False codex/sessions/st-account-del/019e7703-6258-77e4-889f-38b9b1d1d0b3
 validator_session_dir False codex/sessions_validator/st-account-del/019e7703-6258-77e4-889f-38b9b1d1d0b3
 saved_artifacts_session_dir False codex/saved_artifacts/st-account-del/019e7703-6258-77e4-889f-38b9b1d1d0b3
-readonly_reference_pdf True codex/readonly/system-test-reference.pdf
+data_source_reference_pdf True codex/data_source/system-test-reference.pdf
 trace_log_root True logs/trace
 result PASS

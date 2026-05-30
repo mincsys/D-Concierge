@@ -43,7 +43,7 @@ def get_invalid_reference_path_message(paths: tuple[str, ...]) -> str:
         "以下のパス指定が間違っています。\n"
         f"{path_lines}\n"
         "参照元の locator.path は、必ず既存の実PDFファイルへのパスを指す "
-        "`readonly/... .pdf` 形式にしてください。\n"
+        "`data_source/... .pdf` 形式にしてください。\n"
         "回答本文は前回同様にユーザ質問へ完全に回答し、"
         "参照元だけを正しいPDFパスへ修正して最終JSONを再出力してください。"
     )

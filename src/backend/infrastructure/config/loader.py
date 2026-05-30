@@ -74,7 +74,7 @@ class ConfigLoader:
                     _optional_str_list(data, ("ui", "input_suggestions"))
                 ),
             ),
-            datasource_dir=_path(root, _required_str(data, ("datasource", "dir"))),
+            data_source_dir=_path(root, _required_str(data, ("data_source", "dir"))),
             generator=GeneratorConfig(
                 max_retries=generator_max_retries,
                 home=_path(root, _required_str(data, ("generator", "home"))),

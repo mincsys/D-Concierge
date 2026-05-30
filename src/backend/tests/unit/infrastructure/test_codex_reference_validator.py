@@ -71,13 +71,13 @@ def test_codex_validation_runner_runs_validation_and_saves_resume_id(
             codex_conversation_id="next-val-thread",
         )
     )
-    datasource_dir = tmp_path / "readonly"
-    datasource_dir.mkdir()
-    _write_pdf(datasource_dir / "manual.pdf", page_count=2)
+    data_source_dir = tmp_path / "data_source"
+    data_source_dir.mkdir()
+    _write_pdf(data_source_dir / "manual.pdf", page_count=2)
     runner = _validation_runner(
         repository=repository,
         codex_runner=codex_runner,
-        datasource_dir=datasource_dir,
+        data_source_dir=data_source_dir,
         tmp_path=tmp_path,
     )
 
@@ -99,7 +99,7 @@ def test_codex_validation_runner_runs_validation_and_saves_resume_id(
     assert codex_runner.requests[0].run_id == accepted.run_id
     assert codex_runner.requests[0].prompt == '{"input":"value"}'
     assert codex_runner.requests[0].codex_conversation_id == "previous-val-thread"
-    assert codex_runner.requests[0].datasource_dir == datasource_dir
+    assert codex_runner.requests[0].data_source_dir == data_source_dir
     assert codex_runner.requests[0].docker_config == _docker_config()
     assert codex_runner.requests[0].artifact_mount_dir is None
     assert codex_runner.requests[0].workdir == (
@@ -112,20 +112,20 @@ def test_codex_validation_runner_runs_validation_and_saves_resume_id(
     assert codex_runner.requests[0].trace_id == "trace-601"
 
 
-def test_codex_validation_runner_prepares_readonly_validation_context(
+def test_codex_validation_runner_prepares_data_source_validation_context(
     tmp_path: Path,
 ) -> None:
-    """観点：検証用Codex連携。確認：検証用readonlyへ共有データソースを提示して起動する。"""
+    """観点：検証用Codex連携。確認：検証用data_sourceへ共有データソースを提示して起動する。"""
     repository = InMemoryChatRepository()
     accepted = repository.create_chat_with_first_run("資料を要約")
-    datasource_dir = tmp_path / "readonly"
-    datasource_dir.mkdir()
-    _write_pdf(datasource_dir / "manual.pdf", page_count=2)
+    data_source_dir = tmp_path / "data_source"
+    data_source_dir.mkdir()
+    _write_pdf(data_source_dir / "manual.pdf", page_count=2)
     codex_runner = RecordingCodexRunner(_valid_infrastructure_result())
     runner = _validation_runner(
         repository=repository,
         codex_runner=codex_runner,
-        datasource_dir=datasource_dir,
+        data_source_dir=data_source_dir,
         tmp_path=tmp_path,
     )
 
@@ -137,8 +137,8 @@ def test_codex_validation_runner_prepares_readonly_validation_context(
         trace_id="trace",
     )
 
-    assert codex_runner.requests[0].datasource_dir == datasource_dir
-    assert not (codex_runner.requests[0].workdir / "readonly").exists()
+    assert codex_runner.requests[0].data_source_dir == data_source_dir
+    assert not (codex_runner.requests[0].workdir / "data_source").exists()
     assert (codex_runner.requests[0].workdir / "tmp").is_dir()
 
 
@@ -149,9 +149,9 @@ def test_codex_validation_runner_links_generation_artifacts_when_needed(
     repository = InMemoryChatRepository()
     accepted = repository.create_chat_with_first_run("資料を要約")
     context = repository.get_chat_runtime_context(accepted.chat_id)
-    datasource_dir = tmp_path / "readonly"
-    datasource_dir.mkdir()
-    _write_pdf(datasource_dir / "manual.pdf", page_count=2)
+    data_source_dir = tmp_path / "data_source"
+    data_source_dir.mkdir()
+    _write_pdf(data_source_dir / "manual.pdf", page_count=2)
     generation_workdir = (
         tmp_path / "codex/sessions" / context.user_id / str(context.session_id)
     )
@@ -162,7 +162,7 @@ def test_codex_validation_runner_links_generation_artifacts_when_needed(
     runner = _validation_runner(
         repository=repository,
         codex_runner=codex_runner,
-        datasource_dir=datasource_dir,
+        data_source_dir=data_source_dir,
         tmp_path=tmp_path,
     )
 
@@ -209,13 +209,13 @@ def test_codex_validation_runner_streams_intermediate_messages(
             codex_conversation_id="validator-thread",
         )
     )
-    datasource_dir = tmp_path / "readonly"
-    datasource_dir.mkdir()
-    _write_pdf(datasource_dir / "manual.pdf", page_count=2)
+    data_source_dir = tmp_path / "data_source"
+    data_source_dir.mkdir()
+    _write_pdf(data_source_dir / "manual.pdf", page_count=2)
     runner = _validation_runner(
         repository=repository,
         codex_runner=codex_runner,
-        datasource_dir=datasource_dir,
+        data_source_dir=data_source_dir,
         tmp_path=tmp_path,
     )
     streamed_messages: list[str] = []
@@ -237,15 +237,15 @@ def test_reference_file_validator_rejects_missing_pdf_before_codex(
     tmp_path: Path,
 ) -> None:
     """観点：参照元PDF固定検証。確認：存在しないPDFは不合格にする。"""
-    datasource_dir = tmp_path / "readonly"
-    datasource_dir.mkdir()
-    validator = CodexReferenceFileValidator(datasource_dir=datasource_dir)
+    data_source_dir = tmp_path / "data_source"
+    data_source_dir.mkdir()
+    validator = CodexReferenceFileValidator(data_source_dir=data_source_dir)
 
     result = validator.validate_reference_files(_candidate_with_pdf())
 
     assert result == ReferenceValidationResult(
         valid=False,
-        failure=InvalidReferencePathFailure(("readonly/manual.pdf",)),
+        failure=InvalidReferencePathFailure(("data_source/manual.pdf",)),
     )
 
 
@@ -253,10 +253,10 @@ def test_reference_file_validator_rejects_page_out_of_range(
     tmp_path: Path,
 ) -> None:
     """観点：参照元PDF固定検証。確認：PDFに存在しないページ範囲は不合格にする。"""
-    datasource_dir = tmp_path / "readonly"
-    datasource_dir.mkdir()
-    _write_pdf(datasource_dir / "manual.pdf", page_count=1)
-    validator = CodexReferenceFileValidator(datasource_dir=datasource_dir)
+    data_source_dir = tmp_path / "data_source"
+    data_source_dir.mkdir()
+    _write_pdf(data_source_dir / "manual.pdf", page_count=1)
+    validator = CodexReferenceFileValidator(data_source_dir=data_source_dir)
 
     result = validator.validate_reference_files(_candidate_with_pdf())
 
@@ -265,17 +265,17 @@ def test_reference_file_validator_rejects_page_out_of_range(
     assert [
         (item.path, item.page_start, item.page_end)
         for item in result.failure.page_ranges
-    ] == [("readonly/manual.pdf", 1, 2)]
+    ] == [("data_source/manual.pdf", 1, 2)]
 
 
 def test_reference_file_validator_raises_when_existing_pdf_is_unreadable(
     tmp_path: Path,
 ) -> None:
     """観点：参照元PDF固定検証。確認：存在するPDFを読めない場合はシステムエラーにする。"""
-    datasource_dir = tmp_path / "readonly"
-    datasource_dir.mkdir()
-    (datasource_dir / "manual.pdf").write_text("not a pdf", encoding="utf-8")
-    validator = CodexReferenceFileValidator(datasource_dir=datasource_dir)
+    data_source_dir = tmp_path / "data_source"
+    data_source_dir.mkdir()
+    (data_source_dir / "manual.pdf").write_text("not a pdf", encoding="utf-8")
+    validator = CodexReferenceFileValidator(data_source_dir=data_source_dir)
 
     with pytest.raises(ReferencePdfReadError) as exc_info:
         validator.validate_reference_files(_candidate_with_pdf())
@@ -290,13 +290,13 @@ def test_codex_validation_runner_requires_generation_artifacts_when_needed(
     """観点：検証用Codex連携。確認：成果物提示が必要なのに生成workdirがない場合は準備エラーにする。"""
     repository = InMemoryChatRepository()
     accepted = repository.create_chat_with_first_run("資料を要約")
-    datasource_dir = tmp_path / "readonly"
-    datasource_dir.mkdir()
+    data_source_dir = tmp_path / "data_source"
+    data_source_dir.mkdir()
     codex_runner = RecordingCodexRunner(_valid_infrastructure_result())
     runner = _validation_runner(
         repository=repository,
         codex_runner=codex_runner,
-        datasource_dir=datasource_dir,
+        data_source_dir=data_source_dir,
         tmp_path=tmp_path,
     )
 
@@ -320,13 +320,13 @@ def test_codex_validation_runner_skips_artifact_mount_when_directory_missing(
     repository = InMemoryChatRepository()
     accepted = repository.create_chat_with_first_run("資料を要約")
     context = repository.get_chat_runtime_context(accepted.chat_id)
-    datasource_dir = tmp_path / "readonly"
-    datasource_dir.mkdir()
+    data_source_dir = tmp_path / "data_source"
+    data_source_dir.mkdir()
     codex_runner = RecordingCodexRunner(_valid_infrastructure_result())
     runner = _validation_runner(
         repository=repository,
         codex_runner=codex_runner,
-        datasource_dir=datasource_dir,
+        data_source_dir=data_source_dir,
         tmp_path=tmp_path,
     )
     generation_workdir = (
@@ -391,7 +391,7 @@ def _validation_runner(
     *,
     repository: ChatRuntimeRepositoryPort,
     codex_runner: InfrastructureCodexRunner,
-    datasource_dir: Path,
+    data_source_dir: Path,
     tmp_path: Path,
     transaction_manager: TransactionManagerPort | None = None,
 ) -> CodexValidationRunnerAdapter:
@@ -405,7 +405,7 @@ def _validation_runner(
             output_schema=tmp_path / "validator-schema.json",
         ),
         codex_docker_config=_docker_config(),
-        datasource_dir=datasource_dir,
+        data_source_dir=data_source_dir,
         timeout_seconds=120,
         transaction_manager=transaction_manager or NoopTransactionManager(),
     )

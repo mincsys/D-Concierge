@@ -59,8 +59,8 @@ def test_codex_generation_runner_builds_request_and_saves_resume_id(
             codex_conversation_id="next-thread",
         )
     )
-    datasource_dir = tmp_path / "readonly"
-    datasource_dir.mkdir()
+    data_source_dir = tmp_path / "data_source"
+    data_source_dir.mkdir()
     adapter = CodexGenerationRunnerAdapter(
         repository=repository,
         codex_runner=codex_runner,
@@ -72,7 +72,7 @@ def test_codex_generation_runner_builds_request_and_saves_resume_id(
             saved_artifacts_dir=tmp_path / "codex/saved_artifacts",
         ),
         codex_docker_config=_docker_config(),
-        datasource_dir=datasource_dir,
+        data_source_dir=data_source_dir,
         timeout_seconds=300,
         transaction_manager=NoopTransactionManager(),
     )
@@ -99,7 +99,7 @@ def test_codex_generation_runner_builds_request_and_saves_resume_id(
     assert codex_runner.requests[0].codex_conversation_id == "previous-thread"
     assert codex_runner.requests[0].codex_home == tmp_path / "codex/.codex"
     assert codex_runner.requests[0].output_schema == tmp_path / "schema.json"
-    assert codex_runner.requests[0].datasource_dir == datasource_dir
+    assert codex_runner.requests[0].data_source_dir == data_source_dir
     assert codex_runner.requests[0].docker_config == _docker_config()
     assert codex_runner.requests[0].artifact_mount_dir is None
     assert codex_runner.requests[0].workdir == (
@@ -112,20 +112,20 @@ def test_codex_generation_runner_builds_request_and_saves_resume_id(
     assert codex_runner.requests[0].trace_id == "trace-701"
 
 
-def test_codex_generation_runner_prepares_readonly_datasource(
+def test_codex_generation_runner_prepares_data_source_mount(
     tmp_path: Path,
 ) -> None:
     """観点：Codex生成実行アダプタ。
 
-    確認：生成用セッションreadonlyへ共有データソースを提示してから起動する。
+    確認：生成用セッションdata_sourceへ共有データソースを提示してから起動する。
     """
     repository = InMemoryChatRepository()
     accepted = repository.create_chat_with_first_run("初回")
-    datasource_dir = tmp_path / "readonly"
-    datasource_dir.mkdir()
-    (datasource_dir / "manual.pdf").write_bytes(b"%PDF-1.4\n")
-    (datasource_dir / "nested").mkdir()
-    (datasource_dir / "nested" / "appendix.pdf").write_bytes(b"%PDF-1.4\n")
+    data_source_dir = tmp_path / "data_source"
+    data_source_dir.mkdir()
+    (data_source_dir / "manual.pdf").write_bytes(b"%PDF-1.4\n")
+    (data_source_dir / "nested").mkdir()
+    (data_source_dir / "nested" / "appendix.pdf").write_bytes(b"%PDF-1.4\n")
     codex_runner = RecordingCodexRunner(
         result=InfrastructureCodexRunResult(
             events=(),
@@ -144,7 +144,7 @@ def test_codex_generation_runner_prepares_readonly_datasource(
             saved_artifacts_dir=tmp_path / "codex/saved_artifacts",
         ),
         codex_docker_config=_docker_config(),
-        datasource_dir=datasource_dir,
+        data_source_dir=data_source_dir,
         timeout_seconds=300,
         transaction_manager=NoopTransactionManager(),
     )
@@ -155,8 +155,8 @@ def test_codex_generation_runner_prepares_readonly_datasource(
         "資料を要約してください",
     )
 
-    assert codex_runner.requests[0].datasource_dir == datasource_dir
-    assert not (codex_runner.requests[0].workdir / "readonly").exists()
+    assert codex_runner.requests[0].data_source_dir == data_source_dir
+    assert not (codex_runner.requests[0].workdir / "data_source").exists()
     assert (codex_runner.requests[0].workdir / "tmp").is_dir()
     assert (codex_runner.requests[0].workdir / "artifacts").is_dir()
 
@@ -199,8 +199,8 @@ def test_codex_generation_runner_streams_intermediate_messages(
             codex_conversation_id="thread",
         )
     )
-    datasource_dir = tmp_path / "readonly"
-    datasource_dir.mkdir()
+    data_source_dir = tmp_path / "data_source"
+    data_source_dir.mkdir()
     adapter = CodexGenerationRunnerAdapter(
         repository=repository,
         codex_runner=codex_runner,
@@ -212,7 +212,7 @@ def test_codex_generation_runner_streams_intermediate_messages(
             saved_artifacts_dir=tmp_path / "codex/saved_artifacts",
         ),
         codex_docker_config=_docker_config(),
-        datasource_dir=datasource_dir,
+        data_source_dir=data_source_dir,
         timeout_seconds=300,
         transaction_manager=NoopTransactionManager(),
     )

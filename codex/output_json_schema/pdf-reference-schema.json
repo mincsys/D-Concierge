@@ -58,8 +58,8 @@
                           "properties": {
                             "path": {
                               "type": "string",
-                              "description": "参照元となるPDFファイルのパス。必ずreadonly/から始まる実PDFファイルへの相対パス。",
-                              "pattern": "^readonly/.+\\.[Pp][Dd][Ff]$"
+                              "description": "参照元となるPDFファイルのパス。必ずdata_source/から始まる実PDFファイルへの相対パス。",
+                              "pattern": "^data_source/.+\\.[Pp][Dd][Ff]$"
                             },
                             "start_page": {
                               "type": "integer",

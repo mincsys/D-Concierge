@@ -91,7 +91,7 @@ flowchart LR
 | 生成用Codex側の会話継続ID | 継続指示時必須 | 識別子 | 新規チャットでは指定しない。継続指示では初回実行時に取得した値を指定する。 | JSONLの `thread.started.thread_id` で得たID。 |
 | 生成用ホームディレクトリ | 必須 | パス | `AGENTS.md` とSkillsを含む。 | ホスト側の `generator.home` をコンテナ側の `codex_docker.codex_home_dir` へマウントする。 |
 | 生成用作業領域 | 必須 | パス | ユーザIDとセッションIDで分離する。 | ホスト側の `generator.workdir/<user-id>/<session-id>` をコンテナ側の `codex_docker.workspace_dir` へマウントする。 |
-| 共有データソース | 必須 | パス | 読み取り専用で参照する。 | ホスト側の `datasource.dir` をコンテナへ読み取り専用でマウントする。 |
+| 共有データソース | 必須 | パス | 読み取り専用で参照する。 | ホスト側の `data_source.dir` をコンテナへ読み取り専用でマウントする。 |
 | 成果物領域 | 必須 | パス | 回答候補が参照する一時成果物を書き込めること。 | 生成用Codex実行では書き込み可能でマウントする。 |
 
 #### 5.1.3. 出力情報
@@ -146,7 +146,7 @@ flowchart LR
 | 検証結果出力契約 | 必須 | 構造化データ | 検証結果と中間メッセージが満たすべき構造を示す。中間メッセージ用の `payload.kind="progress"` と最終検証結果用の `payload.kind="final"` をどちらもCodex実行が受理できる形式であること。 | `validator.output_schema` から導出し、起動時に出力スキーマとして指定する。 |
 | 検証用ホームディレクトリ | 必須 | パス | `AGENTS.md` とSkillsを含む。 | ホスト側の `validator.home` をコンテナ側の `codex_docker.codex_home_dir` へマウントする。 |
 | 検証用作業領域 | 必須 | パス | ユーザIDとセッションIDで分離する。 | ホスト側の `validator.workdir/<user-id>/<session-id>` をコンテナ側の `codex_docker.workspace_dir` へマウントする。 |
-| 共有データソース | 必須 | パス | 読み取り専用で参照する。 | ホスト側の `datasource.dir` をコンテナへ読み取り専用でマウントする。 |
+| 共有データソース | 必須 | パス | 読み取り専用で参照する。 | ホスト側の `data_source.dir` をコンテナへ読み取り専用でマウントする。 |
 | 成果物領域 | 存在時必須 | パス | 検証用Codex実行から参照できること。 | 生成用Codexの成果物領域が存在する場合、検証用Codex実行にも読み取り可能でマウントする。 |
 
 #### 5.2.3. 出力情報

@@ -11,7 +11,7 @@ def test_path_security_resolves_relative_file_under_allowed_root(
     tmp_path: Path,
 ) -> None:
     """観点：パス安全性。確認：許可ルート配下の相対PDFパスだけを解決する。"""
-    root = tmp_path / "readonly"
+    root = tmp_path / "data_source"
     root.mkdir()
     pdf_path = root / "manual.pdf"
     pdf_path.write_bytes(b"%PDF-1.4")
@@ -33,7 +33,7 @@ def test_path_security_rejects_paths_outside_allowed_root(
     relative_path: str,
 ) -> None:
     """観点：パス安全性。確認：絶対パスと親ディレクトリ参照を許可しない。"""
-    root = tmp_path / "readonly"
+    root = tmp_path / "data_source"
     root.mkdir()
 
     with pytest.raises(AppError) as error_info:
@@ -48,7 +48,7 @@ def test_path_security_rejects_paths_outside_allowed_root(
 
 def test_path_security_rejects_unexpected_suffix(tmp_path: Path) -> None:
     """観点：パス安全性。確認：許可されていない拡張子を拒否する。"""
-    root = tmp_path / "readonly"
+    root = tmp_path / "data_source"
     root.mkdir()
 
     with pytest.raises(AppError) as error_info:
@@ -63,7 +63,7 @@ def test_path_security_rejects_unexpected_suffix(tmp_path: Path) -> None:
 
 def test_path_security_rejects_null_byte_path(tmp_path: Path) -> None:
     """観点：パス安全性。確認：NUL文字を含むパスを拒否する。"""
-    root = tmp_path / "readonly"
+    root = tmp_path / "data_source"
     root.mkdir()
 
     with pytest.raises(AppError) as error_info:

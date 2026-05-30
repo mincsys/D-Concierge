@@ -9,7 +9,7 @@
 - 呼出方式: Pythonメソッド呼出。
 - 呼出主体: `GetReferenceDataUseCase`。
 - 本システムの参照元種別はPDFのみとする。
-- DBおよび内部IFで扱う `locator.path` は共有データソースルートからの相対パスであり、Codex作業領域上の `readonly/` 接頭辞は含めない。
+- DBおよび内部IFで扱う `locator.path` は共有データソースルートからの相対パスであり、Codex作業領域上の `data_source/` 接頭辞は含めない。
 
 ## 3. IF概要
 

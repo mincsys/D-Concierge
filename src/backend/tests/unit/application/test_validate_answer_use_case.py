@@ -115,7 +115,7 @@ def test_validate_answer_returns_specific_regeneration_for_invalid_paths() -> No
         "以下のパス指定が間違っています。\n"
         "- manual.pdf\n"
         "参照元の locator.path は、必ず既存の実PDFファイルへのパスを指す "
-        "`readonly/... .pdf` 形式にしてください。\n"
+        "`data_source/... .pdf` 形式にしてください。\n"
         "回答本文は前回同様にユーザ質問へ完全に回答し、"
         "参照元だけを正しいPDFパスへ修正して最終JSONを再出力してください。"
     )
@@ -157,7 +157,7 @@ def test_validate_answer_returns_specific_regeneration_for_reference_file_failur
         RecordingReferenceFileValidator(
             result=ReferenceValidationResult(
                 valid=False,
-                failure=InvalidReferencePathFailure(("readonly/missing.pdf",)),
+                failure=InvalidReferencePathFailure(("data_source/missing.pdf",)),
             )
         ),
         validator_runner,
@@ -171,7 +171,7 @@ def test_validate_answer_returns_specific_regeneration_for_reference_file_failur
 
     assert result.status is ValidationStatus.REGENERATE
     assert "以下のパス指定が間違っています。" in result.regeneration_instruction
-    assert "- readonly/missing.pdf" in result.regeneration_instruction
+    assert "- data_source/missing.pdf" in result.regeneration_instruction
     assert validator_runner.prompts == []
 
 
@@ -359,6 +359,6 @@ def _use_case(
 def _valid_answer_json() -> str:
     return (
         '{"payload":{"kind":"final","answers":[{"text":"要点はAです。",'
-        '"references":[{"source_type":"pdf","locator":{"path":"readonly/manual.pdf",'
+        '"references":[{"source_type":"pdf","locator":{"path":"data_source/manual.pdf",'
         '"start_page":2,"end_page":3}}]}]}}'
     )

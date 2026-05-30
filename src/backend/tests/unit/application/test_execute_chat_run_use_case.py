@@ -435,7 +435,7 @@ def test_execute_chat_run_regenerates_when_validator_requests_retry() -> None:
                 intermediate_messages=(),
                 final_answer_json=(
                     '{"payload":{"kind":"final","answers":[{"text":"修正後回答",'
-                    '"references":[{"source_type":"pdf","locator":{"path":"readonly/manual.pdf",'
+                    '"references":[{"source_type":"pdf","locator":{"path":"data_source/manual.pdf",'
                     '"start_page":1,"end_page":1}}]}]}}'
                 ),
             ),
@@ -614,7 +614,7 @@ def test_execute_chat_run_saves_adopted_artifacts() -> None:
                     intermediate_messages=(),
                     final_answer_json=(
                         '{"payload":{"kind":"final","answers":[{"text":"![図](artifacts/chart.png)",'
-                        '"references":[{"source_type":"pdf","locator":{"path":"readonly/manual.pdf",'
+                        '"references":[{"source_type":"pdf","locator":{"path":"data_source/manual.pdf",'
                         '"start_page":1,"end_page":1}}]}]}}'
                     ),
                 ),
@@ -660,7 +660,7 @@ def test_execute_chat_run_marks_error_when_artifact_workdir_is_missing() -> None
                     intermediate_messages=(),
                     final_answer_json=(
                         '{"payload":{"kind":"final","answers":[{"text":"![図](artifacts/chart.png)",'
-                        '"references":[{"source_type":"pdf","locator":{"path":"readonly/manual.pdf",'
+                        '"references":[{"source_type":"pdf","locator":{"path":"data_source/manual.pdf",'
                         '"start_page":1,"end_page":1}}]}]}}'
                     ),
                 ),
@@ -728,7 +728,7 @@ def test_execute_chat_run_saves_deadline_and_passes_remaining_seconds() -> None:
                 intermediate_messages=(),
                 final_answer_json=(
                     '{"payload":{"kind":"final","answers":[{"text":"回答",'
-                    '"references":[{"source_type":"pdf","locator":{"path":"readonly/manual.pdf",'
+                    '"references":[{"source_type":"pdf","locator":{"path":"data_source/manual.pdf",'
                     '"start_page":1,"end_page":1}}]}]}}'
                 ),
             ),
@@ -801,7 +801,7 @@ def test_execute_chat_run_times_out_before_next_codex_exec_when_deadline_exceede
                 intermediate_messages=(),
                 final_answer_json=(
                     '{"payload":{"kind":"final","answers":[{"text":"回答",'
-                    '"references":[{"source_type":"pdf","locator":{"path":"readonly/manual.pdf",'
+                    '"references":[{"source_type":"pdf","locator":{"path":"data_source/manual.pdf",'
                     '"start_page":1,"end_page":1}}]}]}}'
                 ),
             ),
@@ -1433,7 +1433,7 @@ class RetryMessageObservingCodexRunner:
                 intermediate_messages=(),
                 final_answer_json=(
                     '{"payload":{"kind":"final","answers":[{"text":"修正後回答",'
-                    '"references":[{"source_type":"pdf","locator":{"path":"readonly/manual.pdf",'
+                    '"references":[{"source_type":"pdf","locator":{"path":"data_source/manual.pdf",'
                     '"start_page":1,"end_page":1}}]}]}}'
                 ),
             )
@@ -1503,7 +1503,7 @@ class CancelingCodexRunner:
             intermediate_messages=("採用してはいけない中間メッセージ",),
             final_answer_json=(
                 '{"payload":{"kind":"final","answers":[{"text":"採用してはいけない回答",'
-                '"references":[{"source_type":"pdf","locator":{"path":"readonly/manual.pdf",'
+                '"references":[{"source_type":"pdf","locator":{"path":"data_source/manual.pdf",'
                 '"start_page":1,"end_page":1}}]}]}}'
             ),
         )
@@ -1944,7 +1944,7 @@ class RecordingTransactionManager:
 def _valid_answer_json() -> str:
     return (
         '{"payload":{"kind":"final","answers":[{"text":"要点はAです。",'
-        '"references":[{"source_type":"pdf","locator":{"path":"readonly/manual.pdf",'
+        '"references":[{"source_type":"pdf","locator":{"path":"data_source/manual.pdf",'
         '"start_page":2,"end_page":3}}]}]}}'
     )
 

@@ -10,7 +10,7 @@ Usage: run_codex_docker.sh
   --codex-home-dir <container-path>
   --host-codex-home <host-path>
   --host-workdir <host-path>
-  --host-datasource <host-path>
+  --host-data-source <host-path>
   --host-schema-dir <host-path>
   --schema-file <filename>
   --prompt <prompt>
@@ -25,7 +25,7 @@ workspace_dir=""
 codex_home_dir=""
 host_codex_home=""
 host_workdir=""
-host_datasource=""
+host_data_source=""
 host_schema_dir=""
 schema_file=""
 prompt=""
@@ -58,8 +58,8 @@ while [[ $# -gt 0 ]]; do
       host_workdir="${2-}"
       shift 2
       ;;
-    --host-datasource)
-      host_datasource="${2-}"
+    --host-data-source)
+      host_data_source="${2-}"
       shift 2
       ;;
     --host-schema-dir)
@@ -106,7 +106,7 @@ require_value "--workspace-dir" "$workspace_dir"
 require_value "--codex-home-dir" "$codex_home_dir"
 require_value "--host-codex-home" "$host_codex_home"
 require_value "--host-workdir" "$host_workdir"
-require_value "--host-datasource" "$host_datasource"
+require_value "--host-data-source" "$host_data_source"
 require_value "--host-schema-dir" "$host_schema_dir"
 require_value "--schema-file" "$schema_file"
 require_value "--prompt" "$prompt"
@@ -130,7 +130,7 @@ docker_args=(
   -e "CODEX_HOME=$codex_home_dir"
   --mount "type=bind,source=$host_codex_home,target=$codex_home_dir"
   --mount "type=bind,source=$host_workdir,target=$workspace_dir"
-  --mount "type=bind,source=$host_datasource,target=$workspace_dir/readonly,readonly"
+  --mount "type=bind,source=$host_data_source,target=$workspace_dir/data_source,readonly"
   --mount "type=bind,source=$host_schema_dir,target=/tmp/output_json_schema,readonly"
   --workdir "$workspace_dir"
 )

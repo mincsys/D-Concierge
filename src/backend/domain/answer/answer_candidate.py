@@ -212,7 +212,7 @@ def _parse_references(
                 ".locator.path、start_page、end_page のいずれかが"
                 "参照元PDFの位置情報として不正です。"
             )
-        relative_path = _try_normalize_readonly_pdf_path(path_value)
+        relative_path = _try_normalize_data_source_pdf_path(path_value)
         if relative_path is None:
             invalid_paths.append(path_value)
             continue
@@ -241,21 +241,21 @@ def _parse_references(
     return parsed
 
 
-def _try_normalize_readonly_pdf_path(path_value: str) -> str | None:
+def _try_normalize_data_source_pdf_path(path_value: str) -> str | None:
     try:
-        return _normalize_readonly_pdf_path(path_value)
+        return _normalize_data_source_pdf_path(path_value)
     except AnswerParseError:
         return None
 
 
-def _normalize_readonly_pdf_path(path_value: str) -> str:
+def _normalize_data_source_pdf_path(path_value: str) -> str:
     if "\x00" in path_value:
         raise AnswerParseError("PDF参照位置が不正です。")
 
     normalized_path_value = path_value.replace("\\", "/")
     path = PurePosixPath(normalized_path_value)
     parts = path.parts
-    if path.is_absolute() or len(parts) < 2 or parts[0] != "readonly":
+    if path.is_absolute() or len(parts) < 2 or parts[0] != "data_source":
         raise AnswerParseError("PDF参照位置が不正です。")
     if any(part in {"", ".", ".."} for part in parts):
         raise AnswerParseError("PDF参照位置が不正です。")

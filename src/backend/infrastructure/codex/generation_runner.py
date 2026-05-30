@@ -39,7 +39,7 @@ class CodexGenerationRunnerAdapter:
         codex_runner: InfrastructureCodexRunner,
         generator_config: GeneratorConfig,
         codex_docker_config: CodexDockerConfig,
-        datasource_dir: Path,
+        data_source_dir: Path,
         timeout_seconds: int,
         transaction_manager: TransactionManagerPort,
     ) -> None:
@@ -47,7 +47,7 @@ class CodexGenerationRunnerAdapter:
         self._codex_runner = codex_runner
         self._generator_config = generator_config
         self._codex_docker_config = codex_docker_config
-        self._datasource_dir = datasource_dir
+        self._data_source_dir = data_source_dir
         self._timeout_seconds = timeout_seconds
         self._transaction_manager = transaction_manager
 
@@ -76,7 +76,7 @@ class CodexGenerationRunnerAdapter:
                 prompt=user_instruction,
                 codex_home=self._generator_config.home,
                 workdir=workdir,
-                datasource_dir=self._datasource_dir,
+                data_source_dir=self._data_source_dir,
                 output_schema=self._generator_config.output_schema,
                 docker_config=self._codex_docker_config,
                 artifact_mount_dir=None,

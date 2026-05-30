@@ -17,7 +17,7 @@ def test_prepare_generation_workspace_creates_runtime_directories(
     assert workdir.is_dir()
     assert (workdir / "tmp").is_dir()
     assert (workdir / "artifacts").is_dir()
-    assert not (workdir / "readonly").exists()
+    assert not (workdir / "data_source").exists()
 
 
 def test_prepare_generation_workspace_recreates_runtime_directories(
@@ -42,4 +42,4 @@ def test_prepare_validation_workspace_creates_tmp_only(tmp_path: Path) -> None:
     assert workdir.is_dir()
     assert (workdir / "tmp").is_dir()
     assert not (workdir / "artifacts").exists()
-    assert not (workdir / "readonly").exists()
+    assert not (workdir / "data_source").exists()

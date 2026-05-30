@@ -1,22 +1,22 @@
 ---
 name: explore-d-concierge
-description: readonly/d-concierge_codebase/D-Concierge にある D-Concierge 自身のコードベースと設計書を調査し、参照ファイルを明示して根拠付きで回答する。
+description: data_source/d-concierge_codebase/D-Concierge にある D-Concierge 自身のコードベースと設計書を調査し、参照ファイルを明示して根拠付きで回答する。
 ---
 
 # Explore D-Concierge
 
 ## 概要
 
-`readonly/d-concierge_codebase/D-Concierge` にある D-Concierge の現行スナップショットを調査し、ユーザの質問に根拠付きで回答する。Git履歴は扱わず、現行ファイルの内容を正とする。
+`data_source/d-concierge_codebase/D-Concierge` にある D-Concierge の現行スナップショットを調査し、ユーザの質問に根拠付きで回答する。Git履歴は扱わず、現行ファイルの内容を正とする。
 
 ## 基本ルール
 
-- 調査対象ルートは `readonly/d-concierge_codebase/D-Concierge`。
-- readonly配下のファイルは編集しない。
+- 調査対象ルートは `data_source/d-concierge_codebase/D-Concierge`。
+- data_source配下のファイルは編集しない。
 - 調査には `rg`、`find`、`sed` などを使い、質問に近い `docs/`、`src/`、`tests/`、`.issue/` を絞り込む。
 - Git履歴は扱わず、`git log` や `git show` は使わない。
 - 回答の末尾に `参照ファイル` セクションを置き、参照したファイルを調査対象ルートからの相対パスで列挙する。
-- 参照ファイルは `docs/02_外部設計/...`、`src/backend/...` のように書き、`readonly/d-concierge_codebase/D-Concierge/` は付けない。
+- 参照ファイルは `docs/02_外部設計/...`、`src/backend/...` のように書き、`data_source/d-concierge_codebase/D-Concierge/` は付けない。
 
 ## 探索順
 

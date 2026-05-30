@@ -9,7 +9,7 @@ docker run --rm \
   -e CODEX_HOME=/home/codex/.codex \
   --mount type=bind,source="$PWD/.codex",target=/home/codex/.codex \
   --mount type=bind,source="$PWD/work",target=/workspace \
-  --mount type=bind,source="$PWD/datasource",target=/workspace/readonly,readonly \
+  --mount type=bind,source="$PWD/data_source",target=/workspace/data_source,readonly \
   --workdir /workspace \
   codex-python-runner:latest \
   codex exec \

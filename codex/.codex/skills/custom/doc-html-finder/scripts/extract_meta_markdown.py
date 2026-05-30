@@ -85,7 +85,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="IPA Books の meta JSON から文書概要と目次を Markdown で出力します。"
     )
-    parser.add_argument("meta", help="readonly/IPA_books/raw/meta ディレクトリまたは meta JSON ファイル")
+    parser.add_argument("meta", help="data_source/IPA_books/raw/meta ディレクトリまたは meta JSON ファイル")
     args = parser.parse_args()
 
     try:

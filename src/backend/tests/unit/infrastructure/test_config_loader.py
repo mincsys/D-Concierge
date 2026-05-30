@@ -15,7 +15,7 @@ ui:
   welcome_message: "ようこそ"
   input_suggestions:
     - "要約してください"
-datasource:
+data_source:
   dir: "data"
 generator:
   max_retries: 2
@@ -57,7 +57,7 @@ def test_config_loader_returns_typed_public_ui_settings(tmp_path: Path) -> None:
     assert config.app.timezone.key == "Asia/Tokyo"
     assert config.database.url == "postgresql+psycopg://user:password@127.0.0.1:5432/db"
     assert config.server.timeout_seconds == 300
-    assert config.datasource_dir == tmp_path / "data"
+    assert config.data_source_dir == tmp_path / "data"
     assert config.codex_docker.image == "codex-python-runner:latest"
     assert config.codex_docker.workspace_dir == "/workspace"
     assert config.codex_docker.codex_home_dir == "/home/codex/.codex"
@@ -80,7 +80,7 @@ def test_config_loader_resolves_relative_paths_from_relative_config_path(
 
     config = ConfigLoader.load(Path("config.yaml"))
 
-    assert config.datasource_dir == tmp_path / "data"
+    assert config.data_source_dir == tmp_path / "data"
     assert config.generator.max_retries == 2
     assert config.generator.home == tmp_path / "codex/.codex"
     assert config.generator.workdir == tmp_path / "codex/sessions"
@@ -118,7 +118,7 @@ def test_config_loader_uses_absolute_paths_without_base_dir_join(
     absolute_config = (
         VALID_CONFIG.replace(
             'dir: "data"',
-            f'dir: "{(tmp_path / "readonly").as_posix()}"',
+            f'dir: "{(tmp_path / "data_source").as_posix()}"',
         )
         .replace(
             'home: "codex/.codex"',
@@ -139,7 +139,7 @@ def test_config_loader_uses_absolute_paths_without_base_dir_join(
 
     config = ConfigLoader.load(config_path, base_dir=tmp_path / "base")
 
-    assert config.datasource_dir == tmp_path / "readonly"
+    assert config.data_source_dir == tmp_path / "data_source"
     assert config.generator.home == tmp_path / "home"
     assert config.generator.workdir == tmp_path / "sessions"
     assert config.trace_log.dir == tmp_path / "logs" / "trace"

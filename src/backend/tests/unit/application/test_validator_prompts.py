@@ -12,7 +12,7 @@ from backend.domain.references.pdf_reference import PdfLocator, PdfReference
 
 
 def test_build_validator_prompt_uses_validator_specific_shape() -> None:
-    """観点：検証用Codex入力。確認：ユーザ指示、回答本文、readonly形式の参照元だけを含める。"""
+    """観点：検証用Codex入力。確認：ユーザ指示、回答本文、data_source形式の参照元だけを含める。"""
     candidate = ParsedAnswerCandidate(
         blocks=(
             ParsedAnswerBlock(
@@ -45,7 +45,7 @@ def test_build_validator_prompt_uses_validator_specific_shape() -> None:
                 "references": [
                     {
                         "label": "manual.pdf",
-                        "path": "readonly/raw/pdf/manual.pdf",
+                        "path": "data_source/raw/pdf/manual.pdf",
                         "page_start": 1,
                         "page_end": 2,
                     }
@@ -54,7 +54,7 @@ def test_build_validator_prompt_uses_validator_specific_shape() -> None:
         ],
     }
     assert "relative_path" not in prompt
-    assert "readonly_path" not in prompt
+    assert "data_source_path" not in prompt
     assert "blocks" not in prompt
     assert "markdown" not in prompt
 

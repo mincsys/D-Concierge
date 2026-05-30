@@ -13,9 +13,9 @@ from backend.tests.support.memory_repository import InMemoryChatRepository
 
 def test_get_reference_data_use_case_opens_pdf(tmp_path: Path) -> None:
     """観点：参照元PDF取得UseCase。確認：参照元メタ情報からPDFファイルを開く。"""
-    datasource_dir = tmp_path / "datasource"
-    datasource_dir.mkdir()
-    pdf_path = datasource_dir / "manual.pdf"
+    data_source_dir = tmp_path / "data_source"
+    data_source_dir.mkdir()
+    pdf_path = data_source_dir / "manual.pdf"
     pdf_path.write_bytes(b"%PDF-1.4\n")
     repository = InMemoryChatRepository()
     reference_id = repository.save_completed_answer_for_test(
@@ -26,7 +26,7 @@ def test_get_reference_data_use_case_opens_pdf(tmp_path: Path) -> None:
     )
     usecase = GetReferenceDataUseCase(
         repository=repository,
-        reference_store=FileReferenceStore(datasource_dir),
+        reference_store=FileReferenceStore(data_source_dir),
     )
 
     opened = usecase.execute(reference_id)

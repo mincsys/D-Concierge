@@ -24,7 +24,7 @@
 - `PdfLocator.page_start` は1以上である。
 - `PdfLocator.page_end` は `page_start` 以上である。
 - 表示ラベルには内部絶対パスを含めない。
-- Codex検証用に提示するpathは `readonly/<relative_path>` 形式で生成する。
+- Codex検証用に提示するpathは `data_source/<relative_path>` 形式で生成する。
 
 ## 5. 公開プロパティ
 
@@ -42,4 +42,4 @@
 | メソッド | 役割 | 入力 | 出力 | 事前条件 | 事後条件 |
 | --- | --- | --- | --- | --- | --- |
 | `PdfReference.from_locator` | locatorのファイル名から表示ラベルを作りPDF参照元を生成する | `PdfLocator` | `PdfReference` | locatorが有効であること | 内部絶対パスを含まない表示ラベルが設定されること |
-| `PdfLocator.codex_visible_path` | 検証用Codexへ提示するreadonly付きpathを生成する | なし | 文字列 | 共有データソース相対pathが有効であること | `readonly/<relative_path>` 形式のpathが返ること |
+| `PdfLocator.codex_visible_path` | 検証用Codexへ提示するdata_source付きpathを生成する | なし | 文字列 | 共有データソース相対pathが有効であること | `data_source/<relative_path>` 形式のpathが返ること |

@@ -64,7 +64,7 @@ def test_artifact_link_validator_rejects_non_artifact_link_targets(
     result = ArtifactLinkValidator().validate(
         markdowns=(
             "[外部](https://example.test/report.html)\n"
-            "![参照元](readonly/chart.png)\n"
+            "![参照元](data_source/chart.png)\n"
             "![絶対](C:\\data\\chart.png)\n"
             "![UNC](\\\\server\\share\\chart.png)\n"
             "![親](artifacts\\..\\secret.png)\n"
@@ -76,7 +76,7 @@ def test_artifact_link_validator_rejects_non_artifact_link_targets(
     assert result.valid is False
     assert result.invalid_targets == (
         "https://example.test/report.html",
-        "readonly/chart.png",
+        "data_source/chart.png",
         "C:\\data\\chart.png",
         "\\\\server\\share\\chart.png",
         "artifacts\\..\\secret.png",

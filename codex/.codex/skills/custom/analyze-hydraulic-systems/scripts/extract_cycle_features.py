@@ -45,7 +45,7 @@ def compute_features(sensor: str, frame: pd.DataFrame) -> pd.DataFrame:
 def main() -> int:
     configure_standard_streams()
     parser = argparse.ArgumentParser(description="油圧システムデータをサイクル単位特徴量CSVへ変換します。")
-    parser.add_argument("dataset_dir", help="readonly/hydraulic_systems_dataset/dataset")
+    parser.add_argument("dataset_dir", help="data_source/hydraulic_systems_dataset/dataset")
     parser.add_argument("--sensors", nargs="+", default=list(SENSOR_COLUMNS), help="対象センサー名。省略時は全センサー")
     parser.add_argument("--output", default="tmp/hydraulic_cycle_features.csv", help="特徴量CSVの保存先")
     args = parser.parse_args()

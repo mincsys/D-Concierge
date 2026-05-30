@@ -27,7 +27,7 @@ def format_bytes(size: int) -> str:
 def main() -> int:
     configure_standard_streams()
     parser = argparse.ArgumentParser(description="油圧システムデータセットの概要をMarkdownで出力します。")
-    parser.add_argument("dataset_dir", help="readonly/hydraulic_systems_dataset/dataset")
+    parser.add_argument("dataset_dir", help="data_source/hydraulic_systems_dataset/dataset")
     args = parser.parse_args()
 
     try:

@@ -17,7 +17,7 @@ mkdir -p \
   "$codex_docker_dir/.codex" \
   "$codex_docker_dir/work/tmp" \
   "$codex_docker_dir/work/artifacts" \
-  "$codex_docker_dir/datasource"
+  "$codex_docker_dir/data_source"
 
 CODEX_API_KEY="${CODEX_API_KEY-}" exec "$backend_script" \
   --container-name "$container_name" \
@@ -26,7 +26,7 @@ CODEX_API_KEY="${CODEX_API_KEY-}" exec "$backend_script" \
   --codex-home-dir "/home/codex/.codex" \
   --host-codex-home "$codex_docker_dir/.codex" \
   --host-workdir "$codex_docker_dir/work" \
-  --host-datasource "$codex_docker_dir/datasource" \
+  --host-data-source "$codex_docker_dir/data_source" \
   --host-schema-dir "$repo_root/codex/output_json_schema" \
   --schema-file "pdf-reference-schema.json" \
   --prompt "$prompt"

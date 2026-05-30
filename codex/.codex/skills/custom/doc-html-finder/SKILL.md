@@ -1,18 +1,18 @@
 ---
 name: doc-html-finder
-description: Locate target passages in documents that have been converted to structured HTML, using readonly/IPA_books/raw/meta JSON summaries and tables of contents plus readonly/IPA_books/raw/*/index.html page sections. Use when Codex needs to answer Japanese questions such as finding which document and PDF page contains a requested concept, requirement, rule, lesson, or passage, and return document names, page numbers, reference excerpts, and reasons.
+description: Locate target passages in documents that have been converted to structured HTML, using data_source/IPA_books/raw/meta JSON summaries and tables of contents plus data_source/IPA_books/raw/*/index.html page sections. Use when Codex needs to answer Japanese questions such as finding which document and PDF page contains a requested concept, requirement, rule, lesson, or passage, and return document names, page numbers, reference excerpts, and reasons.
 ---
 
 # Doc HTML Finder
 
 ## 概要
 
-`readonly/IPA_books/raw/meta/*.json` の概要・目次と `readonly/IPA_books/raw/*/index.html` のページ別 HTML から、ユーザが探している文章が記載された文書と PDF ページ番号を特定する。
+`data_source/IPA_books/raw/meta/*.json` の概要・目次と `data_source/IPA_books/raw/*/index.html` のページ別 HTML から、ユーザが探している文章が記載された文書と PDF ページ番号を特定する。
 
 想定データ構造:
 
-- `readonly/IPA_books/raw/meta/<文書名>.json`: `summary`、`table_of_contents` を持つメタデータ。文書タイトルは JSON 内の `title` ではなくファイル名から `.json` を除いた `<文書名>` として扱う。
-- `readonly/IPA_books/raw/<文書名>/index.html`: `<section class="page" id="page-N">` で PDF ページごとに区切られた HTML。
+- `data_source/IPA_books/raw/meta/<文書名>.json`: `summary`、`table_of_contents` を持つメタデータ。文書タイトルは JSON 内の `title` ではなくファイル名から `.json` を除いた `<文書名>` として扱う。
+- `data_source/IPA_books/raw/<文書名>/index.html`: `<section class="page" id="page-N">` で PDF ページごとに区切られた HTML。
 - meta と HTML は `<文書名>` のベース名一致で対応させる。
 
 ## 基本ワークフロー
@@ -31,15 +31,15 @@ Python は必ず `uv run python` で実行する。
 ### meta JSON から概要・目次一覧を作る
 
 ```powershell
-uv run python "$CODEX_HOME/skills/custom/doc-html-finder/scripts/extract_meta_markdown.py" "readonly/IPA_books/raw/meta"
+uv run python "$CODEX_HOME/skills/custom/doc-html-finder/scripts/extract_meta_markdown.py" "data_source/IPA_books/raw/meta"
 ```
 
-入力には `readonly/IPA_books/raw/meta` ディレクトリか meta JSON ファイルを指定できる。出力は Markdown で、meta JSON のファイル名を文書タイトルとして使い、各文書の概要と目次を返す。ページ番号は meta JSON には含まれないため、このスクリプトでは出力しない。
+入力には `data_source/IPA_books/raw/meta` ディレクトリか meta JSON ファイルを指定できる。出力は Markdown で、meta JSON のファイル名を文書タイトルとして使い、各文書の概要と目次を返す。ページ番号は meta JSON には含まれないため、このスクリプトでは出力しない。
 
 ### 目次からページ候補を探す
 
 ```powershell
-uv run python "$CODEX_HOME/skills/custom/doc-html-finder/scripts/search_toc_pages.py" "readonly/IPA_books/raw/<文書名>/index.html" "安全要求"
+uv run python "$CODEX_HOME/skills/custom/doc-html-finder/scripts/search_toc_pages.py" "data_source/IPA_books/raw/<文書名>/index.html" "安全要求"
 ```
 
 入力には `index.html` か文書ディレクトリを指定できる。出力は JSON で、目次タイトル、PDF ページ番号、スコア、マッチした語を返す。
@@ -47,13 +47,13 @@ uv run python "$CODEX_HOME/skills/custom/doc-html-finder/scripts/search_toc_page
 複数語を明示する場合:
 
 ```powershell
-uv run python "$CODEX_HOME/skills/custom/doc-html-finder/scripts/search_toc_pages.py" "readonly/IPA_books/raw/<文書名>" "安全要求" --terms "合意" "セキュリティ"
+uv run python "$CODEX_HOME/skills/custom/doc-html-finder/scripts/search_toc_pages.py" "data_source/IPA_books/raw/<文書名>" "安全要求" --terms "合意" "セキュリティ"
 ```
 
 ### ページ section を抽出する
 
 ```powershell
-uv run python "$CODEX_HOME/skills/custom/doc-html-finder/scripts/extract_html_pages.py" "readonly/IPA_books/raw/<文書名>/index.html" 34,35,36
+uv run python "$CODEX_HOME/skills/custom/doc-html-finder/scripts/extract_html_pages.py" "data_source/IPA_books/raw/<文書名>/index.html" 34,35,36
 ```
 
 入力には `index.html` か文書ディレクトリを指定できる。指定ページに対応する `<section class="page" id="page-N">...</section>` をページ順に結合して返す。
@@ -61,7 +61,7 @@ uv run python "$CODEX_HOME/skills/custom/doc-html-finder/scripts/extract_html_pa
 前後ページも確認する場合:
 
 ```powershell
-uv run python "$CODEX_HOME/skills/custom/doc-html-finder/scripts/extract_html_pages.py" "readonly/IPA_books/raw/<文書名>/index.html" 34 --context 1
+uv run python "$CODEX_HOME/skills/custom/doc-html-finder/scripts/extract_html_pages.py" "data_source/IPA_books/raw/<文書名>/index.html" 34 --context 1
 ```
 
 ## 判断ルール

@@ -134,7 +134,7 @@ class CodexRunRequest:
     prompt: str
     codex_home: Path
     workdir: Path
-    datasource_dir: Path
+    data_source_dir: Path
     output_schema: Path
     docker_config: CodexDockerConfig
     artifact_mount_dir: Path | None
@@ -504,8 +504,8 @@ def _build_command(
         str(request.codex_home),
         "--host-workdir",
         str(request.workdir),
-        "--host-datasource",
-        str(request.datasource_dir),
+        "--host-data-source",
+        str(request.data_source_dir),
         "--host-schema-dir",
         str(request.output_schema.parent),
         "--schema-file",

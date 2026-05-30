@@ -8,14 +8,14 @@ from backend.domain.references.pdf_reference import (
 from backend.domain.references.source_type import SourceType
 
 
-def test_pdf_locator_keeps_datasource_relative_pdf_path_and_pages() -> None:
+def test_pdf_locator_keeps_data_source_relative_pdf_path_and_pages() -> None:
     """観点：PDF locator。確認：共有データソース相対pathとページ範囲を保持する。"""
     locator = PdfLocator(relative_path="raw/pdf/manual.pdf", page_start=1, page_end=3)
 
     assert locator.relative_path == "raw/pdf/manual.pdf"
     assert locator.page_start == 1
     assert locator.page_end == 3
-    assert locator.codex_visible_path() == "readonly/raw/pdf/manual.pdf"
+    assert locator.codex_visible_path() == "data_source/raw/pdf/manual.pdf"
 
 
 def test_pdf_locator_rejects_invalid_paths_and_page_ranges() -> None:

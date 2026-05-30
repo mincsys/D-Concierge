@@ -3,7 +3,7 @@ from pathlib import PurePosixPath
 
 from backend.domain.references.source_type import SourceType
 
-_CODEX_READONLY_DIR = "readonly"
+_CODEX_DATA_SOURCE_DIR = "data_source"
 
 
 class InvalidPdfReferenceError(ValueError):
@@ -33,8 +33,8 @@ class PdfLocator:
             raise InvalidPdfReferenceError("PDF参照元ページ範囲が不正です。")
 
     def codex_visible_path(self) -> str:
-        """Codex作業領域上のreadonly付きpathを返す。"""
-        return PurePosixPath(_CODEX_READONLY_DIR, self.relative_path).as_posix()
+        """Codex作業領域上のdata_source付きpathを返す。"""
+        return PurePosixPath(_CODEX_DATA_SOURCE_DIR, self.relative_path).as_posix()
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,5 +74,5 @@ class PdfReference:
         return self.locator.page_end
 
     def codex_visible_path(self) -> str:
-        """Codex作業領域上のreadonly付きpathを返す。"""
+        """Codex作業領域上のdata_source付きpathを返す。"""
         return self.locator.codex_visible_path()

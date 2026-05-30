@@ -125,8 +125,8 @@ def test_file_artifact_store_opens_saved_file(tmp_path: Path) -> None:
     [
         "../chart.png",
         "/tmp/chart.png",
-        "readonly/chart.png",
-        "artifacts/../readonly/chart.png",
+        "data_source/chart.png",
+        "artifacts/../data_source/chart.png",
         "artifacts/chart.txt",
     ],
 )

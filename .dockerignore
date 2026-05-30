@@ -17,7 +17,7 @@ src/frontend/node_modules
 src/frontend/tsconfig.tsbuildinfo
 codex/.codex
 codex/.codex_validator
-codex/readonly
+codex/data_source
 codex/saved_artifacts
 codex/sessions
 codex/sessions_validator

@@ -13,7 +13,7 @@ IPA Booksを根拠にした回答候補をレビューする。
 入力は次のJSON形式で渡される。
 
 ```json
-{"instruction":"...","answers":[{"text":"...","references":[{"label":"...","path":"readonly/...pdf","page_start":1,"page_end":1}]}]}
+{"instruction":"...","answers":[{"text":"...","references":[{"label":"...","path":"data_source/...pdf","page_start":1,"page_end":1}]}]}
 ```
 
 ## 検証手順
@@ -23,7 +23,7 @@ IPA Booksを根拠にした回答候補をレビューする。
 3. 各 `answers[].references[]` について、同梱スクリプトで参照元PDFページに対応するHTML断片を取得する。
 
 ```bash
-uv run python "$CODEX_HOME/skills/custom/search-ipa-books-reviewer/scripts/extract_reference_html_pages.py" --pdf-path 'readonly/IPA_books/raw/pdf/<文書名>.pdf' --start-page 21 --end-page 22
+uv run python "$CODEX_HOME/skills/custom/search-ipa-books-reviewer/scripts/extract_reference_html_pages.py" --pdf-path 'data_source/IPA_books/raw/pdf/<文書名>.pdf' --start-page 21 --end-page 22
 ```
 
 4. 取得したHTML断片だけを根拠として、回答本文の主張が参照元ページに支えられているか全件チェックする。
@@ -65,7 +65,7 @@ uv run python "$CODEX_HOME/skills/custom/search-ipa-books-reviewer/scripts/extra
 
 `scripts/extract_reference_html_pages.py` は、参照元PDFパスとページ範囲から対応するHTMLページ断片を取得する。
 
-- `readonly/IPA_books/raw/pdf/<文書名>.pdf` は `readonly/IPA_books/html/<文書名>/index.html` に対応する。
-- `readonly/<文書名>.pdf` は、対応するHTMLが存在する場合に `readonly/IPA_books/html/<文書名>/index.html` に対応する。
+- `data_source/IPA_books/raw/pdf/<文書名>.pdf` は `data_source/IPA_books/html/<文書名>/index.html` に対応する。
+- `data_source/<文書名>.pdf` は、対応するHTMLが存在する場合に `data_source/IPA_books/html/<文書名>/index.html` に対応する。
 - スクリプトは、絶対パス、親ディレクトリ参照、PDF以外のパス、不正なページ範囲、存在しないHTML、存在しないページを拒否する。
 - 標準出力だけを検証対象ページの本文として扱う。

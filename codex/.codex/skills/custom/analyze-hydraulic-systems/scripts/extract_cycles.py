@@ -62,7 +62,7 @@ def write_csv(dataset_dir: Path, cycles: list[int], sensors: list[str], output: 
 def main() -> int:
     configure_standard_streams()
     parser = argparse.ArgumentParser(description="指定サイクルとセンサーの時系列を抽出します。")
-    parser.add_argument("dataset_dir", help="readonly/hydraulic_systems_dataset/dataset")
+    parser.add_argument("dataset_dir", help="data_source/hydraulic_systems_dataset/dataset")
     parser.add_argument("--cycles", required=True, help="1始まりのサイクル番号。例: 1,100,200 または 1-10")
     parser.add_argument("--sensors", nargs="+", required=True, help="抽出するセンサー名。例: PS1 FS1 TS1")
     parser.add_argument("--output", help="全量CSVの保存先。例: tmp/cycles.csv")

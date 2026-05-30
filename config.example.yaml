@@ -10,9 +10,9 @@ ui:
     - "資料の要点を整理してください。"
     - "根拠となる参照元を示して説明してください。"
 
-datasource:
+data_source:
   # Codexが参照する共有データソースのベースディレクトリ。
-  dir: "codex/readonly"
+  dir: "codex/data_source"
 
 generator:
   # 生成回答が検証で不採用になった場合に生成を再試行する最大回数。

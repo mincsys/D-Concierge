@@ -604,10 +604,10 @@ def test_deleting_chat_rejects_followup_sse_reference_and_artifact(
     assert artifact_response.json()["message"] == expected
 
 
-def test_reference_endpoint_serves_saved_pdf_inside_datasource(tmp_path: Path) -> None:
+def test_reference_endpoint_serves_saved_pdf_inside_data_source(tmp_path: Path) -> None:
     """観点：IF-SB-09。確認：保存済みPDF参照元をapplication/pdfで配信する。"""
     client, repository = _make_client_with_repository(tmp_path)
-    pdf_path = tmp_path / "readonly" / "manual.pdf"
+    pdf_path = tmp_path / "data_source" / "manual.pdf"
     pdf_path.parent.mkdir()
     pdf_path.write_bytes(b"%PDF-1.4\n")
     reference_id = repository.save_completed_answer_for_test(
@@ -707,7 +707,7 @@ def test_api_sse_reference_and_artifact_boundaries_do_not_write_success_trace_lo
     確認：REST、SSE、参照元PDF配信、Codex成果物配信の正常系ではトレースログを保存しない。
     """
     client, repository = _make_client_with_repository(tmp_path)
-    pdf_path = tmp_path / "readonly" / "manual.pdf"
+    pdf_path = tmp_path / "data_source" / "manual.pdf"
     pdf_path.parent.mkdir()
     pdf_path.write_bytes(b"%PDF-1.4\n")
     artifact_path = (
@@ -929,9 +929,9 @@ def test_default_runtime_executes_start_chat_through_codex_adapters(
 
     確認：create_app既定のdispatcher/adapterで生成、検証、回答保存まで到達する。
     """
-    datasource_dir = tmp_path / "readonly"
-    datasource_dir.mkdir()
-    _write_pdf(datasource_dir / "manual.pdf", page_count=2)
+    data_source_dir = tmp_path / "data_source"
+    data_source_dir.mkdir()
+    _write_pdf(data_source_dir / "manual.pdf", page_count=2)
     codex_runner = RecordingApplicationCodexRunner(
         generation_result=InfrastructureCodexRunResult(
             events=(
@@ -950,7 +950,7 @@ def test_default_runtime_executes_start_chat_through_codex_adapters(
                     event_type="item.completed",
                     text=(
                         '{"payload":{"kind":"final","answers":[{"text":"回答です。","references":[{'
-                        '"source_type":"pdf","locator":{"path":"readonly/manual.pdf",'
+                        '"source_type":"pdf","locator":{"path":"data_source/manual.pdf",'
                         '"start_page":1,"end_page":2}}]}]}}'
                     ),
                 ),
@@ -960,7 +960,7 @@ def test_default_runtime_executes_start_chat_through_codex_adapters(
             ),
             final_message=(
                 '{"payload":{"kind":"final","answers":[{"text":"回答です。","references":[{'
-                '"source_type":"pdf","locator":{"path":"readonly/manual.pdf",'
+                '"source_type":"pdf","locator":{"path":"data_source/manual.pdf",'
                 '"start_page":1,"end_page":2}}]}]}}'
             ),
             codex_conversation_id="generation-thread",
@@ -1029,16 +1029,16 @@ def test_default_runtime_executes_start_chat_through_codex_adapters(
     assert saved_context.validation_conversation_id == "validation-thread"
     assert codex_runner.generation_requests[0].timeout_seconds == 300
     assert codex_runner.validation_requests[0].timeout_seconds == 300
-    assert codex_runner.generation_requests[0].datasource_dir == datasource_dir
-    assert codex_runner.validation_requests[0].datasource_dir == datasource_dir
-    assert not (codex_runner.generation_requests[0].workdir / "readonly").exists()
-    assert not (codex_runner.validation_requests[0].workdir / "readonly").exists()
+    assert codex_runner.generation_requests[0].data_source_dir == data_source_dir
+    assert codex_runner.validation_requests[0].data_source_dir == data_source_dir
+    assert not (codex_runner.generation_requests[0].workdir / "data_source").exists()
+    assert not (codex_runner.validation_requests[0].workdir / "data_source").exists()
     assert (codex_runner.generation_requests[0].workdir / "tmp").is_dir()
     assert (codex_runner.generation_requests[0].workdir / "artifacts").is_dir()
     assert (codex_runner.validation_requests[0].workdir / "tmp").is_dir()
     assert not (
         codex_runner.validation_requests[0].workdir
-        / "readonly"
+        / "data_source"
         / "answer-candidate.json"
     ).exists()
 
@@ -1213,7 +1213,7 @@ def _make_config(tmp_path: Path) -> AppConfig:
             welcome_message="ようこそ",
             input_suggestions=("要約してください",),
         ),
-        datasource_dir=tmp_path / "readonly",
+        data_source_dir=tmp_path / "data_source",
         generator=GeneratorConfig(
             max_retries=2,
             home=tmp_path / "codex/.codex",

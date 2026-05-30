@@ -186,7 +186,9 @@ def test_save_adopted_artifacts_ignores_non_artifact_links() -> None:
         artifact_store=store,
         artifact_id_factory=IdFactory(()),
     )
-    markdown = "[資料](readonly/manual.pdf)\nhttps://example.test/artifacts/chart.png"
+    markdown = (
+        "[資料](data_source/manual.pdf)\nhttps://example.test/artifacts/chart.png"
+    )
 
     result = usecase.save_for_answer_blocks(
         markdowns=(markdown,),
