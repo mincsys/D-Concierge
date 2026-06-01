@@ -660,6 +660,7 @@ export function ChatPage({
             {mode === "start" ? (
               <ChatStartScreen
                 inputSuggestions={appConfig.input_suggestions ?? []}
+                subWelcomeMessage={appConfig.sub_welcome_message}
                 welcomeMessage={appConfig.welcome_message}
                 onStart={startSubmittedChat}
               />

@@ -101,6 +101,7 @@ _SESSION_COOKIE_MAX_AGE_SECONDS = 400 * 24 * 60 * 60
 def create_api_router(
     *,
     welcome_message: str | None,
+    sub_welcome_message: str | None,
     input_suggestions: tuple[str, ...],
     start_chat_usecase: StartChatUseCase,
     append_chat_run_usecase: AppendChatRunUseCase,
@@ -130,6 +131,7 @@ def create_api_router(
         _authenticated_user(request, authenticate_session_usecase)
         return AppConfigResponseSchema(
             welcome_message=welcome_message,
+            sub_welcome_message=sub_welcome_message,
             input_suggestions=list(input_suggestions),
         )
 

@@ -16,6 +16,7 @@ export type ChatRunState =
 
 export type AppConfigResponse = {
   welcome_message?: string;
+  sub_welcome_message?: string;
   input_suggestions?: string[];
 };
 

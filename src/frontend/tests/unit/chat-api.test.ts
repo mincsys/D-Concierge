@@ -48,6 +48,7 @@ describe("chatApi", () => {
   it("観点：API応答変換。確認：設定、履歴、詳細、開始、継続、キャンセルを画面モデルへ変換する。", async () => {
     await expect(getAppConfig()).resolves.toEqual({
       welcome_message: "ようこそ",
+      sub_welcome_message: "補足案内",
       input_suggestions: ["要約"],
     });
 
@@ -420,7 +421,11 @@ describe("chatApi", () => {
 
 function responseByUrl(url: string, init?: RequestInit): JsonResponse | Response {
   if (url === "/api/app-config") {
-    return { input_suggestions: ["要約"], welcome_message: "ようこそ" };
+    return {
+      input_suggestions: ["要約"],
+      sub_welcome_message: "補足案内",
+      welcome_message: "ようこそ",
+    };
   }
   if (url === "/api/chat-histories") {
     return [

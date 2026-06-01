@@ -148,6 +148,7 @@ describe("frontend components", () => {
       <Providers>
         <ChatStartScreen
           inputSuggestions={["資料を要約", "差分を整理"]}
+          subWelcomeMessage="補足案内"
           welcomeMessage="ようこそ"
           onStart={onStart}
         />
@@ -155,6 +156,7 @@ describe("frontend components", () => {
     );
 
     expect(screen.getByRole("heading", { name: "ようこそ" })).toBeInTheDocument();
+    expect(screen.getByText("補足案内")).toHaveClass("text-[var(--dc-text)]");
     await user.click(screen.getByRole("button", { name: "差分を整理" }));
     expect(screen.getByPlaceholderText("指示を入力してください")).toHaveValue("差分を整理");
     await user.click(screen.getByLabelText("送信"));
@@ -167,6 +169,7 @@ describe("frontend components", () => {
       <Providers>
         <ChatStartScreen
           inputSuggestions={["候補1行目\n候補2行目"]}
+          subWelcomeMessage={"補足1行目\n補足2行目"}
           welcomeMessage={"1行目\n2行目"}
           onStart={vi.fn()}
         />
@@ -174,9 +177,11 @@ describe("frontend components", () => {
     );
 
     const heading = screen.getByRole("heading", { name: /1行目\s+2行目/ });
+    const subWelcome = screen.getByText(/補足1行目\s+補足2行目/);
     const suggestion = screen.getByRole("button", { name: /候補1行目\s+候補2行目/ });
 
     expect(heading).toHaveClass("whitespace-pre-line");
+    expect(subWelcome).toHaveClass("whitespace-pre-line");
     expect(suggestion).toHaveClass("whitespace-pre-line", "min-h-[54px]");
     await user.click(suggestion);
     expect(screen.getByPlaceholderText("指示を入力してください")).toHaveValue(

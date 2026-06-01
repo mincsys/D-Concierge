@@ -83,6 +83,7 @@ def test_app_config_exposes_only_public_ui_settings(tmp_path: Path) -> None:
     assert response.status_code == 200
     payload = TypeAdapter(AppConfigResponseSchema).validate_json(response.text)
     assert payload.welcome_message == "ようこそ"
+    assert payload.sub_welcome_message == "補足案内"
     assert payload.input_suggestions == ["要約してください"]
     assert "database" not in response.text
     assert "codex" not in response.text
@@ -1211,6 +1212,7 @@ def _make_config(tmp_path: Path) -> AppConfig:
         app=AppRuntimeConfig(timezone=ZoneInfo("Asia/Tokyo")),
         ui=UiConfig(
             welcome_message="ようこそ",
+            sub_welcome_message="補足案内",
             input_suggestions=("要約してください",),
         ),
         data_source_dir=tmp_path / "data_source",

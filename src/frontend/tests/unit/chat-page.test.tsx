@@ -119,15 +119,18 @@ vi.mock("@/components/layout/AppShell", () => ({
 vi.mock("@/features/chat/components/ChatStartScreen", () => ({
   ChatStartScreen: ({
     inputSuggestions,
+    subWelcomeMessage,
     welcomeMessage,
     onStart,
   }: {
     inputSuggestions: string[];
+    subWelcomeMessage?: string;
     welcomeMessage?: string;
     onStart: (message: string) => void;
   }) => (
     <section data-testid="start-screen">
       <div>{welcomeMessage ?? "default welcome"}</div>
+      <div>{subWelcomeMessage ?? "default sub welcome"}</div>
       <div>{inputSuggestions.join(",") || "候補なし"}</div>
       <button type="button" onClick={() => onStart("新規の依頼")}>
         新規依頼を送信
@@ -235,6 +238,7 @@ describe("ChatPage", () => {
     vi.clearAllMocks();
     testState.api.getAppConfig.mockResolvedValue({
       input_suggestions: ["候補A", "候補B"],
+      sub_welcome_message: "補足案内",
       welcome_message: "ようこそ",
     });
     testState.api.listChatHistories.mockResolvedValue([history("chat-history", "履歴")]);
@@ -281,6 +285,7 @@ describe("ChatPage", () => {
     expect(testState.api.listChatHistories).toHaveBeenCalledTimes(1);
     expect(testState.api.getActiveChatSession).toHaveBeenCalledTimes(1);
     expect(screen.getByText("ようこそ")).toBeInTheDocument();
+    expect(screen.getByText("補足案内")).toBeInTheDocument();
     expect(screen.getByText("候補A,候補B")).toBeInTheDocument();
     expect(screen.getByTestId("history-count")).toHaveTextContent("1");
     expect(screen.getByTestId("active-chat-id")).toHaveTextContent("none");
@@ -293,6 +298,7 @@ describe("ChatPage", () => {
 
     await waitFor(() => expect(screen.getByTestId("start-screen")).toBeInTheDocument());
     expect(screen.getByText("default welcome")).toBeInTheDocument();
+    expect(screen.getByText("default sub welcome")).toBeInTheDocument();
     expect(screen.getByText("候補なし")).toBeInTheDocument();
   });
 

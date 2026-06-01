@@ -15,6 +15,7 @@ class UiConfig:
     """画面へ公開するUI設定。"""
 
     welcome_message: str | None
+    sub_welcome_message: str | None
     input_suggestions: tuple[str, ...]
 
 

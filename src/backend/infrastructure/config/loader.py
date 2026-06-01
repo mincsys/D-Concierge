@@ -70,6 +70,7 @@ class ConfigLoader:
             app=AppRuntimeConfig(timezone=app_timezone),
             ui=UiConfig(
                 welcome_message=_optional_str(data, ("ui", "welcome_message")),
+                sub_welcome_message=_optional_str(data, ("ui", "sub_welcome_message")),
                 input_suggestions=tuple(
                     _optional_str_list(data, ("ui", "input_suggestions"))
                 ),

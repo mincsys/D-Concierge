@@ -339,6 +339,7 @@ def create_app(
         app,
         create_api_router(
             welcome_message=app_config.ui.welcome_message,
+            sub_welcome_message=app_config.ui.sub_welcome_message,
             input_suggestions=app_config.ui.input_suggestions,
             start_chat_usecase=start_chat_usecase,
             append_chat_run_usecase=append_chat_run_usecase,

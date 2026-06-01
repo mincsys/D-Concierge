@@ -9,10 +9,12 @@ const suggestionIcons = [FileText, ListChecks, Search, Split];
 export function ChatStartScreen({
   inputSuggestions,
   onStart,
+  subWelcomeMessage,
   welcomeMessage,
 }: {
   inputSuggestions: string[];
   onStart: (message: string) => void;
+  subWelcomeMessage?: string;
   welcomeMessage?: string;
 }) {
   const [message, setMessage] = useState("");
@@ -26,10 +28,19 @@ export function ChatStartScreen({
   return (
     <section className="grid min-h-screen min-w-0 place-items-center overflow-hidden px-12">
       <div className="w-full max-w-[1040px] translate-y-[-12px]">
-        {welcomeMessage ? (
-          <h1 className="mb-8 text-center text-[25px] leading-9 font-[780] tracking-normal whitespace-pre-line text-[var(--dc-primary-strong)]">
-            {welcomeMessage}
-          </h1>
+        {welcomeMessage || subWelcomeMessage ? (
+          <div className="mb-5 text-center">
+            {welcomeMessage ? (
+              <h1 className="text-[25px] leading-9 font-[780] tracking-normal whitespace-pre-line text-[var(--dc-primary-strong)]">
+                {welcomeMessage}
+              </h1>
+            ) : null}
+            {subWelcomeMessage ? (
+              <p className="mt-5 text-[20px] leading-8 font-normal tracking-normal whitespace-pre-line text-[var(--dc-text)]">
+                {subWelcomeMessage}
+              </p>
+            ) : null}
+          </div>
         ) : null}
         <ChatComposer
           autoFocus

@@ -6,6 +6,7 @@ class AppConfigResponseSchema(BaseModel):
     """アプリ設定取得APIの応答。"""
 
     welcome_message: str | None = None
+    sub_welcome_message: str | None = None
     input_suggestions: list[str] = Field(default_factory=list)
 
 

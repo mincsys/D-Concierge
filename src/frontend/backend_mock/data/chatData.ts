@@ -7,6 +7,11 @@ import type {
 
 export const stubAppConfig: AppConfigResponse = {
   welcome_message: "何なりとお申し付けください",
+  sub_welcome_message: [
+    "【情報処理推進処理機構(IPA)の書籍・刊行物】",
+    "【マルチセンサーに基づく油圧試験装置の実験データ】",
+    "【このシステム自身のソースコードやドキュメント】",
+  ].join("\n"),
   input_suggestions: [
     "IPA資料の要点を整理して",
     "要件定義の観点を整理して",

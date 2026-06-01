@@ -73,6 +73,7 @@ sequenceDiagram
 | --- | --- |
 | `AppConfig` | アプリ表示設定、DB、生成用Codex、検証用Codex、Codex Docker実行、ファイル、ログ、タイムアウトなどの型付き設定 |
 | `app.timezone` | 運用者向け日時に使用するIANA timezone名を検証済みタイムゾーンとして保持する |
+| `ui.sub_welcome_message` | 開始画面の補足案内文を任意文字列として保持する |
 | `generator.max_retries` | 検証不合格時に生成用Codexへ回答の再出力を依頼する追加試行回数 |
 | `validator.max_retries` | 検証用Codexの最終出力形式不正時に最終検証結果JSONの再出力を依頼する追加試行回数 |
 | `codex_docker.image` | Codex実行コンテナに使用するDockerイメージ名 |

@@ -13,6 +13,7 @@ app:
   timezone: "Asia/Tokyo"
 ui:
   welcome_message: "ようこそ"
+  sub_welcome_message: "補足案内"
   input_suggestions:
     - "要約してください"
 data_source:
@@ -52,6 +53,7 @@ def test_config_loader_returns_typed_public_ui_settings(tmp_path: Path) -> None:
     config = ConfigLoader.load(config_path, base_dir=tmp_path)
 
     assert config.ui.welcome_message == "ようこそ"
+    assert config.ui.sub_welcome_message == "補足案内"
     assert config.ui.input_suggestions == ("要約してください",)
     assert config.app.timezone == ZoneInfo("Asia/Tokyo")
     assert config.app.timezone.key == "Asia/Tokyo"
@@ -249,6 +251,12 @@ def test_config_loader_uses_absolute_paths_without_base_dir_join(
             "ui.welcome_message",
         ),
         (
+            VALID_CONFIG.replace(
+                'sub_welcome_message: "補足案内"', "sub_welcome_message: 1"
+            ),
+            "ui.sub_welcome_message",
+        ),
+        (
             VALID_CONFIG.replace('- "要約してください"', "    value: 1"),
             "ui.input_suggestions",
         ),
@@ -288,6 +296,7 @@ def test_config_loader_uses_empty_optional_ui_defaults(tmp_path: Path) -> None:
         VALID_CONFIG.replace(
             """ui:
   welcome_message: "ようこそ"
+  sub_welcome_message: "補足案内"
   input_suggestions:
     - "要約してください"
 """,
@@ -299,6 +308,7 @@ def test_config_loader_uses_empty_optional_ui_defaults(tmp_path: Path) -> None:
     config = ConfigLoader.load(config_path, base_dir=tmp_path)
 
     assert config.ui.welcome_message is None
+    assert config.ui.sub_welcome_message is None
     assert config.ui.input_suggestions == ()
 
 
@@ -309,9 +319,9 @@ def test_config_loader_accepts_null_optional_ui_values(tmp_path: Path) -> None:
     """
     config_path = tmp_path / "config.yaml"
     config_path.write_text(
-        VALID_CONFIG.replace(
-            'welcome_message: "ようこそ"', "welcome_message: null"
-        ).replace(
+        VALID_CONFIG.replace('welcome_message: "ようこそ"', "welcome_message: null")
+        .replace('sub_welcome_message: "補足案内"', "sub_welcome_message: null")
+        .replace(
             """input_suggestions:
     - "要約してください"
 """,
@@ -323,6 +333,7 @@ def test_config_loader_accepts_null_optional_ui_values(tmp_path: Path) -> None:
     config = ConfigLoader.load(config_path, base_dir=tmp_path)
 
     assert config.ui.welcome_message is None
+    assert config.ui.sub_welcome_message is None
     assert config.ui.input_suggestions == ()
 
 

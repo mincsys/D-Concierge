@@ -141,6 +141,7 @@ def _make_config(tmp_path: Path) -> AppConfig:
         app=AppRuntimeConfig(timezone=ZoneInfo("Asia/Tokyo")),
         ui=UiConfig(
             welcome_message="ようこそ",
+            sub_welcome_message="補足案内",
             input_suggestions=("要約してください",),
         ),
         data_source_dir=tmp_path / "data_source",

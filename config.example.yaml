@@ -5,6 +5,8 @@ app:
 ui:
   # 開始画面の入力欄上に表示する案内文。不要な場合は null を指定する。
   welcome_message: "D-Conciergeへようこそ。調査したい内容を入力してください。"
+  # 開始画面の案内文の下に補足表示する文言。不要な場合は null を指定する。
+  sub_welcome_message: null
   # 開始画面に表示する入力候補チップの文言リスト。不要な場合は空配列を指定する。
   input_suggestions:
     - "資料の要点を整理してください。"

@@ -108,6 +108,7 @@ describe("ChatPage integration", () => {
     );
 
     expect(await screen.findByRole("heading", { name: "ようこそ" })).toBeInTheDocument();
+    expect(screen.getByText("補足案内")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "候補B" }));
     await user.click(screen.getByLabelText("送信"));
 
@@ -507,7 +508,11 @@ function responseByUrl(url: string, init?: RequestInit): JsonResponse | Response
     if (appConfigShouldFail) {
       return new Response("error", { status: 500 });
     }
-    return { input_suggestions: ["候補A", "候補B"], welcome_message: "ようこそ" };
+    return {
+      input_suggestions: ["候補A", "候補B"],
+      sub_welcome_message: "補足案内",
+      welcome_message: "ようこそ",
+    };
   }
   if (url === "/api/chat-histories") {
     if (historyListShouldFail) {

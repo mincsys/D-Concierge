@@ -82,7 +82,7 @@ sequenceDiagram
 
 | 項目 | 内容 |
 | --- | --- |
-| `AppConfigResponse` | 歓迎メッセージと入力候補 |
+| `AppConfigResponse` | 歓迎メッセージ、補足案内文、入力候補 |
 | `ChatHistoryItem[]` | 履歴一覧の画面モデル |
 | `ChatSession` | チャット詳細の画面モデル |
 | `AcceptedChatRun` | 受付応答と受付後チャット詳細 |
