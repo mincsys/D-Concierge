@@ -2,7 +2,7 @@
 
 D-Concierge は、登録済みデータソースを参照しながら、ユーザ指示に対して調査・分析・回答を行うチャット型アプリケーションです。
 
-[デモ動画](https://github.com/mincsys/D-Concierge/issues/1#issue-4566917822)
+https://github.com/user-attachments/assets/83e6c73b-c8cb-4505-a170-00fb9897073e
 
 ## 主な機能
 
