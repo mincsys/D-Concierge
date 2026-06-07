@@ -1,6 +1,0 @@
-DB残件: {'chats': 0, 'chat_runs': 0, 'user_instructions': 0, 'intermediate_messages': 0, 'answer_blocks': 0, 'references': 0, 'artifacts': 0}
-生成用作業ディレクトリ存在: False codex/sessions/st-auto-api-1229/019e76f0-24f5-776b-bb00-4c7879810803
-検証用作業ディレクトリ存在: False codex/sessions_validator/st-auto-api-1229/019e76f0-24f5-776b-bb00-4c7879810803
-保存済み成果物ディレクトリ存在: False codex/saved_artifacts/st-auto-api-1229/019e76f0-24f5-776b-bb00-4c7879810803
-共有データソース存在: True
-トレースログルート存在: True logs/trace

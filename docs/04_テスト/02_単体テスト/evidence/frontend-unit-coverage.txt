@@ -1,7 +1,0 @@
-target=frontend
-executed_at=2026-05-21T16:47:22+09:00
-command=cd src/frontend && npm run test:unit -- --coverage --coverage.reporter=json-summary --coverage.reportsDirectory=coverage/unit
-branch_coverage=88.01%
-covered_branches=360
-total_branches=409
-result=fail
