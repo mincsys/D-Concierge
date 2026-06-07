@@ -1,0 +1,4 @@
+interface:
+  display_name: "Implement From Docs v2"
+  short_description: "docs準拠の機能別開発と機能別・正式総合テストを反復する"
+  default_prompt: "Use $implement-from-docs-v2 to decompose the target into feature tasks, delegate generation and verification to reusable subagents, create unit and integration tests before implementation, review each phase with evidence-backed review-artifacts checklists saved under .tmp, complete each feature through integration review and feature-level system tests in .tmp, then run the final official system tests against docs and apply quality gates."

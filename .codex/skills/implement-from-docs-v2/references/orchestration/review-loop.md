@@ -1,0 +1,72 @@
+# Review Loop
+
+各検証フェーズでは、検証役がゼロベースでレビューし、指摘があれば生成役が修正する。ループ上限は 3 回とする。
+
+管理役は修正ループ中も生成役・検証役の仕事を肩代わりしない。issue を読んで自分で修正せず、差分を読んで自分でレビュー判定しない。処理が遅い場合でも、生成役または検証役の完了報告を待ち、その報告を state に記録して次の依頼を組み立てるだけにする。管理役は技術判断ではなく、検証役の判定、生成役の報告、state、タスクリスト、issue/TBC 状態を照合して、手順上の完了条件を確認する。
+
+検証役はコマンドを実行しない。修正後の確認に必要な実行結果、ログ、coverage summary、証跡が不足している場合は、自分で補完せず `.issue/implement-from-docs/` に指摘を作成し、生成役への追加実行または証跡更新の依頼対象として報告する。
+
+## レビュータイミング
+
+### 機能別レビュー
+
+1. テストコード作成完了時
+   - `review-artifacts` の `test` checklist を `.tmp/implement-from-docs-v2/features/<機能ID>/review-checklists/01_test-code/round-<n>/` へコピーし、テスト漏れ、テスト方針書・設計書との対応、docstring、ディレクトリ構成、テスト品質、Red の扱いを確認する。
+2. 結合テスト完了時
+   - [quality-gates.md](../testing/quality-gates.md) と `review-artifacts` の `implementation`、`test`、`evidence` checklist を `.tmp/implement-from-docs-v2/features/<機能ID>/review-checklists/02_integration-and-implementation-quality/round-<n>/` へコピーし、カバレッジ基準、テスト品質、テスト方針書・設計書の観点網羅、実装コード品質を確認する。
+3. 機能別総合テスト完了時
+   - `review-artifacts` の `test`、`evidence` checklist を `.tmp/implement-from-docs-v2/features/<機能ID>/review-checklists/03_feature-system-test/round-<n>/` へコピーし、`.tmp` 側の総合テスト結果、証跡、保留理由、分類、`docs` 非変更、正式総合テストへの持ち越しを確認する。
+   - 検証役はコマンドを実行せず、依頼元が渡した `git status` / `git diff` 情報、生成役の報告、`.tmp` 側成果物、証跡を確認する。
+
+### 全体レビュー
+
+4. 全機能後の正式総合テスト完了時
+   - `review-artifacts` の `implementation`、`test`、`evidence` checklist を `.tmp/implement-from-docs-v2/system-test/review-checklists/system-final/round-<n>/` へコピーし、総合テスト合否、保留理由、未ステージ内容、最終整合、実装コード品質を確認する。
+   - 検証役はコマンドを実行せず、生成役の報告、実行ログ、証跡、差分を確認する。
+
+## ループ手順
+
+1. 検証役が `review-artifacts` の `SKILL.md` に記載された Workflow、対象フェーズの `review-artifacts` checklist、`review-artifacts/references/checklist-record-format.md` の記録形式を確認し、必要な checklist を作業用ディレクトリへコピーする。
+2. 検証役が作業用 checklist の未チェック項目をカテゴリ単位で処理し、各項目に `検証結果`、`確認根拠`、必要な `指摘`、`理由`、`不足根拠` を記録する。
+3. 指摘、実行結果不足、証跡不足、判断不能がある場合、`.issue/implement-from-docs/` に 1 指摘 1 ファイルで保存する。
+4. 検証役が完了報告に checklist 処理サマリとして、保存先、総項目数、処理済み項目数、未処理項目数、指摘あり件数、対象外件数、判断不能件数、根拠なし `- [x]` の有無を含める。
+5. 管理役が checklist 処理サマリ、検証結果、issue 状態を state に記録し、未処理項目または根拠なし `- [x]` がある場合は対象フェーズを完了扱いしない。
+6. 対象 issue がある場合、検証役の報告に `issue 解消判定一覧`、`削除可 issue`、`削除禁止 issue` があることを確認する。
+7. 管理役は `削除可 issue` に列挙された issue だけを削除し、`検証役判定に基づき削除した issue` として state に記録する。管理役は issue 本文を読んで独自に解消判断しない。
+8. 管理役が TBC 移動が必要な場合は、検証役が `TBC候補` と分類した issue だけを反映する。
+9. 管理役が v2 作業差分をステージングする。
+10. 管理役が対象 issue、ループ回数、完了条件を指定して生成役へ修正を依頼する。
+11. 生成役が指定 issue だけを修正し、issue 削除、TBC 移動、state 更新、タスクリスト更新は行わない。
+12. 検証役が再レビューする。再レビューでも既存 issue の解消確認だけで終わらせず、同一フェーズ全体をゼロベースで確認する。
+13. 再レビュー完了後も、管理役が state 更新、issue 管理、v2 作業差分のステージングを毎回行ってから、次の修正依頼または次フェーズへ進む。
+14. 最大 3 回まで繰り返す。
+
+機能別総合テストの修正ループでは、管理役は当該機能の `state.md` を更新する。正式総合テストへの持ち越しは、当該機能の `正式総合テストへの持ち越し` に記録する。
+
+正式総合テストの修正ループでは、管理役は `.tmp/implement-from-docs-v2/system-test/state.md` を更新する。機能別 `state.md` へ正式総合テスト結果を分散して書かない。
+
+## checklist 完了条件
+
+- 作業用 checklist に未処理の `- [ ]` が残っていない。
+- すべての `- [x]` に `検証結果` と `確認根拠` がある。
+- `検証結果: 指摘あり` の項目は issue パスと対応している。
+- `検証結果: 対象外` の項目は理由と対応している。
+- `検証結果: 判断不能` の項目は不足根拠があり、state と完了可否へ反映されている。
+- 根拠なし `- [x]` がある場合、管理役はレビュー完了扱いしない。
+
+## 打ち切り
+
+- 3 回で解消できない issue は重大度に関係なく `.issue/implement-from-docs/TBC/` へ移動する。
+- TBC 移動は管理上の隔離であり、合格、解消、完成ではない。TBC に残る issue は重大度に関係なく未解決として扱う。
+- High issue または通常 issue が TBC に残る場合も、当該フェーズの作業継続用チェックは付け、state とタスクリストに `TBC 残存、未解決` と記録する。
+- TBC が残る状態で管理役が独立作業を継続する場合も、TBC が残る対象を完了またはアプリ完成と表現しない。
+- 機能別総合テストで `不合格` または未分類の未実施が残る場合、管理役は機能結合完了にしない。
+- `部分確認`、`後続機能待ち`、`環境・承認待ち`、`対象外` は、検証役が妥当と判定し、正式総合テストへの持ち越しが state に記録されている場合だけ機能結合完了へ進める。
+- 正式総合テスト不合格、TBC 残、High issue 残、または通常 issue の TBC 残存のいずれかがある場合、管理役はアプリ完成と表現しない。
+
+## 解消
+
+- 検証役が `解消済み` と判定し、`削除可 issue` に列挙した issue だけを管理役が削除する。
+- `未解消`、`判断不能`、`TBC候補`、`仕様書側修正` に分類された issue は削除しない。
+- 仕様書側修正が必要な issue は、仕様書修正後も削除せず TBC へ移動する。
+- issue 削除と TBC 移動の実行は管理役が行う。管理役は issue 本文を読んで独自に解消判断しない。
