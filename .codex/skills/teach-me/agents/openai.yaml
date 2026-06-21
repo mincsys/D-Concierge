@@ -1,0 +1,4 @@
+interface:
+  display_name: "Teach-Me"
+  short_description: "このプロジェクトについて一問一答形式で学ぶ"
+  default_prompt: "$teach-me を使って、このコードベースを調査し、理解したい範囲を一問一答で確認してから、専門用語理解の診断と段階的な学習クイズを始めてください。"
