@@ -11,6 +11,7 @@
 - Repository抽象とDTOは `src/backend/application/ports/database/` に置く。
 - 実装はSQLAlchemyを用いるが、application層はSQLAlchemyモデルやSQLAlchemy Sessionを直接扱わない。
 - DBトランザクション境界は `TransactionManagerPort` で表し、Repositoryは現在のトランザクションSessionを使ってDB操作を行う。
+- `TransactionManagerPort` が提供する現在のDBセッションは実行文脈単位で分離し、共有Repositoryインスタンスを並行リクエストから利用してもトランザクション状態が相互干渉しない。
 - application層へ返す実行状態、チャット状態、参照元種別は通常Enumとして扱い、DBカラムでは物理データ設計どおり文字列として保存する。
 
 ## 3. IF概要
@@ -63,6 +64,7 @@ sequenceDiagram
 - 呼出元はtrace_idとユーザIDを保持している。
 - 更新系は対象ID、期待状態、更新後状態を明確にして呼び出す。
 - DBトランザクション境界はユースケース単位または短いDB操作単位で決める。
+- 同一実行文脈内では、既存トランザクション中に新しいトランザクションを開始しない。
 
 ### 5.2. 事後条件
 

@@ -10,6 +10,7 @@
 - 呼出主体: `AuthenticateSessionUseCase`、`RegisterAccountUseCase`、`LoginUseCase`、`LogoutUseCase`、`ChangeUserNameUseCase`、`ChangePasswordUseCase`、`DeleteAccountUseCase`、`ExecuteAccountDeletionUseCase`、起動時アカウント回復処理。
 - 呼出先: `AccountRepositoryPort`。具象実装は `SqlAlchemyAccountRepository` とする。
 - DBトランザクション境界はユースケースが `TransactionManagerPort` で所有する。
+- `TransactionManagerPort` が提供する現在のDBセッションは実行文脈単位で分離し、共有Repositoryインスタンスを並行リクエストから利用してもトランザクション状態が相互干渉しない。
 - パスワード生値とログインセッショントークン生値は本IFへ渡さない。
 
 ## 3. IF概要
@@ -55,6 +56,7 @@ sequenceDiagram
 - パスワードはハッシュ化済みである。
 - ログインセッショントークンは照合用ハッシュへ変換済みである。
 - DBセッションはTransactionManagerから提供される。
+- 同一実行文脈内では、既存トランザクション中に新しいトランザクションを開始しない。
 
 ### 5.2. 事後条件
 
