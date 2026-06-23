@@ -34,6 +34,11 @@ type MockUser = {
 
 let currentUser: MockUser | null = null;
 let chatHistoriesShouldReturnUnauthorized = false;
+let userNameChangeShouldFail = false;
+let passwordChangeShouldFail = false;
+let logoutShouldFail = false;
+let accountDeleteShouldFail = false;
+let accountOperationShouldReturnUnauthorized = false;
 
 const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
   const url = String(input);
@@ -77,6 +82,53 @@ const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit): Promise<
     return jsonResponse([]);
   }
 
+  if (url === "/api/account/name" && init?.method === "PATCH") {
+    if (accountOperationShouldReturnUnauthorized) {
+      currentUser = null;
+      return jsonResponse({ error: "unauthorized", message: "ログインしてください。" }, 401);
+    }
+    if (userNameChangeShouldFail) {
+      return jsonResponse(
+        { error: "system_error", message: "ユーザ名を変更できませんでした。" },
+        500,
+      );
+    }
+    currentUser = { userId: "demo-user", userName: "変更後ユーザ" };
+    return jsonResponse({ user: toUserResponse(currentUser) });
+  }
+
+  if (url === "/api/account/password" && init?.method === "PATCH") {
+    if (passwordChangeShouldFail) {
+      return jsonResponse(
+        { error: "system_error", message: "パスワードを変更できませんでした。" },
+        500,
+      );
+    }
+    return jsonResponse({}, 204);
+  }
+
+  if (url === "/api/auth/logout" && init?.method === "POST") {
+    if (logoutShouldFail) {
+      return jsonResponse(
+        { error: "system_error", message: "ログアウトできませんでした。" },
+        500,
+      );
+    }
+    currentUser = null;
+    return jsonResponse({}, 204);
+  }
+
+  if (url === "/api/account" && init?.method === "DELETE") {
+    if (accountDeleteShouldFail) {
+      return jsonResponse(
+        { error: "system_error", message: "アカウントを削除できませんでした。" },
+        500,
+      );
+    }
+    currentUser = null;
+    return jsonResponse({ account_state: "deleting" }, 202);
+  }
+
   if (url === "/api/chats/chat-demo") {
     return jsonResponse({
       chat_id: "chat-demo",
@@ -101,6 +153,11 @@ describe("account flow integration", () => {
     vi.stubGlobal("fetch", fetchMock);
     currentUser = { userId: "demo-user", userName: "デモユーザ" };
     chatHistoriesShouldReturnUnauthorized = false;
+    userNameChangeShouldFail = false;
+    passwordChangeShouldFail = false;
+    logoutShouldFail = false;
+    accountDeleteShouldFail = false;
+    accountOperationShouldReturnUnauthorized = false;
     window.history.pushState({}, "", "/");
     Object.defineProperty(window, "innerWidth", {
       configurable: true,
@@ -176,6 +233,64 @@ describe("account flow integration", () => {
 
     await waitFor(() => expect(window.location.pathname).toBe("/login"));
     expect(screen.getByRole("heading", { name: "ログイン" })).toBeInTheDocument();
+  });
+
+  it("観点：設定API失敗。確認：ユーザ名、パスワード、ログアウト、削除失敗を設定画面へ表示する。", async () => {
+    const testUser = userEvent.setup();
+    render(<App />);
+
+    await testUser.click(await screen.findByLabelText("設定"));
+
+    userNameChangeShouldFail = true;
+    await testUser.click(screen.getByRole("button", { name: /ユーザ名/ }));
+    await testUser.clear(screen.getByLabelText("新しいユーザ名"));
+    await testUser.type(screen.getByLabelText("新しいユーザ名"), "変更後ユーザ");
+    await testUser.click(screen.getByRole("button", { name: "変更する" }));
+    expect(await screen.findByText("ユーザ名を変更できませんでした。")).toBeInTheDocument();
+    expect(screen.getByText("デモユーザ")).toBeInTheDocument();
+    userNameChangeShouldFail = false;
+
+    await testUser.click(screen.getByRole("button", { name: "戻る" }));
+    passwordChangeShouldFail = true;
+    await testUser.click(screen.getByRole("button", { name: "パスワード変更" }));
+    await testUser.type(screen.getByLabelText("現在のパスワード"), "password");
+    await testUser.type(screen.getByLabelText("新しいパスワード"), "new-password");
+    await testUser.type(screen.getByLabelText("新しいパスワード確認"), "new-password");
+    await testUser.click(screen.getByRole("button", { name: "変更する" }));
+    expect(await screen.findByText("パスワードを変更できませんでした。")).toBeInTheDocument();
+    passwordChangeShouldFail = false;
+
+    await testUser.click(screen.getByRole("button", { name: "戻る" }));
+    logoutShouldFail = true;
+    await testUser.click(screen.getByRole("button", { name: "ログアウト" }));
+    await testUser.click(screen.getByRole("button", { name: "ログアウト" }));
+    expect(await screen.findByText("ログアウトできませんでした。")).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "ログアウトしますか？" })).toBeInTheDocument();
+    logoutShouldFail = false;
+
+    await testUser.click(screen.getByRole("button", { name: "キャンセル" }));
+    accountDeleteShouldFail = true;
+    await testUser.click(screen.getByRole("button", { name: "アカウント削除" }));
+    await testUser.click(screen.getByRole("button", { name: "削除する" }));
+    expect(await screen.findByText("アカウントを削除できませんでした。")).toBeInTheDocument();
+    expect(
+      screen.getByRole("dialog", { name: "アカウントを完全に削除しますか？" }),
+    ).toBeInTheDocument();
+  });
+
+  it("観点：設定操作中のセッション切れ。確認：設定操作が401になった場合はログイン画面へ遷移する。", async () => {
+    const testUser = userEvent.setup();
+    render(<App />);
+
+    await testUser.click(await screen.findByLabelText("設定"));
+    accountOperationShouldReturnUnauthorized = true;
+    await testUser.click(screen.getByRole("button", { name: /ユーザ名/ }));
+    await testUser.clear(screen.getByLabelText("新しいユーザ名"));
+    await testUser.type(screen.getByLabelText("新しいユーザ名"), "変更後ユーザ");
+    await testUser.click(screen.getByRole("button", { name: "変更する" }));
+
+    expect(await screen.findByRole("heading", { name: "ログイン" })).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/login");
   });
 });
 

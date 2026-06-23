@@ -1,0 +1,15 @@
+# command: src/backend/infrastructure/codex/run_codex_docker.sh --host-codex-home $HOME/.codex ...
+# started_at: 2026-06-24T02:20:21+09:00
+# container: d-concierge-round8-codex-smoke-1782235221-1983293
+# CODEX_API_KEY_set: no
+Reading additional input from stdin...
+2026-06-23T17:20:22.846650Z ERROR codex_rollout::list: state db returned stale rollout path for thread 019ea10e-3b3f-7dc3-9add-7d86f63aaae8: /home/minami/.codex/sessions/2026/06/07/rollout-2026-06-07T16-48-44-019ea10e-3b3f-7dc3-9add-7d86f63aaae8.jsonl
+2026-06-23T17:20:22.871166Z ERROR codex_rollout::list: state db returned stale rollout path for thread 019eea12-5b0b-7590-b8c3-4f5c95d0d343: /home/minami/.codex/sessions/2026/06/21/rollout-2026-06-21T21-05-32-019eea12-5b0b-7590-b8c3-4f5c95d0d343.jsonl
+2026-06-23T17:20:22.894292Z ERROR codex_rollout::list: state db returned stale rollout path for thread 019ecba4-af54-7e70-acd2-e1e1cb6574f3: /home/minami/.codex/sessions/2026/06/15/rollout-2026-06-15T23-17-08-019ecba4-af54-7e70-acd2-e1e1cb6574f3.jsonl
+2026-06-23T17:20:22.927384Z ERROR codex_rollout::list: state db returned stale rollout path for thread 019ee8a5-fc29-7720-9ae4-bc061d4e108e: /home/minami/.codex/sessions/2026/06/21/rollout-2026-06-21T14-27-32-019ee8a5-fc29-7720-9ae4-bc061d4e108e.jsonl
+2026-06-23T17:20:22.956759Z ERROR codex_rollout::list: state db returned stale rollout path for thread 019ee8c7-7645-77d0-bb20-2fc63fb5d2ff: /home/minami/.codex/sessions/2026/06/21/rollout-2026-06-21T15-04-06-019ee8c7-7645-77d0-bb20-2fc63fb5d2ff.jsonl
+2026-06-23T17:20:22.981394Z ERROR codex_rollout::list: state db returned stale rollout path for thread 019eec4a-effa-7432-ae26-2b235b353665: /home/minami/.codex/sessions/2026/06/22/rollout-2026-06-22T07-26-34-019eec4a-effa-7432-ae26-2b235b353665.jsonl
+2026-06-23T17:20:23.404436Z ERROR codex_memories_write::phase2::job: failed to claim job: error returned from database: (code: 1) no such table: jobs
+# finished_at: 2026-06-24T02:20:38+09:00
+# exit_code: 0
+# remaining_containers:

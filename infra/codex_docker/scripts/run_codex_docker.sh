@@ -24,7 +24,7 @@ CODEX_API_KEY="${CODEX_API_KEY-}" exec "$backend_script" \
   --image "codex-python-runner:latest" \
   --workspace-dir "/workspace" \
   --codex-home-dir "/home/codex/.codex" \
-  --host-codex-home "$codex_docker_dir/.codex" \
+  --host-codex-home "$repo_root/codex/.codex" \
   --host-workdir "$codex_docker_dir/work" \
   --host-data-source "$codex_docker_dir/data_source" \
   --host-schema-dir "$repo_root/codex/output_json_schema" \

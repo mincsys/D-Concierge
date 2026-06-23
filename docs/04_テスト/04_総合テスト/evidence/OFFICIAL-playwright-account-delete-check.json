@@ -1,0 +1,20 @@
+{
+  "timestamp": "2026-06-23T01:10:59.296Z",
+  "baseUrl": "http://127.0.0.1:5173",
+  "browser": "Chrome headless",
+  "userId": "official-1782176717871",
+  "records": [
+    {
+      "id": "ST-ACCOUNT-013",
+      "description": "アカウント削除受付成功",
+      "result": "passed",
+      "evidence": "docs/04_テスト/04_総合テスト/evidence/ST-ACCOUNT-013_account_delete_accepted.png"
+    },
+    {
+      "id": "ST-ACCOUNT-019",
+      "description": "物理削除後の同一ユーザID再登録",
+      "result": "passed",
+      "evidence": "docs/04_テスト/04_総合テスト/evidence/ST-ACCOUNT-019_reregister_after_delete.png"
+    }
+  ]
+}

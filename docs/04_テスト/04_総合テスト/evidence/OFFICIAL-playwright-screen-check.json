@@ -1,0 +1,62 @@
+{
+  "timestamp": "2026-06-23T01:05:17.871Z",
+  "baseUrl": "http://127.0.0.1:5173",
+  "browser": "Chrome headless",
+  "userId": "official-1782176717871",
+  "records": [
+    {
+      "id": "ST-AUTH-001",
+      "description": "ログイン画面表示",
+      "result": "passed",
+      "evidence": "docs/04_テスト/04_総合テスト/evidence/ST-AUTH-001_login.png"
+    },
+    {
+      "id": "ST-AUTH-002",
+      "description": "アカウント登録画面表示",
+      "result": "passed",
+      "evidence": "docs/04_テスト/04_総合テスト/evidence/ST-AUTH-002_register.png"
+    },
+    {
+      "id": "ST-AUTH-005",
+      "description": "アカウント登録入力不正",
+      "result": "passed",
+      "evidence": "docs/04_テスト/04_総合テスト/evidence/ST-AUTH-005_register_validation.png"
+    },
+    {
+      "id": "ST-AUTH-004",
+      "description": "アカウント登録成功",
+      "result": "passed",
+      "evidence": "docs/04_テスト/04_総合テスト/evidence/ST-AUTH-004_register_success.png"
+    },
+    {
+      "id": "ST-CHAT-001",
+      "description": "チャット初期表示",
+      "result": "passed",
+      "evidence": "docs/04_テスト/04_総合テスト/evidence/ST-CHAT-001_initial_display.png"
+    },
+    {
+      "id": "ST-CHAT-003",
+      "description": "入力候補",
+      "result": "passed",
+      "evidence": "docs/04_テスト/04_総合テスト/evidence/ST-CHAT-003_suggestion_edit.png"
+    },
+    {
+      "id": "ST-CHAT-004",
+      "description": "入力検証",
+      "result": "passed",
+      "evidence": "docs/04_テスト/04_総合テスト/evidence/ST-CHAT-004_blank_validation.png"
+    },
+    {
+      "id": "ST-AUTH-007",
+      "description": "ログイン成功",
+      "result": "passed",
+      "evidence": "docs/04_テスト/04_総合テスト/evidence/ST-AUTH-007_login_success.png"
+    },
+    {
+      "id": "ST-AUTH-011",
+      "description": "ログイン状態保持",
+      "result": "passed",
+      "evidence": "docs/04_テスト/04_総合テスト/evidence/ST-AUTH-011_reload_keeps_login.png"
+    }
+  ]
+}

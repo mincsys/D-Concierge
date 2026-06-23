@@ -1,0 +1,9 @@
+target=F001_backend_foundation
+executed_at=2026-06-21T17:06:30+09:00
+command=env UV_CACHE_DIR=/tmp/uv-cache uv run pytest src/backend/tests/integration/test_app_config_api.py src/backend/tests/integration/test_trace_error_boundary.py src/backend/tests/integration/test_rest_error_boundary.py src/backend/tests/integration/test_database_migrations.py -q
+result=pass
+tests=28
+duration=1.24s
+scope=app creation / config load, GET /api/app-config protected API, common REST error payload, x-trace-id header, trace log writing and retention, config load failure trace log, DB migration and schema constraints
+playwright=not_run
+playwright_reason=F001単独では認証画面、開始画面、チャット画面、履歴、削除などの業務画面が完結しないため、画面確認は正式総合テストへ持ち越し

@@ -4,6 +4,7 @@ import {
   changePassword,
   changeUserName,
   deleteAccount,
+  isUnauthorizedAccountError,
   logout,
 } from "@/features/account/api/accountApi";
 import type { AccountFieldErrors, AccountUser } from "@/features/account/model/types";
@@ -21,12 +22,14 @@ export function SettingsDialog({
   user,
   onLoggedOut,
   onOpenChange,
+  onUnauthorized,
   onUserChange,
 }: {
   open: boolean;
   user: AccountUser;
   onLoggedOut: () => void;
   onOpenChange: (open: boolean) => void;
+  onUnauthorized?: () => void;
   onUserChange: (nextUser: AccountUser) => void;
 }) {
   const [view, setView] = useState<SettingsView>("account");
@@ -78,6 +81,9 @@ export function SettingsDialog({
       onUserChange(nextUser);
       moveToAccountPanel();
     } catch (error) {
+      if (handleUnauthorizedError(error, onUnauthorized)) {
+        return;
+      }
       setFieldErrors(readAccountFieldErrors(error));
       setMessage(readAccountMessage(error));
     } finally {
@@ -97,6 +103,9 @@ export function SettingsDialog({
       });
       moveToAccountPanel();
     } catch (error) {
+      if (handleUnauthorizedError(error, onUnauthorized)) {
+        return;
+      }
       setFieldErrors(readAccountFieldErrors(error));
       setMessage(readAccountMessage(error));
     } finally {
@@ -118,6 +127,11 @@ export function SettingsDialog({
       setConfirmAction(null);
       onOpenChange(false);
       onLoggedOut();
+    } catch (error) {
+      if (handleUnauthorizedError(error, onUnauthorized)) {
+        return;
+      }
+      setMessage(readAccountMessage(error));
     } finally {
       setSubmitting(false);
     }
@@ -174,12 +188,21 @@ export function SettingsDialog({
       </SettingsShell>
       <ConfirmActionDialog
         action={confirmAction}
+        message={message}
         submitting={submitting}
         onCancel={() => setConfirmAction(null)}
         onConfirm={handleConfirm}
       />
     </>
   );
+}
+
+function handleUnauthorizedError(error: unknown, onUnauthorized: (() => void) | undefined): boolean {
+  if (!isUnauthorizedAccountError(error)) {
+    return false;
+  }
+  onUnauthorized?.();
+  return true;
 }
 
 function viewTitle(view: SettingsView): string {

@@ -1,0 +1,10 @@
+target=backend
+executed_at=2026-06-23T06:29:42+09:00
+command=env UV_CACHE_DIR=/tmp/uv-cache uv run pytest src/backend/tests/integration --cov=src/backend --cov-branch --cov-report=json:/tmp/backend-integration-coverage.json --cov-report= -q
+design_coverage=F001 foundation REST/config/DB/trace boundaries; F002 auth/account REST APIs, Cookie sessions, AccountRepository DB transitions, field_errors, account deletion dispatch trace log; F003 app config authenticated access, chat start, append run, histories, chat detail, unauthorized protected chat APIs, dispatcher failure, DB state transitions; F004 SSE current state/saved message/terminal answer, broker live event delivery, cancel accepted/running/runner-completed/error boundaries, startup run recovery by unfinished state, startup recovery trace log; F005 fake Codex generation/validation, fixed answer validation boundaries, real PDF reference missing-file regeneration boundary, adopted artifact persistence, answer/reference/artifact DB persistence, REST detail/SSE answer replay, validation failure without answer persistence, API dispatcher registration, CodexRunner JSONL contract; F006 reference PDF delivery, saved artifact delivery, ownership/deleting boundaries, traversal rejection, missing backing files, saved MIME delivery
+branch_coverage=81.62%
+covered_branches=475
+total_branches=582
+tests=137
+failures=0
+result=pass

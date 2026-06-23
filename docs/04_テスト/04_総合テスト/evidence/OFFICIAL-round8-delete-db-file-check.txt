@@ -1,0 +1,44 @@
+# 正式総合テスト round-8 チャット削除 DB/ファイル補助確認
+
+実施日: 2026-06-24
+実施者: Codex
+対象ケース: ST-DELETE-010, ST-DELETE-011, ST-DELETE-012
+画面起点 evidence: OFFICIAL-round8-playwright-history-cancel-delete-check.jsonl / ST-DELETE-010_delete_ui_round8.png
+
+## DB確認
+ chats 
+-------
+     0
+(1 row)
+
+ runs 
+------
+    0
+(1 row)
+
+ user_instructions 
+-------------------
+                 0
+(1 row)
+
+ answer_blocks 
+---------------
+             0
+(1 row)
+
+ refs 
+------
+    0
+(1 row)
+
+ artifacts 
+-----------
+         0
+(1 row)
+
+
+## ファイル確認
+generator_workdir absent: codex/sessions/r8u20260624/44444444-4444-4444-8444-444444444442
+validator_workdir absent: codex/sessions_validator/r8u20260624/44444444-4444-4444-8444-444444444442
+saved_artifact absent: codex/saved_artifacts/r8u20260624/44444444-4444-4444-8444-444444444442/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa4.svg
+saved_artifact_dir absent: codex/saved_artifacts/r8u20260624/44444444-4444-4444-8444-444444444442

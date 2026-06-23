@@ -1,0 +1,74 @@
+# 正式総合テスト round-9 Playwright/Chrome 追加確認
+
+実施日: 2026-06-24
+実施者: Codex
+対象: round-8後に保留だった41件のうち、Chrome Playwrightで画面起点の直接確認が可能なケース。
+
+## 実行環境
+
+- backend: `PYTHONPATH=src UV_CACHE_DIR=/tmp/uv-cache uv run python .tmp/implement-from-docs-v2/system-test/round9/round9_backend.py`
+- frontend: `npm run dev -- --host 127.0.0.1`
+- browser: Chrome channel via Playwright
+- Codex home: round-9一時設定で generator / validator とも `$HOME/.codex` を使用
+- 補助データ: round-9検証用ユーザ、保存済み回答、参照元、成果物、実行中runをPostgreSQLと保存成果物領域に投入
+
+## 最新集計
+
+- 合格: 76件
+- 部分確認: 0件
+- 保留: 25件
+
+## 追加合格ケース
+
+- チャット実行: `ST-CHAT-007`, `ST-CHAT-008`, `ST-CHAT-009`, `ST-CHAT-010`, `ST-CHAT-012`, `ST-CHAT-020`, `ST-CHAT-021`, `ST-CHAT-022`
+- キャンセル: `ST-CANCEL-004`, `ST-CANCEL-005`, `ST-CANCEL-007`
+- チャット削除: `ST-DELETE-014`
+- 履歴再表示: `ST-HISTORY-004`, `ST-HISTORY-012`, `ST-HISTORY-013`, `ST-HISTORY-014`
+
+## 実Codex UI試行
+
+- `ST-CHAT-005`: 認証済み `$HOME/.codex` を使うbackend/frontend経由でChrome Playwrightから新規チャットを送信したが、画面終端が `エラー発生` だったため保留継続。
+- `ST-CHAT-006`: 実Codex UI送信後の画面は撮影したが、同runが `エラー発生` で終端し、受付から完了までのSSE状態変化と中間メッセージを確認できなかったため保留継続。
+- `ST-CHAT-011`: 新規チャット正常完了に到達しなかったため、継続指示の合格確認は未実施。
+
+## 証跡
+
+- `OFFICIAL-round9-playwright-chat-cancel-delete-check.jsonl`: 追加合格16件のケースID、ブラウザ、実施日時、スクリーンショット、確認内容。
+- `OFFICIAL-round9-playwright-chat-cancel-delete-console.log`: Playwright実行時のコンソールログ。
+- `OFFICIAL-round9-codex-ui-chat-attempt.jsonl`: 実Codex UI試行の画面証跡と保留判断。
+- `OFFICIAL-round9-codex-ui-chat-attempt-console.log`: 実Codex UI試行時のコンソールログ。
+- `OFFICIAL-round9-codex-ui-db-check.txt`: 実Codex UI試行runのDB終端状態の補助確認。
+- `ST-CHAT-007_answer_rendering_round9.png`
+- `ST-CHAT-008_dangerous_html_sanitized_round9.png`
+- `ST-CHAT-009_reference_viewer_round9.png`
+- `ST-CHAT-010_artifact_display_round9.png`
+- `ST-CHAT-012_unfinished_run_conflict_round9.png`
+- `ST-CHAT-020_reference_fetch_failed_round9.png`
+- `ST-CHAT-021_invalid_reference_position_round9.png`
+- `ST-CHAT-022_artifact_fetch_failed_round9.png`
+- `ST-CANCEL-004_cancel_busy_round9.png`
+- `ST-CANCEL-005_cancel_repeated_round9.png`
+- `ST-CANCEL-007_cancel_failed_round9.png`
+- `ST-DELETE-014_delete_acceptance_failed_round9.png`
+- `ST-HISTORY-004_running_resume_round9.png`
+- `ST-HISTORY-012_artifact_fetch_failed_history_round9.png`
+- `ST-HISTORY-013_switch_from_running_history_round9.png`
+- `ST-HISTORY-014_return_to_running_history_round9.png`
+- `ST-CHAT-005_codex_ui_completion_round9.png`
+- `ST-CHAT-006_codex_ui_progress_round9.png`
+
+## 残保留
+
+- アカウント管理: `ST-ACCOUNT-014`, `ST-ACCOUNT-015`, `ST-ACCOUNT-017`, `ST-ACCOUNT-020`
+- チャット実行: `ST-CHAT-005`, `ST-CHAT-006`, `ST-CHAT-011`, `ST-CHAT-014`, `ST-CHAT-015`, `ST-CHAT-016`, `ST-CHAT-017`, `ST-CHAT-018`, `ST-CHAT-019`, `ST-CHAT-023`, `ST-CHAT-024`
+- キャンセル: `ST-CANCEL-002`, `ST-CANCEL-003`, `ST-CANCEL-008`
+- チャット削除: `ST-DELETE-004`, `ST-DELETE-005`, `ST-DELETE-006`, `ST-DELETE-007`, `ST-DELETE-013`, `ST-DELETE-015`
+- 履歴再表示: `ST-HISTORY-008`
+
+## 保留理由と再実施条件
+
+残る25件は、実Codex正常完了、完了までのSSE状態変化、継続指示、生成中/検証中キャンセル、キャンセル後遅延イベント、実行中チャット削除、別ブラウザ競合、トレースログ保持、削除中再送、生成/検証/タイムアウト/AIサービスプロバイダ側エラーなど、ケース固有の画面操作・表示・遷移を直接記録できていないため保留を維持する。
+
+再実施条件は、backend/frontendを実利用に近い状態で起動し、Chrome Playwrightで各ケースの操作、表示、遷移、SSE状態、ビューア表示、成果物表示、削除後状態を実行ログまたはスクリーンショットとして公式evidenceに保存すること。実Codexが必要なケースは、認証済みCodexホームまたは `CODEX_API_KEY` を使用し、画面起点の送信から正常終端または対象異常終端までをケース単位で記録する。
+
+integration evidenceはAPI/DB/ファイル等の補助根拠であり、画面操作ケースの合格根拠として単独使用しない。

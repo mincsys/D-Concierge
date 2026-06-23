@@ -1,0 +1,42 @@
+# 正式総合テスト 画面確認サマリ
+
+実施日: 2026-06-24
+実施者: Codex
+対象: Chrome Playwrightで直接確認できた画面証跡、および round-10 Playwright / Codex UI 追加確認後の最新再分類。
+
+## 実行結果
+
+- 合格: 94件
+- 部分確認: 0件
+- 保留: 7件
+
+## Playwright/Chrome 証跡
+
+- OFFICIAL-playwright-screen-check.txt: 認証、登録、チャット初期表示、候補、空入力検証の実行ログ。
+- OFFICIAL-playwright-account-screen-check.txt: 設定、ユーザ名変更、ログアウト確認、アカウント削除確認キャンセルの実行ログ。
+- OFFICIAL-playwright-password-screen-check.txt: パスワード変更画面表示の実行ログ。
+- OFFICIAL-playwright-password-validation-check.txt: パスワード変更入力不正の実行ログ。
+- OFFICIAL-playwright-account-delete-check.txt: アカウント削除受付と同一ユーザID再登録の実行ログ。
+- OFFICIAL-round4-playwright-login-smoke.yml: Chrome persistent profileで取得したログイン画面snapshot。
+- OFFICIAL-round4-playwright-login-smoke-console.log: 同snapshot取得時のconsole log。
+- OFFICIAL-round5-playwright-auth-account-check.jsonl: Chrome Playwrightで追加確認した15件のケースID、日時、ブラウザ、合否、スクリーンショットパス。
+- OFFICIAL-round5b-playwright-history-delete-check.jsonl: Chrome Playwrightで追加確認した11件のケースID、日時、ブラウザ、合否、スクリーンショットパス。
+- OFFICIAL-system-test-round5-playwright-additional.txt: round-5 / round-5b追加確認の集計、追加合格ケース、残保留理由、再実施条件。
+- OFFICIAL-round8-playwright-history-cancel-delete-check.jsonl: Chrome Playwrightで追加確認した12件のケースID、日時、ブラウザ、合否、スクリーンショットパス。
+- OFFICIAL-round8-delete-db-file-check.txt: チャット削除後のDBデータ、作業ディレクトリ、保存済み成果物実体削除の補助確認。
+- OFFICIAL-round8-codex-docker-smoke-user-home.jsonl: 認証済みCodexホームを使用したCodex Docker smoke正常完了JSONL。
+- OFFICIAL-system-test-round8-playwright-additional.txt: round-8追加確認後の集計、追加合格ケース、残保留理由、再実施条件。
+- OFFICIAL-round9-playwright-chat-cancel-delete-check.jsonl: Chrome Playwrightで追加確認した16件のケースID、日時、ブラウザ、合否、スクリーンショットパス。
+- OFFICIAL-round9-codex-ui-chat-attempt.jsonl: 認証済みCodexホームを使用してChrome Playwrightから実Codex UI新規チャットを試行した結果と保留判断。
+- OFFICIAL-round9-codex-ui-db-check.txt: round-9実Codex UI試行runのDB終端状態の補助確認。
+- OFFICIAL-system-test-round9-playwright-additional.txt: round-9追加確認後の集計、追加合格ケース、実Codex UI試行結果、残保留理由、再実施条件。
+- OFFICIAL-round10-playwright-chat-cancel-delete-check.jsonl: Chrome Playwrightで追加確認した18件のケースID、日時、ブラウザ、合否、スクリーンショットパス。
+- OFFICIAL-round10-codex-ui-chat-attempt.jsonl: 認証済みCodexホームを使用してChrome Playwrightから実Codex UI新規チャットを再試行した結果と保留判断。
+- OFFICIAL-round10-db-file-log-check.txt: round-10削除系と実Codex UI試行runのDB/ファイル/トレースログ補助確認。
+- OFFICIAL-system-test-round10-playwright-additional.txt: round-10追加確認後の最新集計、追加合格ケース、実Codex UI再試行結果、残保留理由、再実施条件。
+
+## 保留理由
+
+round-5で15件、round-5bで11件、round-8で13件、round-9で16件、round-10で18件を追加合格化し、合格は94件になった。round-10では実Codex UI新規チャットも認証済み `$HOME/.codex` で再試行したが、画面終端が `エラー発生` だったため `ST-CHAT-005` と `ST-CHAT-006` は保留を維持する。新規チャット正常完了に到達しなかったため、`ST-CHAT-011` と `ST-HISTORY-008` も保留を維持する。
+
+残る7件は、アカウント物理削除の成功/実行中削除/起動時再実行、実Codexの正常チャット完了、完了までのSSE状態変化、継続指示、継続指示後の履歴再表示をケース単位で直接記録できていないため保留を維持する。integration evidenceはAPI/DB/ファイル等の補助根拠であり、画面操作ケースの合格根拠として単独使用しない。詳細は OFFICIAL-system-test-round10-playwright-additional.txt を参照する。

@@ -1,0 +1,2 @@
+{"case_id":"ST-CHAT-006","title":"SSE状態・中間メッセージ","result":"observed","browser":"Chrome","executed_at":"2026-06-23T17:49:40.526Z","evidence":["ST-CHAT-006_codex_ui_progress_round9.png"],"note":"実Codex UI実行の送信後状態をChrome Playwrightで撮影。合格可否は完了時の状態・中間表示の有無に従う。"}
+{"case_id":"ST-CHAT-005","title":"新規チャット正常完了","result":"held","browser":"Chrome","executed_at":"2026-06-23T17:49:40.577Z","evidence":["ST-CHAT-005_codex_ui_completion_round9.png"],"note":"認証済み$HOME/.codexを使うbackend経由で新規チャットを試行したが、画面終端は エラー発生 だったため合格扱いにしない。","observed_text":"エラー発生"}

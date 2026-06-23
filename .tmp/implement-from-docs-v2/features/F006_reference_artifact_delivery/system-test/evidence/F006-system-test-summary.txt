@@ -1,0 +1,13 @@
+target=F006 参照元PDF・Codex成果物配信
+executed_at=2026-06-23T06:42:15+09:00
+executor=生成役
+command=env UV_CACHE_DIR=/tmp/uv-cache uv run pytest src/backend/tests/integration/test_reference_artifact_delivery_api.py -q
+result=pass
+tests=11
+failures=0
+evidence=F006-reference-artifact-delivery-api.txt
+checked_scope=FastAPI,認証Cookie,PostgreSQL,共有データソースPDF,保存済みCodex成果物,trace_log
+checked_cases=ST-CHAT-009,ST-CHAT-010,ST-CHAT-020,ST-CHAT-022,ST-HISTORY-006,ST-HISTORY-007,ST-HISTORY-011,ST-HISTORY-012,ST-DELETE-008,ST-DELETE-009
+boundary_results=参照元PDF 200 application/pdf,参照元traversal 403,別ユーザ参照元/成果物 404,削除中参照元/成果物 409,参照元/成果物欠損 404,成果物SVG 200 image/svg+xml,成果物HTML/CSV 200 保存済みMIME,成果物許可外MIME 403,成果物MIME拡張子不一致 403,未ログイン 401
+classification_summary=部分確認8,後続機能待ち2,対象外1
+formal_recheck=Chrome上の参照元ビューアPDF描画,回答Markdown内の成果物表示,参照元/成果物取得失敗時の画面メッセージ,履歴再表示画面からの参照元/成果物表示,チャット削除後のURL無効化

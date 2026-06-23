@@ -1,0 +1,75 @@
+# 正式総合テスト round-10 Playwright/Chrome 追加確認
+
+実施日: 2026-06-24
+実施者: Codex
+対象: round-9後に保留だった25件のうち、Chrome Playwrightで画面起点の直接確認が可能なケース、および認証済み `$HOME/.codex` を使う実Codex UI再試行。
+
+## 実行環境
+
+- frontend: Vite dev server `http://127.0.0.1:5173`
+- backend: `PYTHONPATH=src UV_CACHE_DIR=/tmp/uv-cache uv run python .tmp/implement-from-docs-v2/system-test/round10/round10_backend.py`
+- browser: Chrome Playwright
+- Codex home: round-10一時設定で generator / validator とも `$HOME/.codex` を使用
+- 補助データ: round-10検証用ユーザ、保存済み回答、成果物、実行中run、削除競合用run、トレースログをPostgreSQLと保存成果物領域に投入
+
+## 最新集計
+
+- 合格: 94件
+- 部分確認: 0件
+- 保留: 7件
+
+## round-10 追加合格ケース
+
+- チャット実行: `ST-CHAT-014`, `ST-CHAT-015`, `ST-CHAT-016`, `ST-CHAT-017`, `ST-CHAT-018`, `ST-CHAT-019`, `ST-CHAT-023`, `ST-CHAT-024`
+- キャンセル: `ST-CANCEL-002`, `ST-CANCEL-003`, `ST-CANCEL-008`
+- チャット削除: `ST-DELETE-004`, `ST-DELETE-005`, `ST-DELETE-006`, `ST-DELETE-007`, `ST-DELETE-013`, `ST-DELETE-015`
+- アカウント管理: `ST-ACCOUNT-020`
+
+## 実Codex UI再試行結果
+
+- `ST-CHAT-005`: 認証済み `$HOME/.codex` を使うbackend/frontend経由でChrome Playwrightから新規チャットを送信したが、画面終端が `エラー発生` だったため保留継続。
+- `ST-CHAT-006`: 実Codex UI送信後の画面は撮影したが、同runが `エラー発生` で終端し、受付から完了までのSSE状態変化と中間メッセージを確認できなかったため保留継続。
+- `ST-CHAT-011`: 新規チャット正常完了に到達しなかったため、継続指示の合格確認は未実施。
+- `ST-HISTORY-008`: 継続指示が正常完了に到達しなかったため、履歴からの継続指示後再表示は保留継続。
+
+## evidence
+
+- `OFFICIAL-round10-playwright-chat-cancel-delete-check.jsonl`: 追加合格18件のケースID、ブラウザ、実施日時、スクリーンショット、確認内容。
+- `OFFICIAL-round10-playwright-chat-cancel-delete-console.log`: Playwright実行時のコンソールログ。
+- `OFFICIAL-round10-codex-ui-chat-attempt.jsonl`: 実Codex UI再試行の画面証跡と保留判断。
+- `OFFICIAL-round10-codex-ui-chat-attempt-console.log`: 実Codex UI再試行時のコンソールログ。
+- `OFFICIAL-round10-db-file-log-check.txt`: 削除系と実Codex UI試行runのDB/ファイル/トレースログ補助確認。
+- `ST-CHAT-014_continue_acceptance_failed_round10.png`
+- `ST-CHAT-015_sse_connection_failed_round10.png`
+- `ST-CHAT-016_sse_interrupted_round10.png`
+- `ST-CHAT-017_generation_failed_round10.png`
+- `ST-CHAT-018_validation_limit_failed_round10.png`
+- `ST-CHAT-019_timeout_round10.png`
+- `ST-CHAT-023_validation_process_failed_round10.png`
+- `ST-CHAT-024_provider_error_round10.png`
+- `ST-CANCEL-002_running_cancel_round10.png`
+- `ST-CANCEL-003_validating_cancel_round10.png`
+- `ST-CANCEL-008_delayed_event_after_cancel_round10.png`
+- `ST-DELETE-004_running_chat_delete_round10.png`
+- `ST-DELETE-005_other_browser_continue_after_delete_round10.png`
+- `ST-DELETE-006_other_browser_detail_after_delete_round10.png`
+- `ST-DELETE-007_other_browser_sse_after_delete_round10.png`
+- `ST-DELETE-013_trace_log_retained_round10.png`
+- `ST-DELETE-015_deleting_delete_resend_round10.png`
+- `ST-ACCOUNT-020_user_isolation_round10.png`
+- `ST-CHAT-005_codex_ui_completion_round10.png`
+- `ST-CHAT-006_codex_ui_progress_round10.png`
+
+## 残保留
+
+- アカウント管理: `ST-ACCOUNT-014`, `ST-ACCOUNT-015`, `ST-ACCOUNT-017`
+- チャット実行: `ST-CHAT-005`, `ST-CHAT-006`, `ST-CHAT-011`
+- 履歴再表示: `ST-HISTORY-008`
+
+## 保留理由と再実施条件
+
+残る7件は、アカウント物理削除の成功/実行中削除/起動時再実行、実Codexの正常チャット完了、完了までのSSE状態変化、継続指示、継続指示後の履歴再表示をケース要件どおり直接記録できていないため保留を維持する。
+
+アカウント物理削除系は、設定ダイアログからの削除確定、削除中/再実行状態、DBデータ、生成用/検証用作業ディレクトリ、保存済み成果物実体の削除完了をChrome画面起点の操作と補助確認で一連の証跡にする必要がある。実Codex系は、認証済みCodexホームでbackend/frontend経由の画面送信が `作業完了` に到達し、検証済み回答、SSE状態変化、中間メッセージ、継続指示、履歴再表示を画面証跡として保存できる状態で再実施する。
+
+integration evidenceはAPI/DB/ファイル等の補助根拠であり、画面操作ケースの合格根拠として単独使用しない。

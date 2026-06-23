@@ -1,0 +1,17 @@
+from __future__ import annotations
+
+from sqlalchemy import create_engine
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, sessionmaker
+
+
+def create_database_engine(database_url: str) -> Engine:
+    """DB接続URLからSQLAlchemy Engineを作成する。"""
+
+    return create_engine(database_url, pool_pre_ping=True)
+
+
+def create_session_factory(engine: Engine) -> sessionmaker[Session]:
+    """DBセッションファクトリを作成する。"""
+
+    return sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)

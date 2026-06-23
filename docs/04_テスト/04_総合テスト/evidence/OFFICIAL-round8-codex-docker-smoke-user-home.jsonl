@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"019ef57f-527a-7a13-bf60-3aa946d05aaa"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"{\"payload\":{\"kind\":\"final\",\"answers\":[{\"text\":\"ST-CHAT-025 smoke ok\",\"references\":[]}]}}"}}
+{"type":"turn.completed","usage":{"input_tokens":38530,"cached_input_tokens":2432,"output_tokens":34,"reasoning_output_tokens":0}}

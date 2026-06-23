@@ -1,0 +1,73 @@
+# 正式総合テスト round-8 Playwright / Codex Docker 追加確認サマリ
+
+実施日: 2026-06-24
+実施者: Codex
+対象ブラウザ: Chrome
+起動構成: backend `127.0.0.1:8000`、frontend `127.0.0.1:5173`、既存PostgreSQLコンテナ
+実行方法: `@playwright/test` CLIを npx cache から起動し、spec側で `channel: chrome` を指定。Codex Docker smokeは公式 `run_codex_docker.sh` を使用。
+
+## 追加実施結果
+
+- Playwright/Chrome追加確認: 12件 passed
+- Codex Docker smoke追加確認: 1件 passed
+- round-9 追加確認後の最新集計: 合格 76件 / 部分確認 0件 / 保留 25件
+- integration evidenceのみで合格扱いにしたケース: 0件
+
+## 追加合格ケース
+
+- ST-HISTORY-002: 完了チャット再表示 (履歴再表示テスト.md)
+- ST-HISTORY-006: 履歴からの参照元表示 (履歴再表示テスト.md)
+- ST-HISTORY-007: 履歴からのCodex成果物表示 (履歴再表示テスト.md)
+- ST-HISTORY-011: 保存済み参照元欠損 (履歴再表示テスト.md)
+- ST-CANCEL-001: 受付直後キャンセル (キャンセルテスト.md)
+- ST-CANCEL-006: キャンセル不可 (キャンセルテスト.md)
+- ST-CANCEL-009: キャンセル履歴反映 (キャンセルテスト.md)
+- ST-DELETE-008: 削除後の参照元取得不可 (チャット削除テスト.md)
+- ST-DELETE-009: 削除後のCodex成果物取得不可 (チャット削除テスト.md)
+- ST-DELETE-010: DBデータ削除 (チャット削除テスト.md)
+- ST-DELETE-011: 作業ディレクトリ削除 (チャット削除テスト.md)
+- ST-DELETE-012: 保存済み成果物実体削除 (チャット削除テスト.md)
+- ST-CHAT-025: Codex Docker実行スモーク (チャット実行テスト.md)
+
+## ファイル別内訳
+
+- アカウント管理テスト.md: 合格 18件 / 部分確認 0件 / 保留 4件
+- キャンセルテスト.md: 合格 6件 / 部分確認 0件 / 保留 3件
+- チャット削除テスト.md: 合格 9件 / 部分確認 0件 / 保留 6件
+- チャット実行テスト.md: 合格 14件 / 部分確認 0件 / 保留 11件
+- 履歴再表示テスト.md: 合格 14件 / 部分確認 0件 / 保留 1件
+- 認証テスト.md: 合格 15件 / 部分確認 0件 / 保留 0件
+
+## 保存した証跡
+
+- OFFICIAL-round8-playwright-history-cancel-delete-check.jsonl
+- ST-HISTORY-002_completed_resume_round8.png
+- ST-HISTORY-006_reference_viewer_round8.png
+- ST-HISTORY-007_artifact_display_round8.png
+- ST-HISTORY-011_missing_reference_round8.png
+- ST-CANCEL-001_accepted_cancel_round8.png
+- ST-CANCEL-006_terminal_no_cancel_round8.png
+- ST-CANCEL-009_canceled_history_round8.png
+- ST-DELETE-008_reference_after_delete_round8.png
+- ST-DELETE-009_artifact_after_delete_round8.png
+- ST-DELETE-010_delete_ui_round8.png
+- OFFICIAL-round8-delete-db-file-check.txt
+- OFFICIAL-round8-codex-docker-smoke.jsonl
+- OFFICIAL-round8-codex-docker-smoke-console.log
+- OFFICIAL-round8-codex-docker-smoke-user-home.jsonl
+- OFFICIAL-round8-codex-docker-smoke-user-home-console.log
+
+## 残保留ケース
+
+- アカウント管理テスト.md: ST-ACCOUNT-014、ST-ACCOUNT-015、ST-ACCOUNT-017、ST-ACCOUNT-020
+- キャンセルテスト.md: ST-CANCEL-002、ST-CANCEL-003、ST-CANCEL-008
+- チャット削除テスト.md: ST-DELETE-004、ST-DELETE-005、ST-DELETE-006、ST-DELETE-007、ST-DELETE-013、ST-DELETE-015
+- チャット実行テスト.md: ST-CHAT-005、ST-CHAT-006、ST-CHAT-011、ST-CHAT-014、ST-CHAT-015、ST-CHAT-016、ST-CHAT-017、ST-CHAT-018、ST-CHAT-019、ST-CHAT-023、ST-CHAT-024
+- 履歴再表示テスト.md: ST-HISTORY-008
+- 認証テスト.md: なし
+
+## 残保留理由と再実施条件
+
+- 直接Playwright/Chrome証跡がないケースは保留を維持する。integration evidenceはAPI、DB、ファイル、契約境界の補助根拠であり、画面操作ケースの合格根拠として単独使用しない。
+- 実Codexの正常チャット完了、完了までのSSE状態変化、継続指示、生成中/検証中キャンセル、遅延イベント、別ブラウザ競合、実行中チャット削除、トレースログ保持、削除中再送、生成/検証/タイムアウト/AIサービスプロバイダ側エラーなどは、ケースごとに必要な検証用状態を作成し、Chrome Playwrightで画面操作、表示、遷移、SSE状態、ビューア表示、成果物表示を実行ログまたはスクリーンショットとして公式evidenceへ保存する必要がある。
+- ST-CHAT-025は、リポジトリ配下の `codex/.codex` では401の失敗ログを保存した。ユーザ明示の認証済み前提に従い `$HOME/.codex` をCodexホームとして再実行した結果、JSONL正常完了とコンテナ残存なしを確認した。

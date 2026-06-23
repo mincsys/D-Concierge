@@ -1,0 +1,99 @@
+# 正式総合テスト round-5 / round-5b Playwright追加確認サマリ
+
+実施日: 2026-06-24
+実施者: Codex
+対象ブラウザ: Chrome
+起動構成: backend `127.0.0.1:8000`、frontend `127.0.0.1:5173`、既存PostgreSQLテストコンテナ
+実行方法: `@playwright/test` CLIを npx cache から起動し、spec側で `channel: chrome` を指定。
+
+## 追加実施結果
+
+- Playwright/Chrome追加確認: 26件 passed
+- round-5 / round-5b 時点の集計: 合格 47件 / 部分確認 0件 / 保留 54件
+- round-9 追加確認後の最新集計: 合格 76件 / 部分確認 0件 / 保留 25件
+- integration evidenceのみで合格扱いにしたケース: 0件
+
+## 追加合格ケース
+
+- ST-ACCOUNT-004: ユーザ名入力不正 (アカウント管理テスト.md)
+- ST-ACCOUNT-005: ユーザ名変更失敗 (アカウント管理テスト.md)
+- ST-ACCOUNT-007: パスワード変更成功 (アカウント管理テスト.md)
+- ST-ACCOUNT-008: 現在のパスワード不一致 (アカウント管理テスト.md)
+- ST-ACCOUNT-010: パスワード変更失敗 (アカウント管理テスト.md)
+- ST-ACCOUNT-016: アカウント削除受付失敗 (アカウント管理テスト.md)
+- ST-ACCOUNT-021: 操作中のセッション切れ (アカウント管理テスト.md)
+- ST-AUTH-003: 未ログイン保護 (認証テスト.md)
+- ST-AUTH-006: 重複ユーザID (認証テスト.md)
+- ST-AUTH-010: ログイン中の認証画面直接表示 (認証テスト.md)
+- ST-AUTH-014: ログアウト失敗 (認証テスト.md)
+- ST-AUTH-015: 複数セッションのログアウト (認証テスト.md)
+- ST-CHAT-002: アプリ設定取得失敗 (チャット実行テスト.md)
+- ST-CHAT-013: 新規チャット受付失敗 (チャット実行テスト.md)
+- ST-HISTORY-009: 履歴一覧取得失敗 (履歴再表示テスト.md)
+- ST-AUTH-012: セッション期限切れ (認証テスト.md)
+- ST-ACCOUNT-018: 削除中ユーザのログイン不可 (アカウント管理テスト.md)
+- ST-ACCOUNT-022: 複数セッションのアカウント削除 (アカウント管理テスト.md)
+- ST-HISTORY-001: 履歴一覧表示 (履歴再表示テスト.md)
+- ST-HISTORY-003: 複数run表示順 (履歴再表示テスト.md)
+- ST-HISTORY-005: 終了状態の再表示 (履歴再表示テスト.md)
+- ST-HISTORY-010: 履歴詳細取得失敗 (履歴再表示テスト.md)
+- ST-HISTORY-015: サイドバー折りたたみ (履歴再表示テスト.md)
+- ST-DELETE-001: 表示中チャット削除 (チャット削除テスト.md)
+- ST-DELETE-002: 削除確認キャンセル (チャット削除テスト.md)
+- ST-DELETE-003: 履歴項目からの削除 (チャット削除テスト.md)
+
+## ファイル別内訳
+
+- アカウント管理テスト.md: 合格 18件 / 部分確認 0件 / 保留 4件
+- キャンセルテスト.md: 合格 6件 / 部分確認 0件 / 保留 3件
+- チャット削除テスト.md: 合格 9件 / 部分確認 0件 / 保留 6件
+- チャット実行テスト.md: 合格 14件 / 部分確認 0件 / 保留 11件
+- 履歴再表示テスト.md: 合格 14件 / 部分確認 0件 / 保留 1件
+- 認証テスト.md: 合格 15件 / 部分確認 0件 / 保留 0件
+
+## 保存した証跡
+
+- ST-AUTH-003_unlogged_protection_round5.png
+- ST-AUTH-006_duplicate_user_id_round5.png
+- ST-AUTH-010_logged_in_login_page_round5.png
+- ST-AUTH-010_logged_in_register_page_round5.png
+- ST-AUTH-014_logout_failed_round5.png
+- ST-AUTH-015_other_session_kept_after_logout_round5.png
+- ST-ACCOUNT-004_user_name_validation_round5.png
+- ST-ACCOUNT-005_user_name_change_failed_round5.png
+- ST-ACCOUNT-007_password_changed_round5.png
+- ST-ACCOUNT-008_wrong_current_password_round5.png
+- ST-ACCOUNT-010_password_change_failed_round5.png
+- ST-ACCOUNT-016_account_delete_failed_round5.png
+- ST-ACCOUNT-021_settings_unauthorized_round5.png
+- ST-CHAT-002_app_config_empty_round5.png
+- ST-CHAT-013_start_acceptance_failed_round5.png
+- ST-HISTORY-009_history_list_failed_round5.png
+- OFFICIAL-round5-playwright-auth-account-check.jsonl
+- ST-AUTH-012_expired_session_round5b.png
+- ST-ACCOUNT-018_deleting_user_login_round5b.png
+- ST-ACCOUNT-022_multi_session_delete_round5b.png
+- ST-HISTORY-001_history_list_round5b.png
+- ST-HISTORY-003_multi_run_order_round5b.png
+- ST-HISTORY-005_terminal_states_round5b.png
+- ST-HISTORY-010_detail_failed_round5b.png
+- ST-HISTORY-015_sidebar_toggle_round5b.png
+- ST-DELETE-001_current_chat_delete_round5b.png
+- ST-DELETE-002_delete_cancel_round5b.png
+- ST-DELETE-003_history_item_delete_round5b.png
+- OFFICIAL-round5b-playwright-history-delete-check.jsonl
+
+## 残保留ケース
+
+- アカウント管理テスト.md: ST-ACCOUNT-014、ST-ACCOUNT-015、ST-ACCOUNT-017、ST-ACCOUNT-020
+- キャンセルテスト.md: ST-CANCEL-002、ST-CANCEL-003、ST-CANCEL-008
+- チャット削除テスト.md: ST-DELETE-004、ST-DELETE-005、ST-DELETE-006、ST-DELETE-007、ST-DELETE-013、ST-DELETE-015
+- チャット実行テスト.md: ST-CHAT-005、ST-CHAT-006、ST-CHAT-011、ST-CHAT-014、ST-CHAT-015、ST-CHAT-016、ST-CHAT-017、ST-CHAT-018、ST-CHAT-019、ST-CHAT-023、ST-CHAT-024
+- 履歴再表示テスト.md: ST-HISTORY-008
+- 認証テスト.md: なし
+
+## 残保留理由と再実施条件
+
+- 実Codexの正常チャット完了、完了までのSSE状態変化、継続指示、生成中/検証中キャンセル、遅延イベント、別ブラウザ競合、実行中チャット削除、トレースログ保持、削除中再送、生成/検証/タイムアウト/AIサービスプロバイダ側エラーなど、round-9追加確認後も直接証跡化していないケースは保留を維持する。
+- 再実施条件は、ケースごとに必要な検証用状態を作成し、Chrome Playwrightで画面操作、表示、遷移、SSE状態、ビューア表示、成果物表示を実行ログまたはスクリーンショットとして公式evidenceへ保存すること。
+- `ST-CHAT-025` は、リポジトリ配下の `codex/.codex` では401失敗ログを保存し、ユーザ明示の認証済み前提に従って `$HOME/.codex` をCodexホームとして再実行した結果、JSONL正常完了とコンテナ残存なしを確認済み。

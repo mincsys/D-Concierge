@@ -1,0 +1,62 @@
+{
+  "timestamp": "2026-06-23T01:08:34.540Z",
+  "baseUrl": "http://127.0.0.1:5173",
+  "browser": "Chrome headless",
+  "userId": "official-1782176717871",
+  "records": [
+    {
+      "id": "ST-AUTH-008",
+      "description": "存在しないユーザID",
+      "result": "passed",
+      "evidence": "docs/04_テスト/04_総合テスト/evidence/ST-AUTH-008_unknown_user.png"
+    },
+    {
+      "id": "ST-AUTH-009",
+      "description": "パスワード不一致",
+      "result": "passed",
+      "evidence": "docs/04_テスト/04_総合テスト/evidence/ST-AUTH-009_wrong_password.png"
+    },
+    {
+      "id": "LOGIN-FOR-ACCOUNT",
+      "description": "アカウント管理確認用ログイン",
+      "result": "passed",
+      "evidence": "docs/04_テスト/04_総合テスト/evidence/ST-AUTH-007_login_success_account_resume.png"
+    },
+    {
+      "id": "ST-ACCOUNT-001",
+      "description": "設定ダイアログ表示",
+      "result": "passed",
+      "evidence": "docs/04_テスト/04_総合テスト/evidence/ST-ACCOUNT-001_settings.png"
+    },
+    {
+      "id": "ST-ACCOUNT-002",
+      "description": "ユーザ名変更画面遷移と戻る",
+      "result": "passed",
+      "evidence": "docs/04_テスト/04_総合テスト/evidence/ST-ACCOUNT-002_user_name_form.png"
+    },
+    {
+      "id": "ST-ACCOUNT-003",
+      "description": "ユーザ名変更成功",
+      "result": "passed",
+      "evidence": "docs/04_テスト/04_総合テスト/evidence/ST-ACCOUNT-003_user_name_changed.png"
+    },
+    {
+      "id": "ST-ACCOUNT-011",
+      "description": "ログアウト確認キャンセル",
+      "result": "passed",
+      "evidence": "docs/04_テスト/04_総合テスト/evidence/ST-ACCOUNT-011_logout_confirm_cancel.png"
+    },
+    {
+      "id": "ST-ACCOUNT-012",
+      "description": "アカウント削除確認キャンセル",
+      "result": "passed",
+      "evidence": "docs/04_テスト/04_総合テスト/evidence/ST-ACCOUNT-012_account_delete_cancel.png"
+    },
+    {
+      "id": "ST-AUTH-013",
+      "description": "ログアウト成功",
+      "result": "passed",
+      "evidence": "docs/04_テスト/04_総合テスト/evidence/ST-AUTH-013_logout_success.png"
+    }
+  ]
+}

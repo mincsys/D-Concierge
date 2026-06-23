@@ -1,0 +1,63 @@
+app:
+  # 運用者向け日時に使うIANA timezone名。
+  timezone: "Asia/Tokyo"
+
+ui:
+  # 開始画面の入力欄上に表示する案内文。不要な場合は null を指定する。
+  welcome_message: "D-Conciergeへようこそ。調査したい内容を入力してください。"
+  # 開始画面に表示する入力候補チップの文言リスト。不要な場合は空配列を指定する。
+  input_suggestions:
+    - "資料の要点を整理してください。"
+    - "根拠となる参照元を示して説明してください。"
+
+data_source:
+  # Codexが参照する共有データソースのベースディレクトリ。
+  dir: "codex/data_source"
+
+generator:
+  # 生成回答が検証で不採用になった場合に生成を再試行する最大回数。
+  max_retries: 2
+  # 生成用CodexのCODEX_HOME。AGENTS.mdと生成用Skillsを配置する。
+  home: "codex/.codex"
+  # 生成用Codexのセッション作業領域。
+  workdir: "codex/sessions"
+  # 生成用Codexの最終出力JSONスキーマ。
+  output_schema: "codex/output_json_schema/pdf-reference-schema.json"
+  # 採用済み回答が参照するCodex成果物の保存先。
+  saved_artifacts_dir: "codex/saved_artifacts"
+
+validator:
+  # 検証用Codexの最終出力形式が不正だった場合に再出力を依頼する最大回数。
+  max_retries: 3
+  # 検証用CodexのCODEX_HOME。AGENTS.mdと検証用Skillsを配置する。
+  home: "codex/.codex_validator"
+  # 検証用Codexのセッション作業領域。
+  workdir: "codex/sessions_validator"
+  # 検証用Codexの最終出力JSONスキーマ。
+  output_schema: "codex/output_json_schema/validator_schema.json"
+
+codex_docker:
+  # Codex実行コンテナに使用するDockerイメージ。
+  image: "codex-python-runner:latest"
+  # コンテナ内でCodex作業ディレクトリとして使用するパス。
+  workspace_dir: "/workspace"
+  # コンテナ内でCodexホームディレクトリとして使用するパス。
+  codex_home_dir: "/home/codex/.codex"
+  # Codex実行コンテナへCODEX_API_KEYとして渡す値。Codexホーム側認証を使う場合は空文字を指定する。
+  codex_api_key: ""
+
+database:
+  # PostgreSQL接続URL。SQLAlchemyのURL形式で指定する。
+  url: "postgresql+psycopg://d_concierge:d_concierge@127.0.0.1:5432/d_concierge"
+
+server:
+  # 回答生成開始から検証完了までの全体タイムアウト秒数。
+  timeout_seconds: 300
+
+trace_log:
+  # 異常系トレースログYAMLファイルの保存先ディレクトリ。
+  dir: "logs/trace"
+  # トレースログの日付ディレクトリを保持する日数。
+  retention_days: 90
+  # アプリケーション起動ごとの同日トレースログ最大保存件数。
+  max_files_per_day: 1000

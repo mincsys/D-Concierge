@@ -1,0 +1,20 @@
+feature_id=F003
+feature_name=アプリ設定・チャット受付・履歴再表示
+executed_at=2026-06-21
+executor=生成担当
+environment=ローカル検証環境
+mock_reference=mockなし
+playwright_cli=not_run
+playwright_reason=F003時点ではSSE実行本体、Codex回答生成、回答検証、参照元ビューア、成果物配信が後続機能待ちであり、画面完結シナリオではなくAPIとDB状態を中心に確認した。
+command=env UV_CACHE_DIR=/tmp/uv-cache uv run pytest src/backend/tests/integration/test_chat_acceptance_history_api.py -q
+result=pass
+tests=14
+failures=0
+elapsed=11.24s
+api_checked=GET /api/app-config, POST /api/chats/start, POST /api/chats/{chat_id}/runs, GET /api/chat-histories, GET /api/chats/{chat_id}
+auth_checked=保護対象チャットAPIのCookieなし401と共通エラー形式
+db_checked=chats, chat_runs, user_instructions, answers, references, artifacts のF003受付・履歴表示に必要な状態
+negative_checked=空指示、未完了run競合、削除中チャット、dispatcher登録失敗、ユーザ分離、対象なし、未ログイン時のDB非作成
+stub_boundary=F003のdispatcherは受付登録成功を返す境界まで。回答生成、SSE終端、検証済み回答生成は後続機能で確認する。
+unit_evidence_reference=docs/04_テスト/02_単体テスト/evidence/backend-unit-coverage.txt
+integration_evidence_reference=docs/04_テスト/03_結合テスト/evidence/backend-integration-evidence.txt

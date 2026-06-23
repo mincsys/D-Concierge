@@ -1,0 +1,6 @@
+timestamp: 2026-06-23T01:10:59.296Z
+baseUrl: http://127.0.0.1:5173
+browser: chromium channel=chrome headless=true
+userId: official-1782176717871
+ST-ACCOUNT-013: passed evidence=docs/04_テスト/04_総合テスト/evidence/ST-ACCOUNT-013_account_delete_accepted.png
+ST-ACCOUNT-019: passed evidence=docs/04_テスト/04_総合テスト/evidence/ST-ACCOUNT-019_reregister_after_delete.png

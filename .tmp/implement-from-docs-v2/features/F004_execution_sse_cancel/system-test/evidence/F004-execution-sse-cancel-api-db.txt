@@ -1,0 +1,22 @@
+feature_id=F004
+feature_name=実行状態・SSE・キャンセル・起動時実行回復
+executed_at=2026-06-22T06:32:09+09:00
+executor=生成担当
+unit_command=env UV_CACHE_DIR=/tmp/uv-cache uv run pytest src/backend/tests/unit/application/execution/test_cancel_and_recovery_use_cases.py src/backend/tests/unit/application/execution/test_sse_event_broker.py -q
+unit_result=pass
+unit_tests=20
+unit_failures=0
+integration_command=env UV_CACHE_DIR=/tmp/uv-cache uv run pytest src/backend/tests/integration/test_execution_sse_cancel_api.py -q
+integration_result=pass
+integration_tests=17
+integration_failures=0
+approval_required=integration_command
+approval_result=approved_and_passed
+playwright_cli=not_run
+playwright_reason=F004機能別ではbackend API/SSE/DB/trace log境界を結合テストで確認した。Codex実行本体、回答表示、画面操作は後続機能または正式総合テストで確認する。
+api_sse_confirmed=GET /api/chats/{chat_id}/runs/{run_id}/sse returns current state, saved message, terminal answer, terminal error, terminal canceled, common errors before streaming, and RunEventBroker live message/canceled delivery.
+cancel_confirmed=POST /api/chats/{chat_id}/runs/{run_id}/cancel handles accepted to canceled, running to cancel_requested, already_exited/not_registered to canceled, unauthorized, other-user, terminal, deleting, and DB state updates.
+startup_recovery_confirmed=app startup recovers accepted/running/validating/cancel_requested unfinished runs and records startup_recovery_completed/startup_recovery_failed trace logs.
+broker_confirmed=RunEventBroker publish/subscribe, terminal suppression, empty subscription, repeated unsubscribe, and remaining subscriber delivery are confirmed.
+db_confirmed=chat_runs state is updated to canceled, cancel_requested, error, or kept accepted according to F004 recovery/cancel contract.
+trace_log_confirmed=startup recovery success and recovery target read failure are written under trace_log with diagnostic message.

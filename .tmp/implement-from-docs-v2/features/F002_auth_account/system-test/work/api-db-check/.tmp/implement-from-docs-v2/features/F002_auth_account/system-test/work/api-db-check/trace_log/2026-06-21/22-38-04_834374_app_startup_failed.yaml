@@ -1,0 +1,26 @@
+occurred_at: '2026-06-21T22:38:04.834374+09:00'
+trace_id: 019eea67-15a2-7064-bab5-ba32a5b8c28a
+event_name: app_startup_failed
+stage: app.factory
+user_id: null
+chat_id: null
+run_id: null
+reference_id: null
+artifact_id: null
+error_type: configuration
+message: '設定不備: data_source.dir, generator.home, generator.workdir, generator.output_schema,
+  generator.saved_artifacts_dir, validator.home, validator.workdir, validator.output_schema,
+  trace_log.dir'
+exception_type: AppError
+stacktrace: "Traceback (most recent call last):\n  File \"/home/minami/_test/D-Concierge/src/backend/app/factory.py\"\
+  , line 33, in create_app\n    settings = config_loader.load(config_path, base_dir)\n\
+  \  File \"/home/minami/_test/D-Concierge/src/backend/infrastructure/config/loader.py\"\
+  , line 217, in load\n    self._raise_configuration_error(problems)\n    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^\n\
+  \  File \"/home/minami/_test/D-Concierge/src/backend/infrastructure/config/loader.py\"\
+  , line 589, in _raise_configuration_error\n    raise AppError(\n    ...<4 lines>...\n\
+  \    )\nbackend.shared.errors.errors.AppError: 設定不備: data_source.dir, generator.home,\
+  \ generator.workdir, generator.output_schema, generator.saved_artifacts_dir, validator.home,\
+  \ validator.workdir, validator.output_schema, trace_log.dir\n"
+http_method: ''
+path: .tmp/implement-from-docs-v2/features/F002_auth_account/system-test/work/api-db-check/config.yaml
+status_code: 500

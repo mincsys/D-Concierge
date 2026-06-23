@@ -1,0 +1,25 @@
+正式総合テスト round-10 DB/ファイル/ログ補助確認
+
+対象チャット状態:
+- a0000000-0000-4000-8000-000000000011 / R10 実行中削除 / chat_state=deleting / updated_at=2026-06-23 18:24:24.886208+00:00
+- a0000000-0000-4000-8000-000000000031 / R10 競合削除 / chat_state=deleting / updated_at=2026-06-23 18:24:25.634921+00:00
+- a0000000-0000-4000-8000-000000000041 / R10 削除中再送 / chat_state=deleting / updated_at=2026-06-23 18:24:29.157930+00:00
+- a0000000-0000-4000-8000-000000000051 / R10 詳細競合 / chat_state=deleting / updated_at=2026-06-23 18:24:27.085607+00:00
+- a0000000-0000-4000-8000-000000000061 / R10 SSE競合 / chat_state=deleting / updated_at=2026-06-23 18:24:27.684576+00:00
+
+対象run状態:
+- a0000000-0000-4000-8000-000000000012 / chat=a0000000-0000-4000-8000-000000000011 / R10 実行中削除 / state=running / user_message=None
+- a0000000-0000-4000-8000-000000000032 / chat=a0000000-0000-4000-8000-000000000031 / R10 競合削除 / state=completed / user_message=None
+- a0000000-0000-4000-8000-000000000042 / chat=a0000000-0000-4000-8000-000000000041 / R10 削除中再送 / state=running / user_message=None
+- a0000000-0000-4000-8000-000000000052 / chat=a0000000-0000-4000-8000-000000000051 / R10 詳細競合 / state=completed / user_message=None
+- a0000000-0000-4000-8000-000000000062 / chat=a0000000-0000-4000-8000-000000000061 / R10 SSE競合 / state=running / user_message=None
+
+実Codex round-10 UI試行run状態:
+- 019ef5ba-1217-773d-b9de-b125f625e4e5 / round10 実Codex確認: 1文で現在の作業ディレクトリ確認方針を説明してください。 / state=error / user_message=予期しないエラーが発生しました。開発者にお問い合わせください。
+
+trace_log_exists=True path=logs/trace/round10/round10-trace-retention.yaml
+trace_log_content:
+  case: ST-DELETE-013
+  result: retained
+artifact_exists=True path=codex/saved_artifacts/r10u20260624/a0000000-0000-4000-8000-000000000003/a0000000-0000-4000-8000-000000000006.svg
+artifact_exists=True path=codex/saved_artifacts/r10v20260624/b0000000-0000-4000-8000-000000000003/b0000000-0000-4000-8000-000000000006.svg

@@ -14,6 +14,7 @@
 - `session_id` はD-Conciergeが作業領域を決定するための内部IDであり、Codex側resume用IDは `codex_conversation_id` として別に受け渡す。
 - `timeout_seconds` は設定ファイル値そのものではなく、呼出元が全体deadlineから算出した当該Codex実行の残り秒数である。
 - Codex JSONLイベント種別、Codex出力 `payload.kind`、キャンセル要求結果は内部では通常Enumとして扱い、Codex JSONL、Codex出力JSON、コンテナ終了要求結果の境界で文字列へ変換する。
+- Codex実行コンテナの終了要求は、チャット実行、チャット物理削除、アカウント物理削除が同じ実行中プロセス登録を参照できるよう、composition rootで共有した `CodexRunner` を通じて行う。
 
 ## 3. IF概要
 
@@ -32,7 +33,7 @@
 | `CodexGenerationRunnerPort` | 生成用Codex実行コンテナを起動し、中間メッセージと最終回答JSONを返す。 |
 | `ReferenceFileValidatorPort` | Codex検証処理前に参照元PDFの存在、読込可否、ページ範囲を固定検証処理として確認する。 |
 | `ValidatorCodexRunnerPort` | Codex検証処理として検証用Codex実行コンテナを1回起動し、中間メッセージとrawな最終検証結果JSONを返す。 |
-| `CancelRequesterPort` | 実行中Codex実行コンテナへ終了要求を送る。 |
+| `CancelRequesterPort` | 実行中Codex実行コンテナへ終了要求を送る。物理削除処理では共有 `CodexRunner` のキャンセル結果をこのPortの結果として扱う。 |
 | `SessionWorkdirResolverPort` | 生成用Codex作業領域をチャットIDから解決する。 |
 | `SessionWorkdirCleanupPort` | 生成用・検証用Codex作業領域をユーザIDとセッションIDまたはユーザID単位で解決し、安全に削除する。 |
 
@@ -157,7 +158,7 @@ sequenceDiagram
 | --- | --- |
 | `CodexRunResult` | 生成用CodexのCodex側resume用ID、中間メッセージ一覧、最終回答JSON |
 | `ValidatorCodexRunResult` | 検証用CodexのCodex側resume用ID、中間メッセージ一覧、rawな最終検証結果JSON |
-| `ReferenceValidationResult` | Codex検証処理の合否と指摘コメント、またはCodex検証処理前の固定検証処理で得た構造化失敗理由 |
+| `ReferenceValidationResult` | 固定検証処理で得た参照元PDFの共有データソース相対path、指定ページ範囲、PDFファイル存在有無、PDF読込可否、実PDFページ数 |
 | `CancelRequestResult` | 終了要求結果。内部では通常Enum、境界では `sent`、`already_exited`、`not_registered` のいずれか |
 | `Path` | `SessionWorkdirResolverPort` が返す生成用Codex作業領域 |
 | `deleted_workdirs` | 削除済みとして扱った生成用・検証用作業領域 |

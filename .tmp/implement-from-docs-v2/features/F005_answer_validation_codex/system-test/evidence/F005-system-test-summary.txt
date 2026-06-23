@@ -1,0 +1,17 @@
+target=F005 Codex実行・回答検証・採用保存
+executed_at=2026-06-23T05:08:53+09:00
+copy_source=docs/04_テスト/04_総合テスト/
+copy_destination=.tmp/implement-from-docs-v2/features/F005_answer_validation_codex/system-test/
+playwright=Chromeで開始画面、入力候補、空入力検証を確認し、スクリーンショット3件を保存
+api_db_codex_boundary=env UV_CACHE_DIR=/tmp/uv-cache uv run pytest src/backend/tests/integration/test_codex_execution_answer_persistence.py src/backend/tests/integration/test_codex_runner_jsonl_contract.py -q -> 43 passed
+codex_docker_cli=docker run --rm codex-python-runner:latest codex --version -> codex-cli 0.130.0
+codex_docker_script=infra/codex_docker/scripts/run_codex_docker.sh -> backend script reached, Codex JSONL returned, exit_code=1 due to expired Codex auth refresh token
+classification_合格=0
+classification_不合格=0
+classification_部分確認=16
+classification_後続機能待ち=5
+classification_環境・承認待ち=1
+classification_対象外=79
+carryover=ST-CHAT-005, ST-CHAT-006, ST-CHAT-007, ST-CHAT-008, ST-CHAT-009, ST-CHAT-010, ST-CHAT-017, ST-CHAT-018, ST-CHAT-023, ST-CHAT-024, ST-CHAT-025, ST-HISTORY-002, ST-HISTORY-006, ST-HISTORY-007, F006参照元/成果物配信対象ケース
+unresolved_issue=none
+environment_pending=ST-CHAT-025 requires refreshed Codex authentication for successful provider response

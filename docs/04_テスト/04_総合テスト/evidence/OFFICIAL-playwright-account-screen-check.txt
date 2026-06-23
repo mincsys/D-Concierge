@@ -1,0 +1,13 @@
+timestamp: 2026-06-23T01:08:34.540Z
+baseUrl: http://127.0.0.1:5173
+browser: Chrome headless
+userId: official-1782176717871
+ST-AUTH-008: passed evidence=docs/04_テスト/04_総合テスト/evidence/ST-AUTH-008_unknown_user.png
+ST-AUTH-009: passed evidence=docs/04_テスト/04_総合テスト/evidence/ST-AUTH-009_wrong_password.png
+LOGIN-FOR-ACCOUNT: passed evidence=docs/04_テスト/04_総合テスト/evidence/ST-AUTH-007_login_success_account_resume.png
+ST-ACCOUNT-001: passed evidence=docs/04_テスト/04_総合テスト/evidence/ST-ACCOUNT-001_settings.png
+ST-ACCOUNT-002: passed evidence=docs/04_テスト/04_総合テスト/evidence/ST-ACCOUNT-002_user_name_form.png
+ST-ACCOUNT-003: passed evidence=docs/04_テスト/04_総合テスト/evidence/ST-ACCOUNT-003_user_name_changed.png
+ST-ACCOUNT-011: passed evidence=docs/04_テスト/04_総合テスト/evidence/ST-ACCOUNT-011_logout_confirm_cancel.png
+ST-ACCOUNT-012: passed evidence=docs/04_テスト/04_総合テスト/evidence/ST-ACCOUNT-012_account_delete_cancel.png
+ST-AUTH-013: passed evidence=docs/04_テスト/04_総合テスト/evidence/ST-AUTH-013_logout_success.png

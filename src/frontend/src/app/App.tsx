@@ -62,6 +62,7 @@ function AppRoutes() {
           user={currentUser}
           onLoggedOut={handleLoggedOut}
           onOpenChange={setSettingsOpen}
+          onUnauthorized={handleUnauthorized}
           onUserChange={setCurrentUser}
         />
       ) : null}

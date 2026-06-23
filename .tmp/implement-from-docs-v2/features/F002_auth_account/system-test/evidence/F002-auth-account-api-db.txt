@@ -1,0 +1,25 @@
+feature=F002_auth_account
+executed_at=2026-06-21T22:40:00+09:00
+command=env UV_CACHE_DIR=/tmp/uv-cache PYTHONPATH=src uv run python - <<PY
+result=pass
+playwright=not_run_backend_api_db_confirmed
+database=postgresql_test_database
+checks:
+- ST-AUTH-004 register_status=200 cookie_set=True users=1 sessions=1 user_state=active
+- ST-AUTH-011 auth_me_status=200 user_id=f002-user
+- ST-AUTH-005 invalid_register_status=400 field_errors=password,password_confirmation,user_id,user_name users=1
+- ST-AUTH-006 duplicate_status=400 field_error_user_id=True users=1
+- ST-AUTH-013 logout_status=204 cookie_expired=True sessions=0
+- ST-AUTH-008 unknown_login_status=400 field_error_user_id=True
+- ST-AUTH-009 bad_password_status=400 field_error_password=True
+- ST-AUTH-007 login_status=200 cookie_set=True sessions=1
+- ST-AUTH-012 expired_me_status=401 error=unauthorized sessions=0
+- ST-ACCOUNT-003 change_name_status=200 db_user_name=変更後ユーザ
+- ST-ACCOUNT-004 invalid_name_status=400 field_error_user_name=True db_user_name=変更後ユーザ
+- ST-ACCOUNT-007 change_password_status=204 hash_changed=True current_session_kept=True
+- ST-ACCOUNT-009 invalid_new_password_status=400 field_error_new_password=True hash_unchanged=True
+- ST-ACCOUNT-007 relogin_old_status=400 relogin_new_status=200
+- ST-ACCOUNT-013 delete_status=202 account_state=deleting sessions=0 chat_state=deleting cookie_expired=True
+- ST-ACCOUNT-018 deleting_login_status=400 field_error_user_id=True
+classification_summary=合格:16,部分確認:16,後続機能待ち:69,対象外:0,不合格:0,環境・承認待ち:0
+carry_over=frontend画面操作とF003以降のチャット/物理削除/起動時再実行を正式総合テストで再確認

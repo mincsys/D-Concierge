@@ -11,11 +11,13 @@ type ConfirmAction = "logout" | "delete" | null;
 
 export function ConfirmActionDialog({
   action,
+  message,
   submitting,
   onCancel,
   onConfirm,
 }: {
   action: ConfirmAction;
+  message?: string | null;
   submitting: boolean;
   onCancel: () => void;
   onConfirm: () => void;
@@ -33,6 +35,9 @@ export function ConfirmActionDialog({
             </DialogDescription>
           ) : null}
         </DialogHeader>
+        {message ? (
+          <p className="text-sm font-[650] text-[var(--dc-danger)]">{message}</p>
+        ) : null}
         <div className="flex justify-end gap-3">
           <Button disabled={submitting} type="button" variant="ghost" onClick={onCancel}>
             キャンセル

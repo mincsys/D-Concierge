@@ -1,0 +1,8 @@
+executed_at=2026-06-23T05:08:53+09:00
+command=infra/codex_docker/scripts/run_codex_docker.sh 'JSONで {"answers":[{"text":"ok","references":[],"artifacts":[]}]} と返してください。'
+result=backend script reached and Codex JSONL was returned
+stdout_jsonl={"type":"thread.started","thread_id":"019ef0f4-e3e7-7b92-b291-2b1335881a37"}
+stdout_jsonl={"type":"turn.started"}
+stdout_jsonl={"type":"error","message":"Your access token could not be refreshed because your refresh token was already used. Please log out and sign in again."}
+stdout_jsonl={"type":"turn.failed","error":{"message":"Your access token could not be refreshed because your refresh token was already used. Please log out and sign in again."}}
+exit_code=1

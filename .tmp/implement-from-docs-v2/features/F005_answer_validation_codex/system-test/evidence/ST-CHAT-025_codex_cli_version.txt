@@ -1,0 +1,4 @@
+executed_at=2026-06-23T05:08:53+09:00
+command=docker run --rm codex-python-runner:latest codex --version
+codex-cli 0.130.0
+exit_code=0

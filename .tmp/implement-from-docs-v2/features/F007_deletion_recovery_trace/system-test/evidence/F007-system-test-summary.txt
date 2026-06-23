@@ -1,0 +1,18 @@
+target=F007 チャット削除・アカウント削除・回復・トレースログ
+executed_at=2026-06-23T08:41:46+09:00
+executor=生成役
+command_1=env UV_CACHE_DIR=/tmp/uv-cache uv run pytest src/backend/tests/integration/test_deletion_recovery_trace_api.py -q
+result_1=pass
+tests_1=14
+failures_1=0
+evidence_1=F007-deletion-recovery-trace-api.txt
+command_2=env UV_CACHE_DIR=/tmp/uv-cache uv run pytest src/backend/tests/integration/test_account_management_api.py src/backend/tests/integration/test_auth_account_api.py -q
+result_2=pass
+tests_2=22
+failures_2=0
+evidence_2=F007-account-auth-api.txt
+checked_scope=FastAPI,認証Cookie,PostgreSQL,生成用作業ディレクトリ,検証用作業ディレクトリ,保存済みCodex成果物,trace_log,起動時回復
+checked_cases=ST-DELETE-001,ST-DELETE-004,ST-DELETE-005,ST-DELETE-006,ST-DELETE-007,ST-DELETE-008,ST-DELETE-009,ST-DELETE-010,ST-DELETE-011,ST-DELETE-012,ST-DELETE-013,ST-DELETE-014,ST-DELETE-015,ST-ACCOUNT-013,ST-ACCOUNT-014,ST-ACCOUNT-015,ST-ACCOUNT-016,ST-ACCOUNT-017,ST-ACCOUNT-018,ST-ACCOUNT-019,ST-ACCOUNT-022
+boundary_results=チャット削除受付202,削除中履歴除外,削除中履歴詳細409,削除中継続指示409,削除中SSE409,削除中参照元409,削除中成果物409,実dispatcherからDB executor到達,起動時deletingチャット再登録,登録失敗trace継続,チャット物理削除DB/作業ディレクトリ/成果物削除,物理削除失敗時DB維持とtrace,アカウント削除受付Cookie失効,全セッション削除,アカウント物理削除DB/作業ディレクトリ/成果物削除,起動時アカウント回復,期限切れセッション削除失敗trace継続,削除中ユーザ一覧取得失敗trace継続,dispatcher例外trace継続,削除中ユーザログイン不可,削除後同一ユーザID登録可能
+classification_summary=合格7,部分確認17,対象外13
+formal_recheck=Chrome上の削除確認ダイアログ操作,削除受付後の開始画面/ログイン画面遷移,履歴項目三点メニュー削除,複数ブラウザコンテキスト競合表示,SSE再接続時の画面メッセージ,実行中Codexコンテナへの終了要求を含む画面起点削除,削除受付失敗時の画面メッセージ,アカウント削除確認キャンセル,複数ブラウザセッションのログイン画面遷移

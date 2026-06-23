@@ -1,0 +1,30 @@
+# 正式総合テスト round-2 補助確認サマリ
+
+実施日: 2026-06-23
+実施者: Codex
+
+## 実行結果
+
+- backend integration: 153 passed
+- frontend integration: 19 passed
+- Codex Docker smoke: 保留。run_codex_docker.shは起動しJSONL errorを返したが、Codexホームの認証トークン失効により401で終了。対象コンテナの残存なし。
+
+## 証跡の扱い
+
+このファイルはAPI、DB、ファイル、契約境界、失敗注入の補助確認サマリである。round-4 Playwright実機確認基準では、画面操作、表示確認、画面遷移、SSE状態表示、参照元ビューア、Codex成果物表示、削除メニュー、確認ダイアログ、複数Chromeコンテキストの合格根拠として単独使用しない。正式な再分類は OFFICIAL-system-test-round4-playwright-basis.txt と OFFICIAL-playwright-screen-summary.txt に従う。
+
+## round-2で補助確認した主な観点
+
+- ST-AUTH-014: ログアウトAPI失敗時の失敗表示とログイン状態維持
+- ST-ACCOUNT-005: ユーザ名変更API失敗時の失敗表示と既存ユーザ名維持
+- ST-ACCOUNT-010: パスワード変更API失敗時の失敗表示と設定画面維持
+- ST-ACCOUNT-016: アカウント削除API失敗時の失敗表示と確認ダイアログ維持
+- ST-ACCOUNT-021: 設定操作中401時のログイン画面遷移
+- ST-CHAT-013/ST-CHAT-014: 新規/継続受付失敗時の利用者向け表示
+- ST-CHAT-015/ST-CHAT-016: SSE接続失敗/途中切断相当のEventSource error表示
+- ST-CHAT-017/ST-CHAT-018/ST-CHAT-019/ST-CHAT-023/ST-CHAT-024: Codex生成、検証、timeout、JSONL error/turn.failedのbackend境界
+
+## 残保留
+
+- Playwright直接証跡不足の79件: Chrome Playwrightでケースごとの画面操作、表示、遷移を記録する必要がある。
+- ST-CHAT-025: 有効なCodex認証またはCODEX_API_KEYが必要。起因は環境認証前提であり、アプリ実装不備ではない。

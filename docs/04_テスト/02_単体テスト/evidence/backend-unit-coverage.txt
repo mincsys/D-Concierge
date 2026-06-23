@@ -1,0 +1,7 @@
+target=backend
+executed_at=2026-06-23T06:29:42+09:00
+command=env UV_CACHE_DIR=/tmp/uv-cache uv run pytest src/backend/tests/unit --cov=src/backend --cov-branch --cov-report=json:/tmp/backend-unit-coverage.json --cov-report= -q
+branch_coverage=95.99%
+covered_branches=359
+total_branches=374
+result=pass

@@ -1,0 +1,134 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.0, pytest-9.0.3, pluggy-1.6.0
+rootdir: /home/minami/_test/D-Concierge
+configfile: pyproject.toml
+plugins: asyncio-1.3.0, cov-7.1.0, anyio-4.13.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 264 items
+
+src/backend/tests/unit/application/account/test_account_deletion_recovery_use_cases.py . [  0%]
+......                                                                   [  2%]
+src/backend/tests/unit/application/account/test_account_management_use_cases.py . [  3%]
+...........                                                              [  7%]
+src/backend/tests/unit/application/account/test_authenticate_and_logout_use_cases.py . [  7%]
+.....                                                                    [  9%]
+src/backend/tests/unit/application/account/test_register_and_login_use_cases.py . [  9%]
+..........                                                               [ 13%]
+src/backend/tests/unit/application/artifacts/test_get_artifact_use_case.py . [ 14%]
+.........                                                                [ 17%]
+src/backend/tests/unit/application/artifacts/test_save_adopted_artifacts_use_case.py . [ 17%]
+.....                                                                    [ 19%]
+src/backend/tests/unit/application/chat/test_chat_acceptance_use_cases.py . [ 20%]
+..........                                                               [ 23%]
+src/backend/tests/unit/application/chat/test_chat_deletion_use_cases.py . [ 24%]
+.......                                                                  [ 26%]
+src/backend/tests/unit/application/chat/test_chat_history_use_cases.py . [ 27%]
+..                                                                       [ 28%]
+src/backend/tests/unit/application/execution/test_cancel_and_recovery_use_cases.py . [ 28%]
+................                                                         [ 34%]
+src/backend/tests/unit/application/execution/test_execute_chat_run_use_case.py . [ 34%]
+........                                                                 [ 37%]
+src/backend/tests/unit/application/execution/test_sse_event_broker.py .. [ 38%]
+.                                                                        [ 39%]
+src/backend/tests/unit/application/ports/test_account_auth_port_contracts.py . [ 39%]
+......                                                                   [ 41%]
+src/backend/tests/unit/application/ports/test_chat_port_contracts.py ... [ 42%]
+.....                                                                    [ 44%]
+src/backend/tests/unit/application/ports/test_codex_artifact_port_contracts.py . [ 45%]
+...                                                                      [ 46%]
+src/backend/tests/unit/application/ports/test_database_repository_contracts.py . [ 46%]
+.                                                                        [ 46%]
+src/backend/tests/unit/application/ports/test_file_delivery_port_contracts.py . [ 47%]
+..                                                                       [ 48%]
+src/backend/tests/unit/application/references/test_get_reference_data_use_case.py . [ 48%]
+......                                                                   [ 50%]
+src/backend/tests/unit/application/validation/test_validate_answer_use_case.py . [ 51%]
+..................................                                       [ 64%]
+src/backend/tests/unit/infrastructure/codex/test_codex_runner_and_workspace.py . [ 64%]
+...........                                                              [ 68%]
+src/backend/tests/unit/infrastructure/codex/test_jsonl_event_parser.py . [ 68%]
+............                                                             [ 73%]
+src/backend/tests/unit/infrastructure/config/test_config_loader.py ..... [ 75%]
+...............................                                          [ 87%]
+src/backend/tests/unit/infrastructure/database/test_database_models_contract.py . [ 87%]
+.....                                                                    [ 89%]
+src/backend/tests/unit/infrastructure/filesystem/test_path_security.py . [ 89%]
+............                                                             [ 94%]
+src/backend/tests/unit/infrastructure/security/test_password_and_session_token_providers.py . [ 94%]
+.                                                                        [ 95%]
+src/backend/tests/unit/infrastructure/trace_log/test_trace_log_writer.py . [ 95%]
+....                                                                     [ 96%]
+src/backend/tests/unit/shared/test_errors_and_tracing.py .....           [ 98%]
+src/backend/tests/unit/test_backend_architecture_contract.py ...         [100%]
+
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.14.0-final-0 ________________
+
+Name                                                                Stmts   Miss Branch BrPart  Cover
+-----------------------------------------------------------------------------------------------------
+src/backend/application/account/authenticate_session.py                32      0      6      0   100%
+src/backend/application/account/change_password.py                     42      0     10      0   100%
+src/backend/application/account/change_user_name.py                    28      0      4      0   100%
+src/backend/application/account/delete_account.py                      30      0      2      0   100%
+src/backend/application/account/dto.py                                 15      0      0      0   100%
+src/backend/application/account/errors.py                              11      0      0      0   100%
+src/backend/application/account/execute_account_deletion.py            46      3      6      1    92%
+src/backend/application/account/interfaces.py                           6      0      0      0   100%
+src/backend/application/account/login.py                               41      0      6      1    98%
+src/backend/application/account/logout.py                              21      0      2      0   100%
+src/backend/application/account/recover_deleting_accounts.py           64      2      4      0    97%
+src/backend/application/account/register_account.py                    60      0     14      1    99%
+src/backend/application/account/validation.py                          21      0      8      0   100%
+src/backend/application/artifacts/get_artifact.py                      37      0      6      0   100%
+src/backend/application/artifacts/links.py                             68      6     26      3    90%
+src/backend/application/artifacts/save_adopted_artifacts.py            65      2      8      0    97%
+src/backend/application/chat/_shared.py                                17      0      2      0   100%
+src/backend/application/chat/append_chat_run.py                        34      0      2      0   100%
+src/backend/application/chat/delete_chat.py                            76      3     10      1    95%
+src/backend/application/chat/dto.py                                    57      0      0      0   100%
+src/backend/application/chat/get_chat_detail.py                        30      1      4      1    94%
+src/backend/application/chat/interfaces.py                             12      0      0      0   100%
+src/backend/application/chat/recover_deleting_chats.py                 52      2      4      0    96%
+src/backend/application/chat/start_chat.py                             34      0      2      0   100%
+src/backend/application/execution/cancel_chat_run.py                   58      0     14      0   100%
+src/backend/application/execution/dto.py                               16      0      0      0   100%
+src/backend/application/execution/execute_chat_run.py                 169      1     16      1    99%
+src/backend/application/execution/interfaces.py                        13      0      0      0   100%
+src/backend/application/execution/recover_unfinished_runs.py           42      0     16      1    98%
+src/backend/application/execution/run_event_broker.py                  64      0     14      1    99%
+src/backend/application/history/list_chat_histories.py                 15      0      0      0   100%
+src/backend/application/ports/codex/dto.py                             43      0      0      0   100%
+src/backend/application/ports/codex/interface.py                       10      0      0      0   100%
+src/backend/application/ports/database/dto.py                         121      0      0      0   100%
+src/backend/application/ports/database/interface.py                    25      0      0      0   100%
+src/backend/application/ports/filesystem/dto.py                        28      0      0      0   100%
+src/backend/application/ports/filesystem/interface.py                   8      0      0      0   100%
+src/backend/application/ports/runtime/interface.py                     39      0      0      0   100%
+src/backend/application/ports/security/interface.py                     4      0      0      0   100%
+src/backend/application/ports/trace_log/dto.py                         23      0      0      0   100%
+src/backend/application/references/get_reference_data.py               31      0      4      0   100%
+src/backend/application/validation/validate_answer.py                 244      4     58      2    98%
+src/backend/domain/chat/chat_state.py                                   5      0      0      0   100%
+src/backend/domain/execution/run_state.py                              11      0      0      0   100%
+src/backend/infrastructure/codex/codex_runner.py                      127      6     26      0    96%
+src/backend/infrastructure/codex/codex_workspace_preparer.py           35      1      2      1    95%
+src/backend/infrastructure/codex/jsonl_event_parser.py                 84      0     32      0   100%
+src/backend/infrastructure/config/loader.py                           217      5     60      3    97%
+src/backend/infrastructure/config/settings.py                          56      0      0      0   100%
+src/backend/infrastructure/database/models/answer.py                   32      0      0      0   100%
+src/backend/infrastructure/database/models/base.py                      3      0      0      0   100%
+src/backend/infrastructure/database/models/chat.py                     41      0      0      0   100%
+src/backend/infrastructure/database/models/user.py                     23      0      0      0   100%
+src/backend/infrastructure/filesystem/path_security.py                 31      0      8      0   100%
+src/backend/infrastructure/filesystem/reference_file_validator.py      23      4      2      0    84%
+src/backend/infrastructure/security/password_hasher.py                  8      0      0      0   100%
+src/backend/infrastructure/security/session_token.py                    9      0      0      0   100%
+src/backend/infrastructure/trace_log/writer.py                         84      2     18      2    96%
+src/backend/presentation/sse/payload.py                                45      1      4      0    98%
+src/backend/shared/errors/error_type.py                                 9      0      0      0   100%
+src/backend/shared/errors/errors.py                                    13      0      2      0   100%
+src/backend/shared/tracing/trace_id.py                                 15      0      0      0   100%
+src/backend/shared/user_messages.py                                     8      0      0      0   100%
+-----------------------------------------------------------------------------------------------------
+TOTAL                                                                2731     43    402     19    98%
+============================= 264 passed in 1.74s ==============================

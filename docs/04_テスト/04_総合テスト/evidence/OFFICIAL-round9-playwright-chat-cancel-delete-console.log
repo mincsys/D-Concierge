@@ -1,0 +1,24 @@
+2026-06-23T17:47:29.569Z login:start
+2026-06-23T17:47:29.627Z browser-console:debug:[vite] connecting...
+2026-06-23T17:47:29.630Z browser-console:debug:[vite] connected.
+2026-06-23T17:47:29.720Z browser-console:info:%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+2026-06-23T17:47:29.863Z browser-console:verbose:[DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o
+2026-06-23T17:47:30.789Z login:done
+2026-06-23T17:47:31.400Z browser-console:debug:[vite] connecting...
+2026-06-23T17:47:31.431Z browser-console:debug:[vite] connected.
+2026-06-23T17:47:31.490Z browser-console:debug:[vite] connecting...
+2026-06-23T17:47:31.523Z browser-console:debug:[vite] connected.
+2026-06-23T17:47:32.791Z browser-console:debug:[vite] connecting...
+2026-06-23T17:47:32.797Z browser-console:debug:[vite] connecting...
+2026-06-23T17:47:32.821Z browser-console:debug:[vite] connected.
+2026-06-23T17:47:32.825Z browser-console:error:Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+2026-06-23T17:47:32.828Z browser-console:debug:[vite] connected.
+2026-06-23T17:47:32.830Z browser-console:error:Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+2026-06-23T17:47:33.808Z browser-console:error:Failed to load resource: the server responded with a status of 404 (Not Found)
+2026-06-23T17:47:34.279Z browser-console:debug:[vite] connecting...
+2026-06-23T17:47:34.310Z browser-console:debug:[vite] connected.
+2026-06-23T17:47:34.355Z browser-console:debug:[vite] connecting...
+2026-06-23T17:47:34.386Z browser-console:debug:[vite] connected.
+2026-06-23T17:47:37.765Z browser-console:error:Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+2026-06-23T17:47:38.268Z browser-console:error:Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+2026-06-23T17:47:38.332Z round9:passed-cases {"count":16,"cases":["ST-CHAT-007","ST-CHAT-008","ST-CHAT-010","ST-CHAT-009","ST-CHAT-020","ST-CHAT-022","ST-HISTORY-012","ST-CHAT-021","ST-HISTORY-004","ST-CHAT-012","ST-HISTORY-013","ST-HISTORY-014","ST-CANCEL-004","ST-CANCEL-005","ST-CANCEL-007","ST-DELETE-014"]}

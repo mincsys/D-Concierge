@@ -1,0 +1,34 @@
+app:
+  timezone: "Asia/Tokyo"
+ui:
+  welcome_message: "ようこそ"
+  sub_welcome_message: "必要な資料を指定してください"
+  input_suggestions:
+    - "申請手順を確認したい"
+    - "参考資料の該当ページを知りたい"
+data_source:
+  dir: "/home/minami/_test/D-Concierge/.tmp/implement-from-docs-v2/features/F002_auth_account/system-test/work/api-db-check/data_source"
+generator:
+  max_retries: 2
+  home: "/home/minami/_test/D-Concierge/.tmp/implement-from-docs-v2/features/F002_auth_account/system-test/work/api-db-check/codex/generator_home"
+  workdir: "/home/minami/_test/D-Concierge/.tmp/implement-from-docs-v2/features/F002_auth_account/system-test/work/api-db-check/codex/sessions"
+  output_schema: "/home/minami/_test/D-Concierge/.tmp/implement-from-docs-v2/features/F002_auth_account/system-test/work/api-db-check/schemas/answer.json"
+  saved_artifacts_dir: "/home/minami/_test/D-Concierge/.tmp/implement-from-docs-v2/features/F002_auth_account/system-test/work/api-db-check/codex/saved_artifacts"
+validator:
+  max_retries: 1
+  home: "/home/minami/_test/D-Concierge/.tmp/implement-from-docs-v2/features/F002_auth_account/system-test/work/api-db-check/codex/validator_home"
+  workdir: "/home/minami/_test/D-Concierge/.tmp/implement-from-docs-v2/features/F002_auth_account/system-test/work/api-db-check/codex/sessions_validator"
+  output_schema: "/home/minami/_test/D-Concierge/.tmp/implement-from-docs-v2/features/F002_auth_account/system-test/work/api-db-check/schemas/validator.json"
+codex_docker:
+  image: "d-concierge-codex:latest"
+  workspace_dir: "/workspace"
+  codex_home_dir: "/codex-home"
+  codex_api_key: ""
+database:
+  url: "postgresql+psycopg://d_concierge_test:d_concierge_test@127.0.0.1:55432/d_concierge_test"
+server:
+  timeout_seconds: 120
+trace_log:
+  dir: "/home/minami/_test/D-Concierge/.tmp/implement-from-docs-v2/features/F002_auth_account/system-test/work/api-db-check/trace_log"
+  retention_days: 90
+  max_files_per_day: 1000
