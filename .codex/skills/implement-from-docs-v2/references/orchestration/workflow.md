@@ -34,7 +34,7 @@
 
 管理役は技術的な合否判断をしない。検証役の判定、生成役の報告、state、タスクリスト、issue/TBC 状態を照合し、手順上の完了条件が満たされているかだけを確認する。完了可否の根拠が不足する場合は、自分で判断せず検証役へ再確認するか、ユーザへ判断材料を添えて確認する。
 
-Sandbox 環境で承認が必要なコマンドは、管理役または生成役が承認付きで実行する。承認が必要であることだけを理由に、テストを未実施、保留、`環境・承認待ち` にしない。ユーザが承認しない場合、または承認付き実行後も環境制約で実行不能な場合だけ、理由と承認付き実行結果を state へ記録して保留扱いにする。
+Sandbox 環境で承認が必要なコマンドは、管理役または生成役が承認付きで実行する。承認が必要であることだけを理由に、テストを未実施、保留、`環境制約` にしない。ユーザが承認しない場合、または承認付き実行後も環境制約で実行不能な場合だけ、理由と承認付き実行結果を state へ記録して保留扱いにする。
 
 ## サブエージェント中断・再開
 
@@ -51,7 +51,7 @@ Sandbox 環境で承認が必要なコマンドは、管理役または生成役
 
 ## 機能ごとの基本順序
 
-1. 管理役が機能 ID、機能概要、関連 docs、前提機能を state に記録する。
+1. 管理役が機能 ID、機能概要、関連 docs、前提機能、対応総合テスト仕様、主対象ケース ID、後続依存ケース ID を state に記録する。
 2. 管理役が [subagent-request-rules.md](../agents/subagent-request-rules.md) と [test-code.md](../../subagent-protocol/generator/test-code.md) に従い、受け手視点で書かれた依頼文を使って、生成役へ [test-first-flow.md](../testing/test-first-flow.md) に基づく単体・結合テストコード先行作成を依頼する。
 3. 生成役完了後、管理役が [test-code-review.md](../../subagent-protocol/verifier/test-code-review.md) に従い、検証役へテストコード検証を依頼する。依頼には `review-artifacts` の `test` checklist 保存先 `.tmp/implement-from-docs-v2/features/<機能ID>/review-checklists/01_test-code/round-<n>/`、指摘保存先 `.issue/implement-from-docs/`、レビュー対象、報告形式を含める。
 4. テストコード初回レビュー完了後、管理役が Red 確認結果、検証結果、issue 管理結果を state に記録し、v2 作業差分をステージングする。
@@ -59,11 +59,14 @@ Sandbox 環境で承認が必要なコマンドは、管理役または生成役
 6. テストコード検証後、管理役が [implementation-and-integration-tests.md](../../subagent-protocol/generator/implementation-and-integration-tests.md) に従い、生成役へ [tdd-flow.md](../testing/tdd-flow.md) に基づく実装、単体テスト、[integration-contract-tests.md](../testing/integration-contract-tests.md) に基づく結合テスト、[quality-gates.md](../testing/quality-gates.md) に基づくカバレッジ確認を依頼する。
 7. 生成役完了後、管理役が [integration-and-quality-review.md](../../subagent-protocol/verifier/integration-and-quality-review.md) に従い、検証役へ結合テスト完了検証と実装品質レビューを依頼する。依頼には `review-artifacts` の `implementation`、`test`、`evidence` checklist 保存先 `.tmp/implement-from-docs-v2/features/<機能ID>/review-checklists/02_integration-and-implementation-quality/round-<n>/`、指摘保存先 `.issue/implement-from-docs/`、レビュー対象、報告形式を含める。
 8. 結合テスト完了検証の初回レビューまたは再レビュー完了後、管理役が state 更新、検証役の `削除可 issue` に基づく issue 削除、TBC 移動、v2 作業差分のステージングを毎回行う。
-9. 結合レビュー通過後、管理役が [feature-system-test.md](../../subagent-protocol/generator/feature-system-test.md) に従い、生成役へ機能別総合テストを依頼する。生成役は `docs/04_テスト/04_総合テスト/` 全体を `.tmp/implement-from-docs-v2/features/<機能>/system-test/` へコピーし、正式総合テストと同じ流れ、同じ記録形式、同じ evidence 保存方針でコピー側へ結果と証跡を保存する。`docs/04_テスト/04_総合テスト/` は変更しない。
-10. 生成役完了後、管理役が `git status --short`、`git diff -- docs/04_テスト/04_総合テスト`、必要に応じて `.tmp` 側差分を取得し、[feature-system-test-review.md](../../subagent-protocol/verifier/feature-system-test-review.md) に従い、検証役へ機能別総合テスト結果、証跡、分類、`docs` 非変更確認を依頼する。依頼には `review-artifacts` の `test`、`evidence` checklist 保存先 `.tmp/implement-from-docs-v2/features/<機能ID>/review-checklists/03_feature-system-test/round-<n>/`、指摘保存先 `.issue/implement-from-docs/`、レビュー対象、報告形式を含める。
-11. 機能別総合テストレビューの初回レビューまたは再レビュー完了後、管理役が state 更新、検証役の `削除可 issue` に基づく issue 削除、TBC 移動、v2 作業差分のステージングを毎回行う。
-12. 機能別総合テストに `不合格` または未分類の未実施が残る場合、管理役は機能結合完了にしない。`後続機能待ち`、`環境・承認待ち`、`対象外`、`部分確認` は、検証役が妥当と判定し、state の `正式総合テストへの持ち越し` に記録した場合だけ機能結合完了へ進める。
-13. 検証役の結合レビューと機能別総合テストレビューの判定に基づき、管理役がタスクリストへ `機能結合完了` のチェックを付ける。
+9. 結合レビュー通過後、管理役が [feature-system-test.md](../../subagent-protocol/generator/feature-system-test.md) に従い、生成役へ機能別総合テストを依頼する。依頼には対応総合テスト仕様、主対象ケース ID、後続依存ケース ID を含める。生成役は `docs/04_テスト/04_総合テスト/` 全体を `.tmp/implement-from-docs-v2/features/<機能>/system-test/` へコピーし、対象ケースの前提条件、操作手順、期待結果どおりにコピー側へ結果と証跡を保存する。`docs/04_テスト/04_総合テスト/` は変更しない。API確認、DB確認、結合テスト、ログ確認などは補助証跡であり、自己判断で総合テストの代替合格根拠にしない。
+10. 仕様どおりに実施できないケースがある場合、生成役は未実施の手順番号、阻害要因、確認済み期待結果、未確認期待結果、補助証跡、再実施条件を記録する。
+11. 生成役完了後、管理役が `git status --short`、`git diff -- docs/04_テスト/04_総合テスト`、必要に応じて `.tmp` 側差分を取得し、[feature-system-test-review.md](../../subagent-protocol/verifier/feature-system-test-review.md) に従い、検証役へ機能別総合テスト結果、証跡、分類、仕様どおりの実施可否、保留妥当性、`docs` 非変更確認を依頼する。依頼には `review-artifacts` の `test`、`evidence` checklist 保存先 `.tmp/implement-from-docs-v2/features/<機能ID>/review-checklists/03_feature-system-test/round-<n>/`、指摘保存先 `.issue/implement-from-docs/`、レビュー対象、報告形式を含める。
+12. 機能別総合テストレビューの初回レビューまたは再レビュー完了後、管理役が state 更新、検証役の `削除可 issue` に基づく issue 削除、TBC 移動、v2 作業差分のステージングを毎回行う。
+13. 機能別総合テストで実装不足、設定不足、テストデータ不足、手順誤り、証跡不足、実施可能なのに未実施の項目がある場合、検証役は issue を作成し、管理役は [review-loop.md](review-loop.md) に従って最大 3 回まで修正ループを行う。
+14. 機能別総合テストに `不合格` または未分類の未実施が残る場合、管理役は機能結合完了にしない。`後続機能待ち`、`外部認証待ち`、`自動操作不可`、`環境制約`、`対象外`、`部分確認` は、検証役が保留妥当と判定し、state の `仕様どおり実施できなかったケース` と `正式総合テストへの持ち越し` に記録した場合に限り、機能結合完了へ進める。
+15. 主業務パスの中核ケースが未確認の場合、管理役は state の `中核未確認` に記録し、機能結合完了後も最終完了扱いにはしない。
+16. 検証役の結合レビューと機能別総合テストレビューの判定に基づき、管理役がタスクリストへ `機能結合完了` のチェックを付ける。
 
 ## 全機能後の正式総合テスト順序
 
