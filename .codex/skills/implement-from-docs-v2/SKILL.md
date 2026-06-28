@@ -1,6 +1,6 @@
 ---
 name: implement-from-docs-v2
-description: Implement software from docs by having a manager decompose work into verifiable feature tasks, reuse generator and verifier subagents, create unit and integration tests before implementation, complete integration and feature-level system-test review for every feature using .tmp copies of the official system-test specs/evidence, then run the final official system tests against docs, perform staged verification including implementation quality review, and manage findings under .issue/implement-from-docs.
+description: Implement software from docs by having a manager decompose work into verifiable feature tasks, reuse generator and verifier subagents, create unit and integration tests before implementation, complete integration and feature-level system-test review for every feature using .tmp copies of the official system-test specs/evidence, run cross-review before final official system tests, then run official system tests against docs and loop on verifier-created issues for fixable failures or holds under .issue/implement-from-docs.
 ---
 
 # Implement From Docs v2
@@ -9,7 +9,7 @@ description: Implement software from docs by having a manager decompose work int
 
 docs を正として、管理役、生成役、検証役の 3 役で実装、テスト、検証を進める。v1 の docs-first、TDD、単体・結合・総合テスト、品質ゲートを維持しつつ、v2 では機能単位の開発を結合テストと機能別総合テストまで細かく回し、全機能の機能結合完了後、正式総合テストを実施する。
 
-管理役は機能単位への分解、サブエージェントへの依頼、状態更新だけを担う。生成役はテスト方針書と設計書から単体・結合テストコードを先行作成し、機能別には実装、結合テスト、`.tmp` 上の機能別総合テストまでを行う。機能別総合テストでは正式総合テストと同じ仕様書、記録形式、evidence 保存方針を使うが、`docs/04_テスト/04_総合テスト/` は変更せず、`.tmp/implement-from-docs-v2/features/<機能>/system-test/` にコピーした作業用ファイルへ結果と証跡を保存する。全機能の機能結合完了後、生成役が `docs/04_テスト/04_総合テスト/` を初めて更新する正式総合テストを行う。検証役は各レビュー時に `review-artifacts` のチェックリストを `.tmp` の対象フェーズへコピーして確認し、テストコード、結合テスト、機能別総合テスト、実装品質、正式総合テスト、完了可否を判定する。
+管理役は機能単位への分解、サブエージェントへの依頼、状態更新だけを担う。生成役はテスト方針書と設計書から単体・結合テストコードを先行作成し、機能別には実装、結合テスト、`.tmp` 上の機能別総合テストまでを行う。機能別総合テストでは正式総合テストと同じ仕様書、記録形式、evidence 保存方針を使うが、`docs/04_テスト/04_総合テスト/` は変更せず、`.tmp/implement-from-docs-v2/features/<機能>/system-test/` にコピーした作業用ファイルへ結果と証跡を保存する。全機能の機能結合完了後、検証役が横断レビューを行い、指摘がある場合は正式総合テストへ進む前に修正ループを回す。横断レビュー通過後、生成役が `docs/04_テスト/04_総合テスト/` を初めて更新する正式総合テストを行う。検証役は各レビュー時に `review-artifacts` のチェックリストを `.tmp` の対象フェーズへコピーして確認し、テストコード、結合テスト、機能別総合テスト、実装品質、正式総合テスト、完了可否を判定する。正式総合テストで不合格または保留が残る場合、検証役は単なる差し戻しではなく原因分析と issue 作成を行い、管理役は修正可能な issue を生成役へ修正させる。
 
 ## Workflow
 
@@ -25,10 +25,12 @@ docs を正として、管理役、生成役、検証役の 3 役で実装、テ
 10. 検証役のレビューまたは再レビューが完了するたび、合否に関係なく [staging-boundary.md](references/orchestration/staging-boundary.md) に従って v2 作業差分をステージングする。
 11. 指摘がある場合は [review-loop.md](references/orchestration/review-loop.md) に従い、最大 3 回まで生成役へ修正を依頼する。
 12. 各機能の機能別総合テスト結果、保留分類、正式総合テストへの持ち越しを全体 state に集約する。
-13. 全機能の機能結合完了後、生成役へ既存の総合テスト方針と `テスト仕様・結果` に基づく正式総合テスト、結果記録、証跡保存を依頼する。正式総合テストでは `.tmp` の機能別総合テスト結果を参考情報として扱い、正式結果として転記しない。
-14. 正式総合テストでは、検証役へ総合テスト最終レビュー、最終実装品質チェック、横断レビューを依頼する。
-15. issue は [issue-lifecycle.md](references/orchestration/issue-lifecycle.md) に従い、`.issue/implement-from-docs/` 配下で管理する。
-16. 正式総合テストと横断レビュー後、[manager-completion-checklist.md](references/finalization/manager-completion-checklist.md) で完了前確認を行い、[final-report.md](references/finalization/final-report.md) に従って最終報告する。
+13. 全機能の機能結合完了後、検証役へ横断レビューを依頼する。横断レビューで指摘がある場合は、正式総合テストへ進まず [review-loop.md](references/orchestration/review-loop.md) に従い最大 3 回まで修正ループを行う。
+14. 横断レビュー通過後、生成役へ既存の総合テスト方針と `テスト仕様・結果` に基づく正式総合テスト、結果記録、証跡保存を依頼する。正式総合テストでは `.tmp` の機能別総合テスト結果を参考情報として扱い、正式結果として転記しない。
+15. 正式総合テスト完了後、検証役へ総合テスト結果分析レビューと最終実装品質チェックを依頼する。検証役は不合格・保留を `修正可能 / 仕様不整合 / テスト不能 / TBC候補` に分類し、修正可能な問題と仕様不整合は issue 化する。
+16. 正式総合テスト結果分析レビューで issue が作成された場合、管理役はテスト不能項目以外が全て合格するまで最大 3 回まで生成役と検証役の修正ループを回す。生成役は issue 修正、関連テスト、該当総合テスト再実行、証跡更新を行う。
+17. issue は [issue-lifecycle.md](references/orchestration/issue-lifecycle.md) に従い、`.issue/implement-from-docs/` 配下で管理する。
+18. 横断レビュー、正式総合テスト、総合テスト結果分析レビュー、必要な修正ループ後、[manager-completion-checklist.md](references/finalization/manager-completion-checklist.md) で完了前確認を行い、[final-report.md](references/finalization/final-report.md) に従って最終報告する。
 
 ## Rules
 
@@ -52,6 +54,9 @@ docs を正として、管理役、生成役、検証役の 3 役で実装、テ
 - 生成役は機能別の結合レビュー後に、`docs/04_テスト/04_総合テスト/` 全体を `.tmp/implement-from-docs-v2/features/<機能>/system-test/` へコピーし、正式総合テストと同じ流れ、同じ記録形式、同じ evidence 保存方針で機能別総合テストを実行、記録、証跡保存する。
 - 生成役は機能別総合テストで `docs/04_テスト/04_総合テスト/` を変更しない。
 - 生成役は全機能の機能結合完了後、既存の総合テスト方針と `テスト仕様・結果` に従って正式総合テストを実行、記録、証跡保存する。正式総合テストでは `docs/04_テスト/04_総合テスト/` を更新する。
+- 正式総合テストで不合格または保留となった項目を、単なる再実行または証跡追加だけで完了扱いにしない。検証役が原因分析して issue 化した場合、生成役は指定 issue に従って実装、設定、テストデータ、テスト手順、仕様書、証跡の必要箇所を修正し、関連テストと該当総合テストを再実行する。
+- 検証役は正式総合テストの不合格・保留を `修正可能 / 仕様不整合 / テスト不能 / TBC候補` に分類する。修正可能な問題は issue 化し、仕様不整合は推奨修正方針を含めて issue 化し、テスト不能は自動操作不可、外部認証不足、環境制約など生成役の修正で解消できない場合に限る。
+- 管理役は正式総合テスト後、テスト不能項目以外が全て合格するまで最大 3 回の修正ループを回す。3 回で解消しない総合テスト issue は TBC へ移動できるが、アプリ完成または正式総合テスト合格とは扱わない。
 - `.tmp/implement-from-docs-v2/` は最終成果物ではないが、削除はユーザが行う。管理役、生成役、検証役は `.tmp` 削除を担当せず、完了条件やステージング対象に `.tmp` 削除を含めない。
 - TBC 移動は、3 回の修正ループで解消できない指摘を管理上隔離する処理であり、合格、解消、完成ではない。TBC が残る機能や総合テスト項目は、最終報告で未解決または未完成として扱う。
 - Red 確認結果は生成役の完了報告に含め、管理役が `state.md` に要約する。テストコード、docstring、コメント、総合テスト仕様へ指定外の理由を書かない。
@@ -80,7 +85,8 @@ docs を正として、管理役、生成役、検証役の 3 役で実装、テ
 - 空の完了メッセージまたは実質的な完了報告なしの応答が発生した場合、完了、失敗、TBC として扱わず、リミット到達による一時中断として state に記録し、ユーザのリミット解除後に再利用優先で再開している。
 - 各機能で、テストコード、実装、結合テスト、結合レビュー、機能別総合テスト、機能別総合テストレビューが順序どおり処理され、機能結合完了まで進んでいる。
 - 機能別総合テストでは、正式総合テストと同じ流れで `.tmp/implement-from-docs-v2/features/<機能>/system-test/` に結果と証跡が保存され、`docs/04_テスト/04_総合テスト/` が変更されていない。
-- 全機能の機能結合完了後、正式総合テスト、証跡保存、総合テスト最終レビュー、横断レビューが処理されている。
+- 全機能の機能結合完了後、正式総合テスト前に横断レビューが処理され、指摘がある場合は正式総合テストへ進む前に修正ループが処理されている。
+- 横断レビュー通過後、正式総合テスト、証跡保存、総合テスト結果分析レビュー、最終実装品質チェック、必要な総合テスト issue 修正ループが処理されている。
 - 検証役が、機能別のテストコード、結合テスト、機能別総合テスト、正式総合テストの各フェーズで `review-artifacts` の checklist を作業用ディレクトリへコピーし、未チェック項目をカテゴリ単位で証拠付きで処理している。
 - 各 review-artifacts checklist に未処理項目と根拠なし `- [x]` が残っていない。
 - `指摘あり` または `判断不能` の checklist 項目が、issue、state、完了可否のいずれにも反映されていない状態で残っていない。
@@ -89,8 +95,9 @@ docs を正として、管理役、生成役、検証役の 3 役で実装、テ
 - テスト方針書と設計書から作成された単体・結合テストコードが検証役に承認されている。
 - `.tmp/implement-from-docs-v2/tasklist/implementation-tasklist.md` は管理役だけが更新している。
 - 検証役の各レビュー完了後に v2 作業差分がステージングされている。
-- 検証役が `解消済み` と判定し `削除可 issue` に列挙した issue だけが管理役により削除され、打ち切り時の残 issue と仕様書側修正 issue は `.issue/implement-from-docs/TBC/` へ移動されている。
-- 正式総合テスト後に検証役の横断レビューを実施している。
+- 検証役が `解消済み` と判定し `削除可 issue` に列挙した issue だけが管理役により削除され、打ち切り時の残 issue、仕様書側修正 issue、仕様不整合 issue は `.issue/implement-from-docs/TBC/` へ移動されている。
+- 正式総合テストの不合格・保留が、検証役により原因分析され、修正可能 issue、仕様不整合 issue、テスト不能項目、TBC 候補として分類されている。
+- 正式総合テスト後の修正可能 issue が、最大 3 回の修正ループで処理されている。
 - 正式総合テストが合格し、未分類の保留事項が残っていない。
 - 正式総合テスト不合格、TBC 残、High issue 残、または通常 issue の TBC 残存のいずれかがある場合、アプリ完成と表現していない。
 - 管理役が、検証役の判定、生成役の報告、state、タスクリスト、issue/TBC 状態を照合し、手順上の完了条件を満たしていない対象を完了と表現していない。

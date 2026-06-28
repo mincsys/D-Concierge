@@ -69,11 +69,16 @@ Sandbox 環境で承認が必要なコマンドは、管理役または生成役
 
 1. 管理役が、対象範囲の全機能で機能結合完了になっていることをタスクリストと各 `state.md` で確認する。
 2. 管理役が各機能 state の `正式総合テストへの持ち越し` を `.tmp/implement-from-docs-v2/system-test/state.md` に集約し、対象機能一覧、結合完了済み機能、参照する総合テスト仕様一覧、機能別総合テスト集約、正式総合テスト重点確認項目を記録する。
-3. 管理役が [official-system-test.md](../../subagent-protocol/generator/official-system-test.md) に従い、生成役へ既存の `テスト仕様・結果` に基づく正式総合テスト実行、結果記録、証跡保存、保留理由記録を依頼する。`.tmp` の機能別総合テスト結果は参考情報であり、正式結果として転記しない。
-4. 生成役完了後、管理役が [official-system-test-review.md](../../subagent-protocol/verifier/official-system-test-review.md) に従い、検証役へ正式総合テスト結果、証跡、未ステージ差分、最終実装品質のレビューを依頼する。依頼には `review-artifacts` の `implementation`、`test`、`evidence` checklist 保存先 `.tmp/implement-from-docs-v2/system-test/review-checklists/system-final/round-<n>/`、指摘保存先 `.issue/implement-from-docs/`、レビュー対象、報告形式を含める。
-5. 総合テスト最終レビューの初回レビューまたは再レビュー完了後、管理役が全体 state 更新、検証役の `削除可 issue` に基づく issue 削除、TBC 移動、v2 作業差分のステージングを毎回行う。
-6. 総合テストレビュー完了後、管理役が検証役へ横断レビューを依頼する。依頼には `review-artifacts` checklist 保存先 `.tmp/implement-from-docs-v2/system-test/review-checklists/cross-review/round-<n>/`、指摘保存先 `.issue/implement-from-docs/`、レビュー対象、報告形式を含める。
-7. 管理役が [final-report.md](../finalization/final-report.md) に従い、最終報告を作成する。
+3. 管理役が検証役へ正式総合テスト前の横断レビューを依頼する。依頼には `review-artifacts` checklist 保存先 `.tmp/implement-from-docs-v2/system-test/review-checklists/cross-review/round-<n>/`、指摘保存先 `.issue/implement-from-docs/`、レビュー対象、報告形式を含める。
+4. 横断レビューで指摘がある場合、管理役は正式総合テストへ進まず、[review-loop.md](review-loop.md) に従って最大 3 回まで生成役と検証役の修正ループを回す。横断レビューの issue が未解消、判断不能、TBC 候補、仕様書側修正のまま残る場合、管理役はその状態を state とタスクリストに記録し、アプリ完成とは扱わない。
+5. 横断レビュー通過後、管理役が [official-system-test.md](../../subagent-protocol/generator/official-system-test.md) に従い、生成役へ既存の `テスト仕様・結果` に基づく正式総合テスト実行、結果記録、証跡保存、保留理由記録を依頼する。`.tmp` の機能別総合テスト結果は参考情報であり、正式結果として転記しない。
+6. 生成役完了後、管理役が [official-system-test-review.md](../../subagent-protocol/verifier/official-system-test-review.md) に従い、検証役へ正式総合テスト結果分析レビュー、証跡確認、未ステージ差分確認、最終実装品質チェックを依頼する。依頼には `review-artifacts` の `implementation`、`test`、`evidence` checklist 保存先 `.tmp/implement-from-docs-v2/system-test/review-checklists/system-final/round-<n>/`、指摘保存先 `.issue/implement-from-docs/`、レビュー対象、報告形式を含める。
+7. 検証役は正式総合テストの不合格・保留を `修正可能 / 仕様不整合 / テスト不能 / TBC候補` に分類する。修正可能な問題と仕様不整合は issue 化し、原因分類と推奨修正方針を記録する。テスト不能は自動操作不可、外部認証不足、環境制約など、生成役の修正では解消できない場合に限る。
+8. 総合テスト結果分析レビューの初回レビューまたは再レビュー完了後、管理役が全体 state 更新、検証役の `削除可 issue` に基づく issue 削除、TBC 移動、v2 作業差分のステージングを毎回行う。
+9. 正式総合テスト結果分析レビューで issue が作成された場合、管理役は [issue-fix.md](../../subagent-protocol/generator/issue-fix.md) に従い、生成役へ issue 修正、関連テスト、該当総合テスト再実行、証跡更新を依頼する。
+10. 生成役の修正完了後、管理役は [rereview.md](../../subagent-protocol/verifier/rereview.md) に従い、検証役へ同一フェーズ全体の再レビューを依頼する。テスト不能項目以外が全て合格するまで、最大 3 回まで修正ループを繰り返す。
+11. 3 回で解消しない総合テスト issue、仕様書側修正 issue、検証役が TBC 候補とした issue は、管理役が `.issue/implement-from-docs/TBC/` へ移動し、state とタスクリストへ未解決として記録する。TBC 移動は完成、合格、解消ではない。
+12. 管理役が [final-report.md](../finalization/final-report.md) に従い、最終報告を作成する。
 
 ## 並行化ルール
 
@@ -87,7 +92,7 @@ Sandbox 環境で承認が必要なコマンドは、管理役または生成役
 
 - 管理役は検証役の結合完了判定なしに機能結合完了扱いしない。
 - 管理役は機能別総合テストレビューなしに機能結合完了扱いしない。
-- 管理役は正式総合テスト合格と横断レビューなしに最終完了扱いしない。
+- 管理役は正式総合テスト前の横断レビュー通過、正式総合テスト合格、総合テスト結果分析レビュー、必要な修正ループなしに最終完了扱いしない。
 - 正式総合テスト不合格、TBC 残、High issue 残、または通常 issue の TBC 残存のいずれかがある場合、管理役はアプリ完成と表現しない。
 - 検証打ち切り時は issue を TBC へ移動し、state とタスクリストへ未解決として記録する。TBC 残存のまま次フェーズまたは次機能へ進むのは独立作業を継続するためであり、当該対象の完了やアプリ完成を意味しない。
 - `.tmp/implement-from-docs-v2/` は最終成果物ではないが、削除はユーザが行う。管理役、生成役、検証役は削除しない。
