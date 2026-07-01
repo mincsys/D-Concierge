@@ -63,7 +63,7 @@ description: Create Japanese waterfall-style requirements definition documents u
 - システム概要、開発対象範囲、業務要件、機能要件、画面要件、データ要件、外部連携要件、非機能要件、運用要件・制約の間で矛盾を残さない。
 - 画面要件に出る画面は、機能要件や業務フローとつながるようにする。
 - データ要件に出る主要データは、機能要件や外部連携要件と対応付くようにする。
-- 最後に [references/review-checklist.md](references/review-checklist.md) で横断確認する。
+- 最終レビューは [references/final-review-process.md](references/final-review-process.md) に従い、`references/review-checklist.md` を主チェックリストとしてサブエージェントに確認させる。
 
 ## Writing Rules
 
@@ -78,4 +78,5 @@ description: Create Japanese waterfall-style requirements definition documents u
 
 - 要件定義書の標準章立て: [references/requirements-structure.md](references/requirements-structure.md)
 - 質問チェックリスト: [references/question-checklist.md](references/question-checklist.md)
-- 完成前の横断点検: [references/review-checklist.md](references/review-checklist.md)
+- 最終レビュー手順: [references/final-review-process.md](references/final-review-process.md)
+- レビュー主チェックリスト: [references/review-checklist.md](references/review-checklist.md)
